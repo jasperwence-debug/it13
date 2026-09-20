@@ -1,0 +1,356 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\views\\datacollectionview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\views\\datacollectionview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\views\\recordsview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\views\\recordsview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\clientcontractview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\clientcontractview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\mainform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\mainform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\apiclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\apiclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\views\\placeholderview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\views\\placeholderview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\views\\datacollectionview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\views\\datacollectionview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\views\\dashboardview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\views\\dashboardview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.api\\datacollectiondto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|solutionrelative:app.api\\datacollectiondto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|solutionrelative:app.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\app.winforms.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\app.winforms.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|solutionrelative:app.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E9CC7A5F-A6B4-FA45-6D2E-9B99C769B591}|App.Infrastructure\\App.Infrastructure.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.infrastructure\\migrations\\appdbcontextmodelsnapshot.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E9CC7A5F-A6B4-FA45-6D2E-9B99C769B591}|App.Infrastructure\\App.Infrastructure.csproj|solutionrelative:app.infrastructure\\migrations\\appdbcontextmodelsnapshot.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Infrastructure\\Migrations\\20260914171107_AddDataCollectionTables.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:App.Infrastructure\\Migrations\\20260914171107_AddDataCollectionTables.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E9CC7A5F-A6B4-FA45-6D2E-9B99C769B591}|App.Infrastructure\\App.Infrastructure.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.infrastructure\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E9CC7A5F-A6B4-FA45-6D2E-9B99C769B591}|App.Infrastructure\\App.Infrastructure.csproj|solutionrelative:app.infrastructure\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BED861CB-9D56-883A-588A-0880A5F9D7F4}|App.Domain\\App.Domain.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.domain\\entities\\lead.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BED861CB-9D56-883A-588A-0880A5F9D7F4}|App.Domain\\App.Domain.csproj|solutionrelative:app.domain\\entities\\lead.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BED861CB-9D56-883A-588A-0880A5F9D7F4}|App.Domain\\App.Domain.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.domain\\entities\\customer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BED861CB-9D56-883A-588A-0880A5F9D7F4}|App.Domain\\App.Domain.csproj|solutionrelative:app.domain\\entities\\customer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BED861CB-9D56-883A-588A-0880A5F9D7F4}|App.Domain\\App.Domain.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.domain\\entities\\servicerequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BED861CB-9D56-883A-588A-0880A5F9D7F4}|App.Domain\\App.Domain.csproj|solutionrelative:app.domain\\entities\\servicerequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|solutionrelative:app.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "appsettings.Development.json",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\appsettings.Development.json",
+              "RelativeDocumentMoniker": "App.API\\appsettings.Development.json",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\appsettings.Development.json",
+              "RelativeToolTip": "App.API\\appsettings.Development.json",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAAAcAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-09-11T14:48:22.343Z",
+              "IsPinned": true
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "RecordsView.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\RecordsView.cs",
+              "RelativeDocumentMoniker": "WinFormsApp1\\Views\\RecordsView.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\RecordsView.cs",
+              "RelativeToolTip": "WinFormsApp1\\Views\\RecordsView.cs",
+              "ViewState": "AgIAAAQAAAAAAAAAAAAswBcAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T18:47:33.847Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "DataCollectionView.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\DataCollectionView.cs",
+              "RelativeDocumentMoniker": "WinFormsApp1\\Views\\DataCollectionView.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\DataCollectionView.cs",
+              "RelativeToolTip": "WinFormsApp1\\Views\\DataCollectionView.cs",
+              "ViewState": "AgIAAHcBAAAAAAAAAAAhwOUBAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T18:49:08.78Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "MainForm.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\MainForm.cs",
+              "RelativeDocumentMoniker": "WinFormsApp1\\MainForm.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\MainForm.cs",
+              "RelativeToolTip": "WinFormsApp1\\MainForm.cs",
+              "ViewState": "AgIAAOIAAAAAAAAAAAAwwPQAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T18:42:32.273Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ApiClient.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\ApiClient.cs",
+              "RelativeDocumentMoniker": "WinFormsApp1\\ApiClient.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\ApiClient.cs",
+              "RelativeToolTip": "WinFormsApp1\\ApiClient.cs",
+              "ViewState": "AgIAAJUAAAAAAAAAAAAwwKcAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T17:35:15.538Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "PlaceholderView.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\PlaceholderView.cs",
+              "RelativeDocumentMoniker": "WinFormsApp1\\Views\\PlaceholderView.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\PlaceholderView.cs",
+              "RelativeToolTip": "WinFormsApp1\\Views\\PlaceholderView.cs",
+              "ViewState": "AgIAACQAAAAAAAAAAAAwwDQAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T18:46:42.088Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Program.cs",
+              "RelativeDocumentMoniker": "WinFormsApp1\\Program.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Program.cs",
+              "RelativeToolTip": "WinFormsApp1\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T17:34:54.783Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ClientContractView.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\ClientContractView.cs",
+              "RelativeDocumentMoniker": "WinFormsApp1\\ClientContractView.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\ClientContractView.cs",
+              "RelativeToolTip": "WinFormsApp1\\ClientContractView.cs",
+              "ViewState": "AgIAAEIAAAAAAAAAAAAwwFQAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T19:11:17.625Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "DataCollectionView.cs [Design]",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\DataCollectionView.cs",
+              "RelativeDocumentMoniker": "WinFormsApp1\\Views\\DataCollectionView.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\DataCollectionView.cs [Design]",
+              "RelativeToolTip": "WinFormsApp1\\Views\\DataCollectionView.cs [Design]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T18:50:17.306Z",
+              "EditorCaption": " [Design]"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "DashboardView.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\DashboardView.cs",
+              "RelativeDocumentMoniker": "WinFormsApp1\\Views\\DashboardView.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\DashboardView.cs",
+              "RelativeToolTip": "WinFormsApp1\\Views\\DashboardView.cs",
+              "ViewState": "AgIAABAAAAAAAAAAAAAswCMAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T18:44:49.249Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\Program.cs",
+              "RelativeDocumentMoniker": "App.API\\Program.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\Program.cs",
+              "RelativeToolTip": "App.API\\Program.cs",
+              "ViewState": "AgIAAPYAAAAAAAAAAAAswAkBAAAKAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T17:37:37.651Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "DataCollectionDto.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\DataCollectionDto.cs",
+              "RelativeDocumentMoniker": "App.API\\DataCollectionDto.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\DataCollectionDto.cs",
+              "RelativeToolTip": "App.API\\DataCollectionDto.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAA9wBkAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T17:37:27.228Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "App.WinForms.csproj",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\App.WinForms.csproj",
+              "RelativeDocumentMoniker": "WinFormsApp1\\App.WinForms.csproj",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\App.WinForms.csproj",
+              "RelativeToolTip": "WinFormsApp1\\App.WinForms.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-09-14T17:33:42.552Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\appsettings.json",
+              "RelativeDocumentMoniker": "App.API\\appsettings.json",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\appsettings.json",
+              "RelativeToolTip": "App.API\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-09-11T16:53:43.535Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "AppDbContextModelSnapshot.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Infrastructure\\Migrations\\AppDbContextModelSnapshot.cs",
+              "RelativeDocumentMoniker": "App.Infrastructure\\Migrations\\AppDbContextModelSnapshot.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Infrastructure\\Migrations\\AppDbContextModelSnapshot.cs",
+              "RelativeToolTip": "App.Infrastructure\\Migrations\\AppDbContextModelSnapshot.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T17:13:12.927Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "20260914171107_AddDataCollectionTables.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Infrastructure\\Migrations\\20260914171107_AddDataCollectionTables.cs",
+              "RelativeDocumentMoniker": "App.Infrastructure\\Migrations\\20260914171107_AddDataCollectionTables.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Infrastructure\\Migrations\\20260914171107_AddDataCollectionTables.cs",
+              "RelativeToolTip": "App.Infrastructure\\Migrations\\20260914171107_AddDataCollectionTables.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T17:11:08.055Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "AppDbContext.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Infrastructure\\AppDbContext.cs",
+              "RelativeDocumentMoniker": "App.Infrastructure\\AppDbContext.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Infrastructure\\AppDbContext.cs",
+              "RelativeToolTip": "App.Infrastructure\\AppDbContext.cs",
+              "ViewState": "AgIAABMAAAAAAAAAAAAkwB0AAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T16:07:44.002Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "Lead.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Domain\\Entities\\Lead.cs",
+              "RelativeDocumentMoniker": "App.Domain\\Entities\\Lead.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Domain\\Entities\\Lead.cs",
+              "RelativeToolTip": "App.Domain\\Entities\\Lead.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T15:59:47.463Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "Customer.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Domain\\Entities\\Customer.cs",
+              "RelativeDocumentMoniker": "App.Domain\\Entities\\Customer.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Domain\\Entities\\Customer.cs",
+              "RelativeToolTip": "App.Domain\\Entities\\Customer.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T16:00:57.813Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "ServiceRequest.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Domain\\Entities\\ServiceRequest.cs",
+              "RelativeDocumentMoniker": "App.Domain\\Entities\\ServiceRequest.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Domain\\Entities\\ServiceRequest.cs",
+              "RelativeToolTip": "App.Domain\\Entities\\ServiceRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T16:01:29.978Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

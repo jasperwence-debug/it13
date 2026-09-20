@@ -1,0 +1,12 @@
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\bin\Debug\net10.0\App.Domain.deps.json
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\bin\Debug\net10.0\App.Domain.dll
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\bin\Debug\net10.0\App.Domain.pdb
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\App.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\App.Domain.AssemblyInfoInputs.cache
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\App.Domain.AssemblyInfo.cs
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\App.Domain.csproj.CoreCompileInputs.cache
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\App.Domain.dll
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\refint\App.Domain.dll
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\App.Domain.pdb
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\ref\App.Domain.dll
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\App.Domain.csproj.AssemblyReference.cache
