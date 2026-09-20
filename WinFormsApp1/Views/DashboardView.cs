@@ -23,7 +23,7 @@ namespace App.WinForms.Views
         private Label _lblCustomersVal = null!;
         private Label _lblBookingsVal = null!;
         private Label _lblRevenueVal = null!;
-        private Label _lblRepeatRateVal = null!;
+        private Label _lblActivePipelineVal = null!;
 
         // Row 2 Controls
         private Chart _chartMonthly = null!;
@@ -37,8 +37,21 @@ namespace App.WinForms.Views
         private Label _lblRetentionCompletedRate = null!;
         private Label _lblLastUpdated = null!;
 
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
+                return cp;
+            }
+        }
+
         public DashboardView()
         {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+            UpdateStyles();
+
             BuildUI();
             _ = LoadDashboardAsync();
         }
@@ -70,6 +83,7 @@ namespace App.WinForms.Views
             };
             _pnlError.Paint += (s, e) =>
             {
+                e.Graphics.Clear(_pnlError.BackColor);
                 using var pen = new Pen(Color.FromArgb(248, 113, 113), 1);
                 e.Graphics.DrawRectangle(pen, 0, 0, _pnlError.Width - 1, _pnlError.Height - 1);
             };
@@ -79,6 +93,7 @@ namespace App.WinForms.Views
                 Text = "⚠ Unable to load dashboard data. Ensure App.API is running.",
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(185, 28, 28),
+                BackColor = Color.FromArgb(254, 242, 242),
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -109,28 +124,30 @@ namespace App.WinForms.Views
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 1,
                 RowCount = 4,
-                BackColor = Color.Transparent,
+                BackColor = Color.FromArgb(245, 246, 250),
                 Padding = new Padding(0)
             };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             _mainScrollPanel.Controls.Add(layout);
 
             // -------------------------------------------------------------
-            // ROW 0: Header
+            // ROW 0: Header (Vertical separation prevents any text overlap)
             // -------------------------------------------------------------
             var pnlHeader = new Panel
             {
                 Dock = DockStyle.Fill,
-                Height = 65,
-                Margin = new Padding(0, 0, 0, 16)
+                Height = 68,
+                Margin = new Padding(0, 0, 0, 16),
+                BackColor = Color.FromArgb(245, 246, 250)
             };
 
             var lblTitle = new Label
             {
                 Text = "Business Intelligence Dashboard",
                 Font = new Font("Segoe UI", 16F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
-                Location = new Point(0, 0),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                BackColor = Color.FromArgb(245, 246, 250),
+                Location = new Point(0, 2),
                 AutoSize = true
             };
             pnlHeader.Controls.Add(lblTitle);
@@ -140,7 +157,8 @@ namespace App.WinForms.Views
                 Text = "Real-time key performance indicators, service metrics, and customer retention analytics",
                 Font = new Font("Segoe UI", 9.5F),
                 ForeColor = Color.FromArgb(100, 116, 139),
-                Location = new Point(0, 32),
+                BackColor = Color.FromArgb(245, 246, 250),
+                Location = new Point(0, lblTitle.PreferredHeight + 8),
                 AutoSize = true
             };
             pnlHeader.Controls.Add(lblSubtitle);
@@ -150,6 +168,7 @@ namespace App.WinForms.Views
                 Text = "Loading...",
                 Font = new Font("Segoe UI", 9F, FontStyle.Italic),
                 ForeColor = Color.FromArgb(148, 163, 184),
+                BackColor = Color.FromArgb(245, 246, 250),
                 Dock = DockStyle.Right,
                 TextAlign = ContentAlignment.TopRight,
                 Width = 240
@@ -159,36 +178,61 @@ namespace App.WinForms.Views
             layout.Controls.Add(pnlHeader, 0, 0);
 
             // -------------------------------------------------------------
-            // ROW 1: 4 KPI Cards
+            // ROW 1: 4 KPI Cards (Standardized dark slate #0F172A with elegant accent tags)
             // -------------------------------------------------------------
             var pnlKpis = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Height = 115,
+                Height = 118,
                 ColumnCount = 4,
                 RowCount = 1,
                 Margin = new Padding(0, 0, 0, 16),
-                BackColor = Color.Transparent
+                BackColor = Color.FromArgb(245, 246, 250)
             };
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
 
-            var (card1, val1) = CreateKpiCard("👥 TOTAL CUSTOMERS", "--", "Active customer accounts", Color.FromArgb(30, 41, 59));
+            var (card1, val1) = CreateKpiCard(
+                "TOTAL CUSTOMERS",
+                "--",
+                "Active customer accounts",
+                "● ACCOUNTS",
+                Color.FromArgb(71, 85, 105),
+                Color.FromArgb(241, 245, 249));
             _lblCustomersVal = val1;
             pnlKpis.Controls.Add(card1, 0, 0);
 
-            var (card2, val2) = CreateKpiCard("📅 TOTAL BOOKINGS", "--", "All service requests", Color.FromArgb(30, 41, 59));
+            var (card2, val2) = CreateKpiCard(
+                "TOTAL BOOKINGS",
+                "--",
+                "All service requests",
+                "● VOLUME",
+                Color.FromArgb(37, 99, 235),
+                Color.FromArgb(239, 246, 255));
             _lblBookingsVal = val2;
             pnlKpis.Controls.Add(card2, 1, 0);
 
-            var (card3, val3) = CreateKpiCard("💰 TOTAL REVENUE", "--", "Completed bookings total", Color.FromArgb(34, 197, 94));
+            var (card3, val3) = CreateKpiCard(
+                "TOTAL REVENUE",
+                "--",
+                "Completed bookings gross",
+                "● GROSS",
+                Color.FromArgb(22, 163, 74),
+                Color.FromArgb(240, 253, 244));
             _lblRevenueVal = val3;
             pnlKpis.Controls.Add(card3, 2, 0);
 
-            var (card4, val4) = CreateKpiCard("🔁 REPEAT RATE", "--", "Customers with >1 booking", Color.FromArgb(37, 99, 235));
-            _lblRepeatRateVal = val4;
+            // Replaced duplicate Repeat Rate with dedicated ACTIVE PIPELINE metric
+            var (card4, val4) = CreateKpiCard(
+                "ACTIVE PIPELINE",
+                "--",
+                "Scheduled & pending bookings",
+                "● IN-FLIGHT",
+                Color.FromArgb(79, 70, 229),
+                Color.FromArgb(245, 243, 255));
+            _lblActivePipelineVal = val4;
             pnlKpis.Controls.Add(card4, 3, 0);
 
             layout.Controls.Add(pnlKpis, 0, 1);
@@ -203,7 +247,7 @@ namespace App.WinForms.Views
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = new Padding(0, 0, 0, 16),
-                BackColor = Color.Transparent
+                BackColor = Color.FromArgb(245, 246, 250)
             };
             pnlRow2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
             pnlRow2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
@@ -212,7 +256,7 @@ namespace App.WinForms.Views
             var cardMonthly = CreateCardContainer();
             cardMonthly.Margin = new Padding(0, 0, 8, 0);
 
-            var pnlMonthlyHeader = CreateSectionHeader("Monthly Bookings Trend", "Monthly booking volume over the last 12 months");
+            var pnlMonthlyHeader = CreateSectionHeader("Monthly Bookings Trend", "Monthly bookings volume and revenue trajectory");
             cardMonthly.Controls.Add(pnlMonthlyHeader);
 
             _chartMonthly = new Chart
@@ -238,7 +282,7 @@ namespace App.WinForms.Views
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = Color.White,
-                Padding = new Padding(4, 8, 4, 4)
+                Padding = new Padding(4, 6, 4, 4)
             };
             cardTopServices.Controls.Add(_pnlTopServicesList);
             _pnlTopServicesList.BringToFront();
@@ -256,7 +300,7 @@ namespace App.WinForms.Views
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = new Padding(0, 0, 0, 16),
-                BackColor = Color.Transparent
+                BackColor = Color.FromArgb(245, 246, 250)
             };
             pnlRow3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             pnlRow3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -273,7 +317,7 @@ namespace App.WinForms.Views
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = Color.White,
-                Padding = new Padding(4, 12, 4, 4)
+                Padding = new Padding(4, 8, 4, 4)
             };
             cardCategory.Controls.Add(_pnlCategoryList);
             _pnlCategoryList.BringToFront();
@@ -308,7 +352,7 @@ namespace App.WinForms.Views
             _lblRetentionAtRisk = valRet2;
             pnlRetentionBody.Controls.Add(box2, 1, 0);
 
-            var (box3, valRet3) = CreateInsightBox("Average Booking Value", "--", "Mean revenue per completed booking", Color.FromArgb(30, 41, 59));
+            var (box3, valRet3) = CreateInsightBox("Average Booking Value", "--", "Mean revenue per completed booking", Color.FromArgb(15, 23, 42));
             _lblRetentionAvgValue = valRet3;
             pnlRetentionBody.Controls.Add(box3, 0, 1);
 
@@ -342,22 +386,24 @@ namespace App.WinForms.Views
 
             _lblLastUpdated.Text = $"Last updated: {DateTime.Now:hh:mm:ss tt}";
 
-            // Populate KPIs
+            // Populate KPIs (Authoritative dark slate typography)
             _lblCustomersVal.Text = data.TotalCustomers.ToString("N0");
             _lblBookingsVal.Text = data.TotalBookings.ToString("N0");
             _lblRevenueVal.Text = $"₱{data.TotalRevenue:N2}";
-            _lblRepeatRateVal.Text = $"{data.RepeatCustomerRate:F1}%";
 
-            // Populate Chart
+            int pipelineCount = data.ScheduledBookings + data.RequestedBookings;
+            _lblActivePipelineVal.Text = pipelineCount.ToString("N0");
+
+            // Populate Chart (Suppresses "0" strings on empty months)
             PopulateMonthlyChart(data.MonthlyTrend);
 
-            // Populate Top Services
+            // Populate Top Services (Proper margin & padding, prevents rank number clipping)
             PopulateTopServices(data.TopServices);
 
             // Populate Category Breakdown
             PopulateCategoryBreakdown(data.CategoryBreakdown, data.TotalBookings);
 
-            // Populate Retention Insights
+            // Populate Retention Insights (Retains Repeat Customer Rate in loyalty context)
             _lblRetentionRepeatRate.Text = $"{data.RepeatCustomerRate:F1}%";
             _lblRetentionAtRisk.Text = data.AtRiskCustomerCount.ToString("N0");
             _lblRetentionAtRisk.ForeColor = data.AtRiskCustomerCount > 0
@@ -386,9 +432,9 @@ namespace App.WinForms.Views
                 BackColor = Color.White
             };
             area.AxisX.MajorGrid.LineColor = Color.FromArgb(241, 245, 249);
-            area.AxisY.MajorGrid.LineColor = Color.FromArgb(241, 245, 249);
-            area.AxisX.LineColor = Color.FromArgb(226, 232, 240);
-            area.AxisY.LineColor = Color.FromArgb(226, 232, 240);
+            area.AxisY.MajorGrid.LineColor = Color.FromArgb(226, 232, 240); // Subtle gridlines
+            area.AxisX.LineColor = Color.FromArgb(203, 213, 225);
+            area.AxisY.LineColor = Color.FromArgb(203, 213, 225);
             area.AxisX.LabelStyle.Font = new Font("Segoe UI", 8F);
             area.AxisY.LabelStyle.Font = new Font("Segoe UI", 8F);
             area.AxisX.LabelStyle.ForeColor = Color.FromArgb(100, 116, 139);
@@ -408,12 +454,13 @@ namespace App.WinForms.Views
             var series = new Series("Bookings")
             {
                 ChartType = SeriesChartType.Column,
-                Color = Color.FromArgb(59, 130, 246),
+                Color = Color.FromArgb(59, 130, 246), // #3B82F6 clean blue
                 BorderWidth = 0,
-                IsValueShownAsLabel = true,
+                IsValueShownAsLabel = false, // Suppress global label; only show for non-zero points
                 Font = new Font("Segoe UI", 8F, FontStyle.Bold),
-                LabelForeColor = Color.FromArgb(30, 41, 59)
+                LabelForeColor = Color.FromArgb(15, 23, 42)
             };
+            series["PointWidth"] = "0.55";
 
             foreach (var item in trends)
             {
@@ -424,7 +471,20 @@ namespace App.WinForms.Views
                 }
                 var point = new DataPoint();
                 point.SetValueXY(label, item.Bookings);
-                point.ToolTip = $"{label}: {item.Bookings} bookings (₱{item.Revenue:N2})";
+                point.ToolTip = $"{label}: {item.Bookings} bookings | Revenue: ₱{item.Revenue:N2}";
+
+                // Suppress floating "0" strings across inactive baseline months
+                if (item.Bookings > 0)
+                {
+                    point.IsValueShownAsLabel = true;
+                    point.Label = item.Bookings.ToString("N0");
+                }
+                else
+                {
+                    point.IsValueShownAsLabel = false;
+                    point.Label = string.Empty;
+                }
+
                 series.Points.Add(point);
             }
 
@@ -432,7 +492,7 @@ namespace App.WinForms.Views
         }
 
         // =============================================================
-        // Top 5 Services List
+        // Top 5 Services List (Unclipped rank badges with ample padding)
         // =============================================================
         private void PopulateTopServices(List<TopServiceDto>? services)
         {
@@ -462,51 +522,57 @@ namespace App.WinForms.Views
                 {
                     Dock = DockStyle.Top,
                     Height = 48,
-                    Padding = new Padding(8, 4, 8, 4),
+                    Padding = new Padding(12, 4, 12, 4),
                     BackColor = Color.White
                 };
 
                 // Bottom divider
                 rowPanel.Paint += (s, e) =>
                 {
+                    e.Graphics.Clear(rowPanel.BackColor);
                     using var pen = new Pen(Color.FromArgb(241, 245, 249), 1);
                     e.Graphics.DrawLine(pen, 0, rowPanel.Height - 1, rowPanel.Width, rowPanel.Height - 1);
                 };
 
-                // Rank badge
-                var lblRank = new Label
-                {
-                    Text = $"#{rank}",
-                    Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                    ForeColor = rank <= 3 ? Color.FromArgb(37, 99, 235) : Color.FromArgb(100, 116, 139),
-                    Width = 32,
-                    Dock = DockStyle.Left,
-                    TextAlign = ContentAlignment.MiddleLeft
-                };
-                rowPanel.Controls.Add(lblRank);
-
-                // Service Name
-                var lblName = new Label
-                {
-                    Text = svc.ServiceName,
-                    Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                    ForeColor = Color.FromArgb(30, 41, 59),
-                    Dock = DockStyle.Fill,
-                    TextAlign = ContentAlignment.MiddleLeft
-                };
-                rowPanel.Controls.Add(lblName);
-
-                // Right metrics: Count + Revenue
+                // Right metrics: Count + Revenue (Dock Right first)
                 var lblStats = new Label
                 {
                     Text = $"{svc.Count} bookings   (₱{svc.Revenue:N2})",
                     Font = new Font("Segoe UI", 9F),
                     ForeColor = Color.FromArgb(71, 85, 105),
+                    BackColor = Color.White,
                     Dock = DockStyle.Right,
-                    Width = 200,
+                    Width = 190,
                     TextAlign = ContentAlignment.MiddleRight
                 };
                 rowPanel.Controls.Add(lblStats);
+
+                // Rank badge with dedicated 40px width and left padding (Dock Left second)
+                var lblRank = new Label
+                {
+                    Text = $"#{rank}",
+                    Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                    ForeColor = rank <= 3 ? Color.FromArgb(37, 99, 235) : Color.FromArgb(100, 116, 139),
+                    BackColor = Color.White,
+                    Width = 40,
+                    Dock = DockStyle.Left,
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Padding = new Padding(4, 0, 0, 0)
+                };
+                rowPanel.Controls.Add(lblRank);
+
+                // Service Name (Dock Fill third with left breathing room)
+                var lblName = new Label
+                {
+                    Text = svc.ServiceName,
+                    Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(15, 23, 42),
+                    BackColor = Color.White,
+                    Dock = DockStyle.Fill,
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Padding = new Padding(8, 0, 0, 0)
+                };
+                rowPanel.Controls.Add(lblName);
 
                 _pnlTopServicesList.Controls.Add(rowPanel);
             }
@@ -536,9 +602,9 @@ namespace App.WinForms.Views
 
             var colors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
             {
-                { "Residential", Color.FromArgb(59, 130, 246) },
-                { "Commercial", Color.FromArgb(16, 185, 129) },
-                { "Specialty", Color.FromArgb(245, 158, 11) }
+                { "Residential", Color.FromArgb(59, 130, 246) }, // Blue #3B82F6
+                { "Commercial", Color.FromArgb(16, 185, 129) },  // Emerald #10B981
+                { "Specialty", Color.FromArgb(245, 158, 11) }   // Amber #F59E0B
             };
 
             for (int i = categories.Count - 1; i >= 0; i--)
@@ -559,14 +625,16 @@ namespace App.WinForms.Views
                 var pnlInfo = new Panel
                 {
                     Dock = DockStyle.Top,
-                    Height = 26
+                    Height = 26,
+                    BackColor = Color.White
                 };
 
                 var lblCatName = new Label
                 {
                     Text = cat.Category,
                     Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                    ForeColor = Color.FromArgb(30, 41, 59),
+                    ForeColor = Color.FromArgb(15, 23, 42),
+                    BackColor = Color.White,
                     Dock = DockStyle.Left,
                     AutoSize = true
                 };
@@ -577,6 +645,7 @@ namespace App.WinForms.Views
                     Text = $"{cat.Count} bookings ({pct:F1}%)  •  ₱{cat.Revenue:N2}",
                     Font = new Font("Segoe UI", 9F),
                     ForeColor = Color.FromArgb(100, 116, 139),
+                    BackColor = Color.White,
                     Dock = DockStyle.Right,
                     AutoSize = true,
                     TextAlign = ContentAlignment.MiddleRight
@@ -584,25 +653,22 @@ namespace App.WinForms.Views
                 pnlInfo.Controls.Add(lblCatMetrics);
                 catCard.Controls.Add(pnlInfo);
 
-                // Progress Bar Container
+                // Progress Bar Container with clean borders & fill
                 var pnlBarBg = new Panel
                 {
                     Dock = DockStyle.Bottom,
-                    Height = 12,
+                    Height = 10,
                     BackColor = Color.FromArgb(241, 245, 249)
                 };
-
-                var pnlBarFill = new Panel
+                pnlBarBg.Paint += (s, e) =>
                 {
-                    Dock = DockStyle.Left,
-                    Width = Math.Max(4, (int)(pnlBarBg.Width * (pct / 100.0))),
-                    BackColor = barColor
+                    e.Graphics.Clear(Color.FromArgb(241, 245, 249));
+                    int fillW = Math.Max(2, (int)(pnlBarBg.Width * (pct / 100.0)));
+                    using var brush = new SolidBrush(barColor);
+                    e.Graphics.FillRectangle(brush, 0, 0, fillW, pnlBarBg.Height);
+                    using var pen = new Pen(Color.FromArgb(226, 232, 240), 1);
+                    e.Graphics.DrawRectangle(pen, 0, 0, pnlBarBg.Width - 1, pnlBarBg.Height - 1);
                 };
-                pnlBarBg.SizeChanged += (s, e) =>
-                {
-                    pnlBarFill.Width = Math.Max(4, (int)(pnlBarBg.Width * (pct / 100.0)));
-                };
-                pnlBarBg.Controls.Add(pnlBarFill);
                 catCard.Controls.Add(pnlBarBg);
 
                 _pnlCategoryList.Controls.Add(catCard);
@@ -612,41 +678,78 @@ namespace App.WinForms.Views
         // =============================================================
         // UI Helper Methods
         // =============================================================
-        private (Panel Card, Label ValueLabel) CreateKpiCard(string header, string initialVal, string subtitle, Color valueColor)
+        private (Panel Card, Label ValueLabel) CreateKpiCard(
+            string header,
+            string initialVal,
+            string subtitle,
+            string tagText,
+            Color tagColor,
+            Color tagBgColor)
         {
             var card = CreateCardContainer();
             card.Margin = new Padding(4);
+            card.Padding = new Padding(16, 14, 16, 14);
+
+            // Top Row: Title (Left) + Subtle Accent Tag (Right)
+            var pnlTop = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 22,
+                BackColor = Color.White
+            };
 
             var lblHeader = new Label
             {
                 Text = header,
                 Font = new Font("Segoe UI", 8F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(100, 116, 139),
-                Dock = DockStyle.Top,
-                Height = 20
-            };
-            card.Controls.Add(lblHeader);
-
-            var lblValue = new Label
-            {
-                Text = initialVal,
-                Font = new Font("Segoe UI", 20F, FontStyle.Bold),
-                ForeColor = valueColor,
-                Dock = DockStyle.Fill,
+                BackColor = Color.White,
+                Dock = DockStyle.Left,
+                AutoSize = true,
                 TextAlign = ContentAlignment.MiddleLeft
             };
-            card.Controls.Add(lblValue);
-            lblValue.BringToFront();
+            pnlTop.Controls.Add(lblHeader);
 
+            var lblTag = new Label
+            {
+                Text = tagText,
+                Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
+                ForeColor = tagColor,
+                BackColor = tagBgColor,
+                Dock = DockStyle.Right,
+                AutoSize = true,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Padding = new Padding(6, 2, 6, 2)
+            };
+            pnlTop.Controls.Add(lblTag);
+
+            card.Controls.Add(pnlTop);
+
+            // Bottom Subtitle
             var lblSub = new Label
             {
                 Text = subtitle,
                 Font = new Font("Segoe UI", 8.5F),
                 ForeColor = Color.FromArgb(148, 163, 184),
+                BackColor = Color.White,
                 Dock = DockStyle.Bottom,
-                Height = 20
+                Height = 18,
+                TextAlign = ContentAlignment.MiddleLeft
             };
             card.Controls.Add(lblSub);
+
+            // Standardized Authoritative Metric Value (#0F172A Dark Slate)
+            var lblValue = new Label
+            {
+                Text = initialVal,
+                Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                BackColor = Color.White,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            card.Controls.Add(lblValue);
+            lblValue.BringToFront();
 
             return (card, lblValue);
         }
@@ -657,11 +760,12 @@ namespace App.WinForms.Views
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(248, 250, 252),
-                Padding = new Padding(12),
+                Padding = new Padding(14, 10, 14, 10),
                 Margin = new Padding(6)
             };
             box.Paint += (s, e) =>
             {
+                e.Graphics.Clear(box.BackColor);
                 using var pen = new Pen(Color.FromArgb(226, 232, 240), 1);
                 e.Graphics.DrawRectangle(pen, 0, 0, box.Width - 1, box.Height - 1);
             };
@@ -671,31 +775,36 @@ namespace App.WinForms.Views
                 Text = title,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Color.FromArgb(248, 250, 252),
                 Dock = DockStyle.Top,
-                Height = 22
-            };
-            box.Controls.Add(lblTitle);
-
-            var lblVal = new Label
-            {
-                Text = initialVal,
-                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
-                ForeColor = valueColor,
-                Dock = DockStyle.Fill,
+                Height = 22,
                 TextAlign = ContentAlignment.MiddleLeft
             };
-            box.Controls.Add(lblVal);
-            lblVal.BringToFront();
+            box.Controls.Add(lblTitle);
 
             var lblDesc = new Label
             {
                 Text = description,
                 Font = new Font("Segoe UI", 8F),
                 ForeColor = Color.FromArgb(148, 163, 184),
+                BackColor = Color.FromArgb(248, 250, 252),
                 Dock = DockStyle.Bottom,
-                Height = 20
+                Height = 18,
+                TextAlign = ContentAlignment.MiddleLeft
             };
             box.Controls.Add(lblDesc);
+
+            var lblVal = new Label
+            {
+                Text = initialVal,
+                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
+                ForeColor = valueColor,
+                BackColor = Color.FromArgb(248, 250, 252),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            box.Controls.Add(lblVal);
+            lblVal.BringToFront();
 
             return (box, lblVal);
         }
@@ -710,6 +819,7 @@ namespace App.WinForms.Views
             };
             panel.Paint += (s, e) =>
             {
+                e.Graphics.Clear(panel.BackColor);
                 using var pen = new Pen(Color.FromArgb(226, 232, 240), 1);
                 e.Graphics.DrawRectangle(pen, 0, 0, panel.Width - 1, panel.Height - 1);
             };
@@ -721,7 +831,7 @@ namespace App.WinForms.Views
             var pnl = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 46,
+                Height = 56,
                 BackColor = Color.White
             };
 
@@ -729,18 +839,21 @@ namespace App.WinForms.Views
             {
                 Text = title,
                 Font = new Font("Segoe UI", 11F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
-                Location = new Point(0, 0),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                BackColor = Color.White,
+                Location = new Point(0, 4),
                 AutoSize = true
             };
             pnl.Controls.Add(lblTitle);
 
+            // Explicit dynamic placement ensures subtitle never collides with title
             var lblSub = new Label
             {
                 Text = subtitle,
                 Font = new Font("Segoe UI", 8.5F),
                 ForeColor = Color.FromArgb(100, 116, 139),
-                Location = new Point(0, 22),
+                BackColor = Color.White,
+                Location = new Point(0, lblTitle.PreferredHeight + 8),
                 AutoSize = true
             };
             pnl.Controls.Add(lblSub);

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
@@ -126,6 +126,7 @@ namespace App.WinForms
                 Text = "Dashboard",
                 Font = new Font("Segoe UI", 14F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(30, 41, 59),
+                BackColor = Color.White,
                 Dock = DockStyle.Left,
                 Width = 400,
                 TextAlign = ContentAlignment.MiddleLeft
@@ -137,6 +138,7 @@ namespace App.WinForms
                 Text = "👤  Juan Dela Cruz  ▼",
                 Font = new Font("Segoe UI", 10F),
                 ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Color.White,
                 Dock = DockStyle.Right,
                 Width = 200,
                 TextAlign = ContentAlignment.MiddleRight

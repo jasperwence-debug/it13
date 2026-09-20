@@ -10,3 +10,4 @@ C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\App.Domain.pdb
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\ref\App.Domain.dll
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\App.Domain.csproj.AssemblyReference.cache
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Domain\obj\Debug\net10.0\App.Domain.sourcelink.json

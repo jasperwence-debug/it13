@@ -15,3 +15,4 @@ C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Deb
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\ref\App.Infrastructure.dll
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\bin\Debug\net10.0\App.Infrastructure.runtimeconfig.json
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\App.Infrastructure.genruntimeconfig.cache
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\App.Infrastructure.sourcelink.json
