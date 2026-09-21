@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using App.WinForms;
+using App.WinForms.Core;
 
 namespace App.WinForms.Views
 {
@@ -14,7 +15,7 @@ namespace App.WinForms.Views
     /// Tab 2: Saved Records (Search, View, Edit, Delete)
     /// Tab 3: Retention Actions (At-Risk Accounts, Priority, Basis, Action Logger)
     /// </summary>
-    public class ClientContractView : UserControl
+    public class ClientContractView : BaseView
     {
         private readonly ApiClient _apiClient;
 
@@ -31,11 +32,18 @@ namespace App.WinForms.Views
         private TextBox _txtSearch = null!;
         private Button _btnSearch = null!;
         private Button _btnRefresh = null!;
+        private Button _btnNewBookingTop = null!;
         private Label _lblRecordCount = null!;
         private DataGridView _dgvRecords = null!;
+        private Button _btnCollectData = null!;
         private Button _btnEdit = null!;
         private Button _btnDelete = null!;
         private List<DataCollectionDto> _allRecords = new();
+
+        public Button btnCollectData => _btnCollectData;
+        public Button btnNewBookingTop => _btnNewBookingTop;
+        public Button btnEdit => _btnEdit;
+        public Button btnDelete => _btnDelete;
 
         // Tab 3: Retention Actions Controls
         private DataGridView _dgvRetention = null!;
@@ -44,21 +52,8 @@ namespace App.WinForms.Views
         private Label _lblRetentionCount = null!;
         private List<RetentionItemModel> _retentionItems = new();
 
-        protected override CreateParams CreateParams
-        {
-            get
-            {
-                CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED: Prevents repaint bleed & ghosting
-                return cp;
-            }
-        }
-
         public ClientContractView()
         {
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
-            UpdateStyles();
-
             _apiClient = new ApiClient();
             InitializeUI();
 
@@ -71,8 +66,7 @@ namespace App.WinForms.Views
 
         private void InitializeUI()
         {
-            BackColor = Color.FromArgb(245, 246, 250);
-            Dock = DockStyle.Fill;
+            // BackColor and Dock inherited from BaseView
 
             // TabControl occupying full space without redundant title headers
             _tabs = new TabControl
@@ -84,15 +78,29 @@ namespace App.WinForms.Views
             Controls.Add(_tabs);
 
             // =========================================================
-            // TAB 1: Collect Customer Data
+            // TAB 1: Saved Records (Primary Table)
             // =========================================================
-            _tabCollect = new TabPage("✏️  Collect Customer Data")
+            _tabRecords = new TabPage("📋  Customer Records")
             {
-                BackColor = Color.FromArgb(248, 250, 252),
+                BackColor = Theme.Surface,
                 Padding = new Padding(0)
             };
-            _tabs.TabPages.Add(_tabCollect);
+            _tabs.TabPages.Add(_tabRecords);
+            BuildSavedRecordsTab();
 
+            // =========================================================
+            // TAB 2: Retention Actions
+            // =========================================================
+            _tabRetention = new TabPage("🔁  Retention Actions")
+            {
+                BackColor = Theme.Surface,
+                Padding = new Padding(0)
+            };
+            _tabs.TabPages.Add(_tabRetention);
+            BuildRetentionActionsTab();
+
+            // Inline Wizard instance (optional / hidden tab)
+            _tabCollect = new TabPage("✏️  Collect Customer Data");
             _dataCollectionView = new DataCollectionView { Dock = DockStyle.Fill };
             _dataCollectionView.RecordSaved += async () =>
             {
@@ -101,28 +109,6 @@ namespace App.WinForms.Views
                 _tabs.SelectedTab = _tabRecords;
             };
             _tabCollect.Controls.Add(_dataCollectionView);
-
-            // =========================================================
-            // TAB 2: Saved Records
-            // =========================================================
-            _tabRecords = new TabPage("📊  Saved Records")
-            {
-                BackColor = Color.White,
-                Padding = new Padding(0)
-            };
-            _tabs.TabPages.Add(_tabRecords);
-            BuildSavedRecordsTab();
-
-            // =========================================================
-            // TAB 3: Retention Actions
-            // =========================================================
-            _tabRetention = new TabPage("🔁  Retention Actions")
-            {
-                BackColor = Color.White,
-                Padding = new Padding(0)
-            };
-            _tabs.TabPages.Add(_tabRetention);
-            BuildRetentionActionsTab();
 
             // Refresh data when switching tabs
             _tabs.SelectedIndexChanged += async (s, e) =>
@@ -138,6 +124,23 @@ namespace App.WinForms.Views
             };
         }
 
+        private async Task OpenNewBookingModalAsync()
+        {
+            if (SessionManager.CurrentUser?.Role == Roles.Manager)
+            {
+                ShowToast("Role does not have permission to create new bookings.", false);
+                return;
+            }
+
+            using var modal = new NewBookingModalForm();
+            if (modal.ShowDialog(FindForm()) == DialogResult.OK)
+            {
+                await LoadRecordsAsync();
+                await LoadRetentionAsync();
+                ShowToast("New booking successfully recorded!", true);
+            }
+        }
+
         // =============================================================
         // TAB 2: SAVED RECORDS UI
         // =============================================================
@@ -146,7 +149,7 @@ namespace App.WinForms.Views
             var pnlContainer = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.White,
+                BackColor = Theme.Surface,
                 Padding = new Padding(16)
             };
             _tabRecords.Controls.Add(pnlContainer);
@@ -156,7 +159,7 @@ namespace App.WinForms.Views
             {
                 Dock = DockStyle.Top,
                 Height = 52,
-                BackColor = Color.White,
+                BackColor = Theme.Surface,
                 Padding = new Padding(0, 4, 0, 10)
             };
             pnlContainer.Controls.Add(pnlTop);
@@ -167,7 +170,7 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 10F),
                 Location = new Point(0, 10),
                 Size = new Size(24, 26),
-                BackColor = Color.White
+                BackColor = Theme.Surface
             };
             pnlTop.Controls.Add(lblSearchIcon);
 
@@ -188,12 +191,14 @@ namespace App.WinForms.Views
             };
             pnlTop.Controls.Add(_txtSearch);
 
-            _btnSearch = CreateFlatButton("Search", Color.FromArgb(59, 130, 246), Color.White, 90);
+            _btnSearch = new Button { Text = "Search", Size = new Size(90, 36), Cursor = Cursors.Hand };
+            Theme.ApplyPrimaryButtonStyle(_btnSearch);
             _btnSearch.Location = new Point(356, 6);
             _btnSearch.Click += (s, e) => ApplySearchFilter();
             pnlTop.Controls.Add(_btnSearch);
 
-            _btnRefresh = CreateFlatButton("🔄 Refresh", Color.FromArgb(241, 245, 249), Color.FromArgb(51, 65, 85), 105);
+            _btnRefresh = new Button { Text = "🔄 Refresh", Size = new Size(105, 36), Cursor = Cursors.Hand };
+            Theme.ApplySecondaryButtonStyle(_btnRefresh);
             _btnRefresh.Location = new Point(454, 6);
             _btnRefresh.Click += async (s, e) =>
             {
@@ -202,35 +207,45 @@ namespace App.WinForms.Views
             };
             pnlTop.Controls.Add(_btnRefresh);
 
+            _btnNewBookingTop = new Button { Text = "➕  New Booking", Size = new Size(140, 36), Cursor = Cursors.Hand };
+            Theme.ApplyPrimaryButtonStyle(_btnNewBookingTop);
+            _btnNewBookingTop.Location = new Point(568, 6);
+            _btnNewBookingTop.Click += async (s, e) => await OpenNewBookingModalAsync();
+            pnlTop.Controls.Add(_btnNewBookingTop);
+
             _lblRecordCount = new Label
             {
                 Dock = DockStyle.Right,
                 Width = 220,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(100, 116, 139),
-                BackColor = Color.White,
+                Font = Theme.BodyBoldFont,
+                ForeColor = Theme.TextMuted,
+                BackColor = Theme.Surface,
                 TextAlign = ContentAlignment.MiddleRight,
                 Text = "Loading records..."
             };
             pnlTop.Controls.Add(_lblRecordCount);
 
-            // Bottom Bar: Edit & Delete Buttons
             var pnlBottom = new Panel
             {
                 Dock = DockStyle.Bottom,
                 Height = 58,
-                BackColor = Color.White,
+                BackColor = Theme.Surface,
                 Padding = new Padding(0, 10, 0, 0)
             };
             pnlContainer.Controls.Add(pnlBottom);
 
-            _btnEdit = CreateFlatButton("✏️  Edit Selected", Color.FromArgb(59, 130, 246), Color.White, 140);
-            _btnEdit.Location = new Point(0, 10);
+            _btnCollectData = new Button { Text = "➕  New Booking", Size = new Size(160, 36), Location = new Point(0, 10), Cursor = Cursors.Hand };
+            Theme.ApplyPrimaryButtonStyle(_btnCollectData);
+            _btnCollectData.Click += async (s, e) => await OpenNewBookingModalAsync();
+            pnlBottom.Controls.Add(_btnCollectData);
+
+            _btnEdit = new Button { Text = "✏️  Edit Selected", Size = new Size(140, 36), Location = new Point(205, 10), Cursor = Cursors.Hand };
+            Theme.ApplyPrimaryButtonStyle(_btnEdit);
             _btnEdit.Click += async (s, e) => await OnEditSelectedClickAsync();
             pnlBottom.Controls.Add(_btnEdit);
 
-            _btnDelete = CreateFlatButton("🗑️  Delete Selected", Color.FromArgb(239, 68, 68), Color.White, 150);
-            _btnDelete.Location = new Point(148, 10);
+            _btnDelete = new Button { Text = "🗑️  Delete Selected", Size = new Size(150, 36), Location = new Point(355, 10), Cursor = Cursors.Hand };
+            Theme.ApplyDangerButtonStyle(_btnDelete);
             _btnDelete.Click += async (s, e) => await OnDeleteSelectedClickAsync();
             pnlBottom.Controls.Add(_btnDelete);
 
@@ -245,16 +260,16 @@ namespace App.WinForms.Views
         {
             dgv.Columns.Clear();
 
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ID", HeaderText = "ID", Width = 55, DataPropertyName = "ServiceRequestId" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "CustomerName", HeaderText = "Customer Name", Width = 160, DataPropertyName = "CustomerName" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "CustomerType", HeaderText = "Type", Width = 90, DataPropertyName = "CustomerType" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ContactDetails", HeaderText = "Contact", Width = 135, DataPropertyName = "ContactDetails" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ServiceLocation", HeaderText = "Location", Width = 210, DataPropertyName = "ServiceLocation" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "RequestedService", HeaderText = "Service", Width = 135, DataPropertyName = "RequestedService" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "PreferredDate", HeaderText = "Preferred Date", Width = 110, DataPropertyName = "PreferredDateFormatted" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "FollowUpDate", HeaderText = "Follow-Up", Width = 110, DataPropertyName = "FollowUpDateFormatted" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "AssignedSalesStaff", HeaderText = "Staff", Width = 130, DataPropertyName = "AssignedSalesStaff" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Notes", HeaderText = "Notes", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, DataPropertyName = "Notes" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ID", HeaderText = "ID", Width = 55, DataPropertyName = "ServiceRequestId", Visible = false });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "CustomerName", HeaderText = "Customer Name", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 140, DataPropertyName = "CustomerName" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "CustomerType", HeaderText = "Type", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 85, DataPropertyName = "CustomerType" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ContactDetails", HeaderText = "Contact", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 120, DataPropertyName = "ContactDetails" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ServiceLocation", HeaderText = "Location", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 160, DataPropertyName = "ServiceLocation" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "RequestedService", HeaderText = "Service", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 125, DataPropertyName = "RequestedService" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "PreferredDate", HeaderText = "Preferred Date", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 100, DataPropertyName = "PreferredDateFormatted" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "FollowUpDate", HeaderText = "Follow-Up", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 100, DataPropertyName = "FollowUpDateFormatted" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "AssignedSalesStaff", HeaderText = "Staff", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 110, DataPropertyName = "AssignedSalesStaff" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Notes", HeaderText = "Notes", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 140, DataPropertyName = "Notes" });
         }
 
         // =============================================================
@@ -265,7 +280,7 @@ namespace App.WinForms.Views
             var pnlContainer = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.White,
+                BackColor = Theme.Surface,
                 Padding = new Padding(16)
             };
             _tabRetention.Controls.Add(pnlContainer);
@@ -275,7 +290,7 @@ namespace App.WinForms.Views
             {
                 Dock = DockStyle.Top,
                 Height = 52,
-                BackColor = Color.White,
+                BackColor = Theme.Surface,
                 Padding = new Padding(0, 4, 0, 10)
             };
             pnlContainer.Controls.Add(pnlTop);
@@ -283,15 +298,16 @@ namespace App.WinForms.Views
             var lblRetentionTitle = new Label
             {
                 Text = "⚡ At-Risk Customers (60+ Days Inactive & Follow-Up Overdue)",
-                Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
-                BackColor = Color.White,
+                Font = Theme.BodyBoldFont,
+                ForeColor = Theme.TextDark,
+                BackColor = Theme.Surface,
                 Location = new Point(0, 8),
                 AutoSize = true
             };
             pnlTop.Controls.Add(lblRetentionTitle);
 
-            _btnRefreshRetention = CreateFlatButton("🔄 Refresh", Color.FromArgb(241, 245, 249), Color.FromArgb(51, 65, 85), 105);
+            _btnRefreshRetention = new Button { Text = "🔄 Refresh", Size = new Size(105, 36), Cursor = Cursors.Hand };
+            Theme.ApplySecondaryButtonStyle(_btnRefreshRetention);
             _btnRefreshRetention.Dock = DockStyle.Right;
             _btnRefreshRetention.Click += async (s, e) => await LoadRetentionAsync();
             pnlTop.Controls.Add(_btnRefreshRetention);
@@ -300,27 +316,25 @@ namespace App.WinForms.Views
             {
                 Dock = DockStyle.Right,
                 Width = 200,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(220, 38, 38),
-                BackColor = Color.White,
+                Font = Theme.BodyBoldFont,
+                ForeColor = Theme.Danger,
+                BackColor = Theme.Surface,
                 TextAlign = ContentAlignment.MiddleRight,
                 Text = "0 At-Risk Accounts"
             };
             pnlTop.Controls.Add(_lblRetentionCount);
 
-            // Bottom Bar: Take Action Button
             var pnlBottom = new Panel
             {
                 Dock = DockStyle.Bottom,
                 Height = 58,
-                BackColor = Color.White,
+                BackColor = Theme.Surface,
                 Padding = new Padding(0, 10, 0, 0)
             };
             pnlContainer.Controls.Add(pnlBottom);
 
-            _btnTakeAction = CreateFlatButton("🚀  Take Action on Selected", Color.FromArgb(34, 197, 94), Color.White, 220);
-            _btnTakeAction.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-            _btnTakeAction.Location = new Point(0, 10);
+            _btnTakeAction = new Button { Text = "🚀  Take Action on Selected", Size = new Size(220, 36), Location = new Point(0, 10), Cursor = Cursors.Hand };
+            Theme.ApplyPrimaryButtonStyle(_btnTakeAction);
             _btnTakeAction.Click += async (s, e) => await OnTakeActionClickAsync();
             pnlBottom.Controls.Add(_btnTakeAction);
 
@@ -335,14 +349,14 @@ namespace App.WinForms.Views
         {
             dgv.Columns.Clear();
 
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ID", HeaderText = "ID", Width = 55, DataPropertyName = "ServiceRequestId" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "CustomerName", HeaderText = "Customer Name", Width = 160, DataPropertyName = "CustomerName" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "CustomerType", HeaderText = "Type", Width = 90, DataPropertyName = "CustomerType" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ContactDetails", HeaderText = "Contact", Width = 135, DataPropertyName = "ContactDetails" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Priority", HeaderText = "Priority", Width = 95, DataPropertyName = "Priority" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DaysInactive", HeaderText = "Inactive (Days)", Width = 110, DataPropertyName = "DaysInactive" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Basis", HeaderText = "Risk Basis", Width = 230, DataPropertyName = "Basis" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "SuggestedAction", HeaderText = "Suggested Retention Action", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, DataPropertyName = "SuggestedAction" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ID", HeaderText = "ID", Width = 55, DataPropertyName = "ServiceRequestId", Visible = false });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "CustomerName", HeaderText = "Customer Name", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 140, DataPropertyName = "CustomerName" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "CustomerType", HeaderText = "Type", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 85, DataPropertyName = "CustomerType" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ContactDetails", HeaderText = "Contact", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 120, DataPropertyName = "ContactDetails" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Priority", HeaderText = "Priority", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 90, DataPropertyName = "Priority" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DaysInactive", HeaderText = "Inactive (Days)", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 95, DataPropertyName = "DaysInactive" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Basis", HeaderText = "Risk Basis", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 170, DataPropertyName = "Basis" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "SuggestedAction", HeaderText = "Suggested Retention Action", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 180, DataPropertyName = "SuggestedAction" });
 
             // Priority column cell formatting (Red for Critical/High)
             dgv.CellFormatting += (s, e) =>
@@ -419,6 +433,15 @@ namespace App.WinForms.Views
             }).ToList();
 
             _dgvRecords.DataSource = displayList;
+
+            // Hide raw database identity column from the UI
+            if (_dgvRecords.Columns["ID"] is { } colId)
+                colId.Visible = false;
+            if (_dgvRecords.Columns["ServiceRequestId"] is { } colSvcId)
+                colSvcId.Visible = false;
+            if (_dgvRecords.Columns["CustomerId"] is { } colCustId)
+                colCustId.Visible = false;
+
             _lblRecordCount.Text = $"Total: {filtered.Count} records";
         }
 
@@ -489,6 +512,15 @@ namespace App.WinForms.Views
 
                 _dgvRetention.DataSource = null;
                 _dgvRetention.DataSource = _retentionItems.ToList();
+
+                // Hide raw database identity column from the UI
+                if (_dgvRetention.Columns["ID"] is { } retId)
+                    retId.Visible = false;
+                if (_dgvRetention.Columns["ServiceRequestId"] is { } retSvcId)
+                    retSvcId.Visible = false;
+                if (_dgvRetention.Columns["CustomerId"] is { } retCustId)
+                    retCustId.Visible = false;
+
                 _lblRetentionCount.Text = $"{_retentionItems.Count} At-Risk Accounts";
             }
             catch (Exception ex)
@@ -590,7 +622,10 @@ namespace App.WinForms.Views
             if (dgv.CurrentRow == null || dgv.CurrentRow.Index < 0)
                 return null;
 
-            var cellVal = dgv.CurrentRow.Cells["ID"]?.Value;
+            var cellVal = (dgv.Columns.Contains("ID") ? dgv.CurrentRow.Cells["ID"]?.Value : null)
+                       ?? (dgv.Columns.Contains("ServiceRequestId") ? dgv.CurrentRow.Cells["ServiceRequestId"]?.Value : null)
+                       ?? (dgv.Columns.Contains("CustomerId") ? dgv.CurrentRow.Cells["CustomerId"]?.Value : null);
+
             if (cellVal != null && int.TryParse(cellVal.ToString(), out int id))
                 return id;
 
@@ -600,21 +635,6 @@ namespace App.WinForms.Views
         // =============================================================
         // UI Helpers
         // =============================================================
-        private static Button CreateFlatButton(string text, Color bg, Color fg, int width)
-        {
-            var btn = new Button
-            {
-                Text = text,
-                Size = new Size(width, 36),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = bg,
-                ForeColor = fg,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btn.FlatAppearance.BorderSize = 0;
-            return btn;
-        }
 
         private static DataGridView CreateStyledGrid()
         {
@@ -622,33 +642,92 @@ namespace App.WinForms.Views
             {
                 Dock = DockStyle.Fill,
                 ReadOnly = true,
-                MultiSelect = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                AllowUserToResizeRows = false,
-                RowHeadersVisible = false,
-                BackgroundColor = Color.White,
-                BorderStyle = BorderStyle.None,
-                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
-                GridColor = Color.FromArgb(241, 245, 249),
-                EnableHeadersVisualStyles = false,
                 AutoGenerateColumns = false
             };
-
-            dgv.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(241, 245, 249);
-            dgv.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(30, 41, 59);
-            dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            dgv.ColumnHeadersHeight = 38;
-            dgv.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-
-            dgv.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
-            dgv.DefaultCellStyle.ForeColor = Color.FromArgb(51, 65, 85);
-            dgv.DefaultCellStyle.SelectionBackColor = Color.FromArgb(219, 234, 254);
-            dgv.DefaultCellStyle.SelectionForeColor = Color.FromArgb(30, 41, 59);
-            dgv.RowTemplate.Height = 36;
-
+            Theme.ApplyGridStyle(dgv);
+            dgv.ReadOnly = true;
             return dgv;
+        }
+
+        // =============================================================
+        // ROLE-BASED VIEW PERMISSIONS
+        // =============================================================
+        public override void ApplyViewPermissions(string userRole)
+        {
+            base.ApplyViewPermissions(userRole);
+
+            // Ensure DataGridViews remain ReadOnly = true but fully navigable
+            if (_dgvRecords != null)
+            {
+                _dgvRecords.ReadOnly = true;
+            }
+            if (_dgvRetention != null)
+            {
+                _dgvRetention.ReadOnly = true;
+            }
+
+            if (userRole == Roles.SalesStaff)
+            {
+                // Full Access: btnCollectData, btnNewBookingTop, btnEdit, and btnDelete are Enabled = true
+                SetButtonVisualState(_btnCollectData, true, Theme.Primary);
+                SetButtonVisualState(_btnNewBookingTop, true, Theme.Primary);
+                SetButtonVisualState(_btnEdit, true, Theme.Primary);
+                SetButtonVisualState(_btnDelete, true, Theme.Danger);
+                _tabCollect.Enabled = true;
+            }
+            else if (userRole == Roles.Admin)
+            {
+                // Partial Access: btnCollectData, btnNewBookingTop and btnDelete are Enabled = false,
+                // but allow viewing/approving SLA contracts if applicable (btnEdit is Enabled = true)
+                SetButtonVisualState(_btnCollectData, false, Theme.Primary);
+                SetButtonVisualState(_btnNewBookingTop, false, Theme.Primary);
+                SetButtonVisualState(_btnEdit, true, Theme.Primary);
+                SetButtonVisualState(_btnDelete, false, Theme.Danger);
+                _tabCollect.Enabled = false;
+
+                // Ensure active tab is not the blocked collect tab
+                if (_tabs != null && _tabs.SelectedTab == _tabCollect)
+                {
+                    _tabs.SelectedTab = _tabRecords;
+                }
+            }
+            else // Roles.SuperAdmin or Roles.Manager: View Only
+            {
+                // View Only: btnCollectData, btnNewBookingTop, btnEdit, and btnDelete MUST be Enabled = false
+                SetButtonVisualState(_btnCollectData, false, Theme.Primary);
+                SetButtonVisualState(_btnNewBookingTop, false, Theme.Primary);
+                SetButtonVisualState(_btnEdit, false, Theme.Primary);
+                SetButtonVisualState(_btnDelete, false, Theme.Danger);
+                _tabCollect.Enabled = false;
+
+                // Ensure active tab is not the blocked collect tab
+                if (_tabs != null && _tabs.SelectedTab == _tabCollect)
+                {
+                    _tabs.SelectedTab = _tabRecords;
+                }
+            }
+
+            // Propagate permissions to nested child view if instantiated
+            _dataCollectionView?.ApplyViewPermissions(userRole);
+        }
+
+        private static void SetButtonVisualState(Button? btn, bool enabled, Color enabledColor)
+        {
+            if (btn == null) return;
+
+            btn.Enabled = enabled;
+            if (!enabled)
+            {
+                btn.BackColor = Color.FromArgb(226, 232, 240); // Theme.Border / Slate-200
+                btn.ForeColor = Color.FromArgb(148, 163, 184); // Slate-400
+                btn.Cursor = Cursors.Default;
+            }
+            else
+            {
+                btn.BackColor = enabledColor;
+                btn.ForeColor = Color.White;
+                btn.Cursor = Cursors.Hand;
+            }
         }
     }
 

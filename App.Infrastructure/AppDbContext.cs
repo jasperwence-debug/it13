@@ -6,13 +6,61 @@ namespace App.Infrastructure
 {
     public class AppDbContext : IdentityDbContext<ApplicationUser>
     {
+        public AppDbContext()
+        {
+        }
+
         public AppDbContext(DbContextOptions<AppDbContext> options)
             : base(options)
         {
         }
 
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            if (!optionsBuilder.IsConfigured)
+            {
+                optionsBuilder.UseSqlServer("Server=(localdb)\\MSSQLLocalDB;Database=AppDb;Trusted_Connection=True;TrustServerCertificate=True;");
+            }
+            optionsBuilder.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        }
+
+        public static void EnsureSeedData(AppDbContext db)
+        {
+            try
+            {
+                db.Database.ExecuteSqlRaw(@"
+                    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Users')
+                    BEGIN
+                        CREATE TABLE [Users] (
+                            [Id] int NOT NULL IDENTITY(1,1),
+                            [Username] nvarchar(100) NOT NULL,
+                            [PasswordHash] nvarchar(200) NOT NULL,
+                            [Role] nvarchar(50) NOT NULL,
+                            CONSTRAINT [PK_Users] PRIMARY KEY ([Id])
+                        );
+                    END
+
+                    IF NOT EXISTS (SELECT 1 FROM [Users] WHERE [Username] = 'superadmin')
+                        INSERT INTO [Users] ([Username], [PasswordHash], [Role]) VALUES ('superadmin', 'super123', 'SuperAdmin');
+                    IF NOT EXISTS (SELECT 1 FROM [Users] WHERE [Username] = 'admin')
+                        INSERT INTO [Users] ([Username], [PasswordHash], [Role]) VALUES ('admin', 'admin123', 'Admin');
+                    IF NOT EXISTS (SELECT 1 FROM [Users] WHERE [Username] = 'manager')
+                        INSERT INTO [Users] ([Username], [PasswordHash], [Role]) VALUES ('manager', 'manager123', 'Manager');
+                    IF NOT EXISTS (SELECT 1 FROM [Users] WHERE [Username] = 'staff')
+                        INSERT INTO [Users] ([Username], [PasswordHash], [Role]) VALUES ('staff', 'staff123', 'SalesStaff');
+                ");
+            }
+            catch
+            {
+                // Ignore if migration already handled or table exists
+            }
+        }
+
         // Existing
         public DbSet<Company> Companies { get; set; }
+
+        // RBAC Users
+        public new DbSet<User> Users { get; set; } = null!;
 
         // NEW — Data Collection
         public DbSet<Lead> Leads { get; set; }
@@ -23,6 +71,33 @@ namespace App.Infrastructure
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            // ==============================
+            // User & RBAC Seed
+            // ==============================
+            builder.Entity<User>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.Username)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.Property(x => x.PasswordHash)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(x => x.Role)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.HasData(
+                    new User { Id = 1, Username = "superadmin", PasswordHash = "super123", Role = "SuperAdmin" },
+                    new User { Id = 2, Username = "admin", PasswordHash = "admin123", Role = "Admin" },
+                    new User { Id = 3, Username = "manager", PasswordHash = "manager123", Role = "Manager" },
+                    new User { Id = 4, Username = "staff", PasswordHash = "staff123", Role = "SalesStaff" }
+                );
+            });
 
             // ==============================
             // Company
@@ -76,13 +151,20 @@ namespace App.Infrastructure
                     .HasMaxLength(200)
                     .IsRequired();
 
-                entity.Property(x => x.ContactDetails)
+                entity.Property(x => x.ContactInfo)
+                    .HasColumnName("ContactDetails")
                     .HasMaxLength(150)
                     .IsRequired();
+
+                entity.HasIndex(c => c.ContactInfo)
+                    .IsUnique();
 
                 entity.Property(x => x.ServiceLocation)
                     .HasMaxLength(300)
                     .IsRequired();
+
+                entity.Ignore(x => x.FullName);
+                entity.Ignore(x => x.ContactDetails);
             });
 
             // ==============================

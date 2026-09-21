@@ -172,3 +172,4 @@ C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.API\bin\Debug\net10.0\
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.API\obj\Debug\net10.0\App.API.sourcelink.json
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.API\bin\Debug\net10.0\Bogus.dll

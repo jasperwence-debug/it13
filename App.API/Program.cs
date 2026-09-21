@@ -1,4 +1,5 @@
 using App.API;
+using App.API.Data;
 using App.Domain.Entities;
 using App.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +11,19 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+});
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await context.Database.MigrateAsync();
+    await DatabaseSeeder.SeedAsync(context);
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -111,67 +121,12 @@ app.MapGet("/api/data-collection/{id:int}", async (int id, AppDbContext db) =>
 });
 
 // ============================================================
-// POST /api/data-collection
-// Creates Lead + Customer + ServiceRequest in one transaction.
+// Customer & Data-Collection Upsert endpoints are routed to CustomerController:
+// GET  /api/customers/check/{contactInfo}
+// GET  /api/customers/check?contact={contactInfo}
+// POST /api/customer
+// POST /api/data-collection (Upsert)
 // ============================================================
-app.MapPost("/api/data-collection", async (DataCollectionDto dto, AppDbContext db) =>
-{
-    using var tx = await db.Database.BeginTransactionAsync();
-    try
-    {
-        var lead = new Lead
-        {
-            LeadName = dto.LeadName,
-            ContactInfo = dto.ContactInfo,
-            LeadSource = dto.LeadSource,
-            ServiceOfInterest = dto.ServiceOfInterest,
-            InquiryDetails = dto.InquiryDetails,
-            IsActive = true
-        };
-        db.Leads.Add(lead);
-
-        var customer = new Customer
-        {
-            CustomerType = dto.CustomerType,
-            CustomerName = dto.CustomerName,
-            ContactDetails = dto.ContactDetails,
-            ServiceLocation = dto.ServiceLocation,
-            IsActive = true
-        };
-        db.Customers.Add(customer);
-
-        var serviceRequest = new ServiceRequest
-        {
-            Lead = lead,
-            Customer = customer,
-            RequestedService = dto.RequestedService,
-            PreferredDate = dto.PreferredDate,
-            SpecialRequests = dto.SpecialRequests,
-            FollowUpDate = dto.FollowUpDate,
-            Notes = dto.Notes,
-            AssignedSalesStaff = dto.AssignedSalesStaff,
-            IsActive = true
-        };
-        db.ServiceRequests.Add(serviceRequest);
-
-        await db.SaveChangesAsync();
-        await tx.CommitAsync();
-
-        return Results.Created(
-            $"/api/data-collection/{serviceRequest.ServiceRequestId}",
-            new
-            {
-                serviceRequestId = serviceRequest.ServiceRequestId,
-                leadId = lead.LeadId,
-                customerId = customer.CustomerId
-            });
-    }
-    catch (Exception ex)
-    {
-        await tx.RollbackAsync();
-        return Results.Problem($"Failed to save: {ex.Message}");
-    }
-});
 
 // ============================================================
 // PUT /api/data-collection/{id}
@@ -278,6 +233,11 @@ app.MapGet("/api/analytics/dashboard", async (AppDbContext db) =>
     var scheduledBookings = await activeRequestsQuery.CountAsync(sr => sr.Status == "Scheduled");
     var requestedBookings = await activeRequestsQuery.CountAsync(sr => sr.Status == "Requested");
 
+    var totalLeads = await db.Leads.CountAsync(l => l.IsActive);
+    var leadConversionRate = totalLeads > 0
+        ? Math.Round((double)totalCustomers / totalLeads * 100.0, 1)
+        : (totalBookings > 0 ? Math.Round((double)(completedBookings + scheduledBookings) / totalBookings * 100.0, 1) : 0.0);
+
     var totalRevenue = await activeRequestsQuery
         .Where(sr => sr.Status == "Completed")
         .SumAsync(sr => (decimal?)sr.ActualPrice) ?? 0m;
@@ -383,6 +343,7 @@ app.MapGet("/api/analytics/dashboard", async (AppDbContext db) =>
         cancelledBookings,
         scheduledBookings,
         requestedBookings,
+        leadConversionRate,
         totalRevenue,
         averageBookingValue,
         repeatCustomerRate,

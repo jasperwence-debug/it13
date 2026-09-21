@@ -35,6 +35,15 @@ namespace App.WinForms
         public string AssignedSalesStaff { get; set; } = string.Empty;
     }
 
+    public class CustomerDto
+    {
+        public int CustomerId { get; set; }
+        public string CustomerType { get; set; } = string.Empty;
+        public string CustomerName { get; set; } = string.Empty;
+        public string ContactDetails { get; set; } = string.Empty;
+        public string ServiceLocation { get; set; } = string.Empty;
+    }
+
     // ============================================================
     // DASHBOARD & BI ANALYTICS DTOs
     // ============================================================
@@ -67,6 +76,7 @@ namespace App.WinForms
         public int CancelledBookings { get; set; }
         public int ScheduledBookings { get; set; }
         public int RequestedBookings { get; set; }
+        public double LeadConversionRate { get; set; }
         public decimal TotalRevenue { get; set; }
         public decimal AverageBookingValue { get; set; }
         public double RepeatCustomerRate { get; set; }
@@ -92,6 +102,37 @@ namespace App.WinForms
                 BaseAddress = new Uri(BaseUrl),
                 Timeout = TimeSpan.FromSeconds(30)
             };
+        }
+
+        // ------------------------------------------------------------
+        // CUSTOMER LOOKUP / DEDUPLICATION
+        // ------------------------------------------------------------
+        public async Task<CustomerDto?> CheckCustomerExistsAsync(string contactInfo)
+        {
+            if (string.IsNullOrWhiteSpace(contactInfo))
+                return null;
+
+            try
+            {
+                var encoded = Uri.EscapeDataString(contactInfo.Trim());
+                var response = await _http.GetAsync($"/api/customers/check/{encoded}");
+
+                if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NotFound)
+                {
+                    response = await _http.GetAsync($"/api/customers/check?contact={encoded}");
+                }
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<CustomerDto>();
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         // ------------------------------------------------------------

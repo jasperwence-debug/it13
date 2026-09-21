@@ -1,4 +1,4 @@
-﻿namespace App.API
+namespace App.API
 {
     public class DataCollectionDto
     {
@@ -22,5 +22,14 @@
         public DateTime? FollowUpDate { get; set; }
         public string? Notes { get; set; }
         public string AssignedSalesStaff { get; set; } = string.Empty;
+    }
+
+    public class CustomerDto
+    {
+        public int CustomerId { get; set; }
+        public string CustomerType { get; set; } = string.Empty;
+        public string CustomerName { get; set; } = string.Empty;
+        public string ContactDetails { get; set; } = string.Empty;
+        public string ServiceLocation { get; set; } = string.Empty;
     }
 }

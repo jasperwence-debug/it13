@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using App.WinForms.Core;
 
 namespace App.WinForms
 {
@@ -11,17 +12,53 @@ namespace App.WinForms
         // Layout
         // ============================================================
         private Panel _pnlSidebar = null!;
+        private Panel _pnlMenu = null!;
         private Panel _pnlContent = null!;
         private Panel _pnlHeader = null!;
         private Label _lblPageTitle = null!;
         private Label _lblUser = null!;
 
+        // 4 Non-clickable Category Headers (Font: 8pt, Bold, Color: #64748B)
+        private Label lblHeaderOverview = null!;
+        private Label lblHeaderOperations = null!;
+        private Label lblHeaderPerformance = null!;
+        private Label lblHeaderAdministration = null!;
+
+        // Sidebar Buttons
+        private Button btnDashboard = null!;
+        private Button btnClientContract = null!;
+        private Button btnSchedulingDispatch = null!;
+        private Button btnWorkOrder = null!;
+        private Button btnSalesRetention = null!;
+        private Button btnFinancial = null!;
+        private Button btnReportsAudit = null!;
+        private Button btnUserManagement = null!;
+        private Button btnManageSubscription = null!;
+        private Button btnTermsManagement = null!;
+
         private readonly List<Button> _sidebarButtons = new();
+        private Control[] _sidebarControlsInOrder = null!;
 
         public MainForm()
         {
             InitializeUI();
-            ShowView("dashboard", "Dashboard");
+            ApplyRolePermissions();
+            EnforceSidebarOrder();
+
+            // Default View Routing and Sidebar Z-Order on Form Load
+            Load += MainForm_Load;
+        }
+
+        private void MainForm_Load(object? sender, EventArgs e)
+        {
+            EnforceSidebarOrder();
+            LoadDefaultView();
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            EnforceSidebarOrder();
         }
 
         // ============================================================
@@ -33,7 +70,7 @@ namespace App.WinForms
             WindowState = FormWindowState.Maximized;
             MinimumSize = new Size(1280, 720);
             StartPosition = FormStartPosition.CenterScreen;
-            BackColor = Color.FromArgb(245, 246, 250);
+            BackColor = Theme.Background;
             Font = new Font("Segoe UI", 9F);
 
             // ============================================================
@@ -66,47 +103,122 @@ namespace App.WinForms
             };
             pnlBrand.Controls.Add(lblBrand);
 
+            // Sidebar User & Logout Footer
+            var pnlSidebarFooter = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 85,
+                BackColor = Color.FromArgb(15, 23, 42),
+                Padding = new Padding(12, 10, 12, 10)
+            };
+            _pnlSidebar.Controls.Add(pnlSidebarFooter);
+
+            var lblSidebarUserInfo = new Label
+            {
+                Text = $"{SessionManager.CurrentUser?.Username ?? "User"}  •  {SessionManager.CurrentUser?.Role ?? "Guest"}",
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(203, 213, 225),
+                Dock = DockStyle.Top,
+                Height = 22,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            pnlSidebarFooter.Controls.Add(lblSidebarUserInfo);
+
+            var btnLogout = new Button
+            {
+                Text = "🚪  Sign Out",
+                Dock = DockStyle.Bottom,
+                Height = 32,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(51, 65, 85),
+                ForeColor = Color.FromArgb(241, 245, 249),
+                Font = new Font("Segoe UI", 8.5F),
+                Cursor = Cursors.Hand
+            };
+            btnLogout.FlatAppearance.BorderSize = 0;
+            btnLogout.Click += (s, e) =>
+            {
+                if (MessageBox.Show("Are you sure you want to sign out?", "Confirm Sign Out", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                {
+                    SessionManager.Logout();
+                    Close();
+                }
+            };
+            pnlSidebarFooter.Controls.Add(btnLogout);
+
             // Menu container
-            var pnlMenu = new Panel
+            _pnlMenu = new Panel
             {
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 Padding = new Padding(0, 10, 0, 10)
             };
-            _pnlSidebar.Controls.Add(pnlMenu);
-            pnlMenu.BringToFront();
+            _pnlSidebar.Controls.Add(_pnlMenu);
+            _pnlMenu.BringToFront();
 
-            // Menu items — DATA COLLECTION ITEMS REMOVED
-            var menuItems = new List<(string key, string icon, string label, bool isGroup)>
+            // Create 4 Category Headers (Font: 8pt Bold, Color: #64748B)
+            lblHeaderOverview = CreateGroupLabel("OVERVIEW");
+            lblHeaderOperations = CreateGroupLabel("OPERATIONS");
+            lblHeaderPerformance = CreateGroupLabel("PERFORMANCE");
+            lblHeaderAdministration = CreateGroupLabel("ADMINISTRATION");
+
+            // Create Sidebar Buttons with display names
+            btnDashboard = CreateSidebarButton("dashboard", "📊", "Dashboard");
+            btnClientContract = CreateSidebarButton("clients", "📋", "Customers");
+            btnSchedulingDispatch = CreateSidebarButton("scheduling", "📅", "Schedule");
+            btnWorkOrder = CreateSidebarButton("workorders", "🔧", "Work Orders");
+            btnSalesRetention = CreateSidebarButton("sales", "💼", "Retention");
+            btnFinancial = CreateSidebarButton("financial", "💰", "Financials");
+            btnReportsAudit = CreateSidebarButton("reports", "📈", "Reports");
+            btnUserManagement = CreateSidebarButton("users", "👥", "Users");
+            btnManageSubscription = CreateSidebarButton("subscription", "🔁", "Subscriptions");
+            btnTermsManagement = CreateSidebarButton("terms", "📜", "Settings");
+
+            // Add to _sidebarButtons collection for active highlight handling
+            _sidebarButtons.AddRange(new[]
             {
-                ("", "", "MAIN MODULES", true),
-                ("dashboard",    "📊", "Dashboard",             false),
-                ("users",        "👥", "User Management",       false),
-                ("sales",        "💼", "Sales & Retention",     false),
-                ("clients",      "📋", "Client & Contract",     false),
-                ("scheduling",   "📅", "Scheduling & Dispatch", false),
-                ("workorders",   "🔧", "Work Order Management", false),
-                ("financial",    "💰", "Financial Management",  false),
-                ("reports",      "📈", "Reports & Audit",       false),
-                ("subscription", "🔁", "Manage Subscription",   false),
-                ("terms",        "📜", "Terms & Management",    false),
+                btnDashboard,
+                btnClientContract,
+                btnSchedulingDispatch,
+                btnWorkOrder,
+                btnSalesRetention,
+                btnFinancial,
+                btnReportsAudit,
+                btnUserManagement,
+                btnManageSubscription,
+                btnTermsManagement
+            });
+
+            // Master controls ordering: OVERVIEW (Index 0, 1) at the absolute top
+            _sidebarControlsInOrder = new Control[]
+            {
+                lblHeaderOverview,
+                btnDashboard,
+
+                lblHeaderOperations,
+                btnClientContract,
+                btnSchedulingDispatch,
+                btnWorkOrder,
+
+                lblHeaderPerformance,
+                btnSalesRetention,
+                btnFinancial,
+                btnReportsAudit,
+
+                lblHeaderAdministration,
+                btnUserManagement,
+                btnManageSubscription,
+                btnTermsManagement
             };
 
-            // Reverse for Dock=Top stacking
-            for (int i = menuItems.Count - 1; i >= 0; i--)
+            // Add sidebar controls to container and enforce explicit child indices
+            _pnlMenu.SuspendLayout();
+            foreach (var ctrl in _sidebarControlsInOrder)
             {
-                var item = menuItems[i];
-                if (item.isGroup)
-                {
-                    pnlMenu.Controls.Add(CreateGroupLabel(item.label));
-                }
-                else
-                {
-                    var btn = CreateSidebarButton(item.key, item.icon, item.label);
-                    pnlMenu.Controls.Add(btn);
-                    _sidebarButtons.Add(btn);
-                }
+                _pnlMenu.Controls.Add(ctrl);
             }
+            EnforceSidebarOrder();
+            _pnlMenu.ResumeLayout(true);
 
             // ============================================================
             // HEADER
@@ -133,14 +245,17 @@ namespace App.WinForms
             };
             _pnlHeader.Controls.Add(_lblPageTitle);
 
+            var userRole = SessionManager.CurrentUser?.Role ?? "Guest";
+            var userName = SessionManager.CurrentUser?.Username ?? "User";
+
             _lblUser = new Label
             {
-                Text = "👤  Juan Dela Cruz  ▼",
-                Font = new Font("Segoe UI", 10F),
+                Text = $"👤  {userName} ({userRole})",
+                Font = new Font("Segoe UI", 9.5F),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 BackColor = Color.White,
                 Dock = DockStyle.Right,
-                Width = 200,
+                Width = 300,
                 TextAlign = ContentAlignment.MiddleRight
             };
             _pnlHeader.Controls.Add(_lblUser);
@@ -160,10 +275,158 @@ namespace App.WinForms
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(20),
-                BackColor = Color.FromArgb(245, 246, 250)
+                BackColor = Theme.Background
             };
             Controls.Add(_pnlContent);
             _pnlContent.BringToFront();
+        }
+
+        // ============================================================
+        // Sidebar Z-Order Hierarchy Enforcement
+        // Strictly sets child indices so lblHeaderOverview and btnDashboard render at the top (Top=0, Top=34)
+        // ============================================================
+        private void EnforceSidebarOrder()
+        {
+            if (_pnlMenu == null || _sidebarControlsInOrder == null) return;
+
+            _pnlMenu.SuspendLayout();
+
+            // In WinForms Dock.Top layout, the control with the highest child index is docked to Top=0 first.
+            // Assigning SetChildIndex in reverse ensures _sidebarControlsInOrder[0] (OVERVIEW) gets index Count-1 (Top=0),
+            // _sidebarControlsInOrder[1] (Dashboard) gets index Count-2 (Top=34), guaranteeing perfect top-to-bottom Z-order.
+            int count = _sidebarControlsInOrder.Length;
+            for (int i = 0; i < count; i++)
+            {
+                _pnlMenu.Controls.SetChildIndex(_sidebarControlsInOrder[i], count - 1 - i);
+            }
+
+            _pnlMenu.ResumeLayout(true);
+        }
+
+        // ============================================================
+        // RBAC Permissions Logic
+        // ============================================================
+        public void ApplyRolePermissions()
+        {
+            // FAILSAFE: If SessionManager.CurrentUser is null, immediately hide all modules and redirect to LoginView
+            if (SessionManager.CurrentUser == null)
+            {
+                HideAllModules();
+                RedirectToLogin();
+                return;
+            }
+
+            var role = SessionManager.CurrentUser.Role;
+
+            // OVERVIEW: Dashboard visible to ALL.
+            btnDashboard.Visible = true;
+            lblHeaderOverview.Visible = true;
+
+            // OPERATIONS: Customers & Schedule visible to ALL. Work Orders hidden from Roles.SalesStaff.
+            btnClientContract.Visible = true;
+            btnSchedulingDispatch.Visible = true;
+            btnWorkOrder.Visible = (role != Roles.SalesStaff);
+            lblHeaderOperations.Visible = (btnClientContract.Visible || btnSchedulingDispatch.Visible || btnWorkOrder.Visible);
+
+            // PERFORMANCE: Retention visible to ALL. Financials visible ONLY to Roles.Admin. Reports hidden from Roles.SalesStaff.
+            btnSalesRetention.Visible = true;
+            btnFinancial.Visible = (role == Roles.Admin);
+            btnReportsAudit.Visible = (role != Roles.SalesStaff);
+            lblHeaderPerformance.Visible = (btnSalesRetention.Visible || btnFinancial.Visible || btnReportsAudit.Visible);
+
+            // ADMINISTRATION: Users visible ONLY to Roles.SuperAdmin. Subscriptions & Settings visible to ALL.
+            btnUserManagement.Visible = (role == Roles.SuperAdmin);
+            btnManageSubscription.Visible = true;
+            btnTermsManagement.Visible = true;
+            lblHeaderAdministration.Visible = (btnUserManagement.Visible || btnManageSubscription.Visible || btnTermsManagement.Visible);
+
+            // Re-enforce exact sidebar top-to-bottom order so Z-order is never disrupted
+            EnforceSidebarOrder();
+        }
+
+        private void HideAllModules()
+        {
+            btnDashboard.Visible = false;
+            btnClientContract.Visible = false;
+            btnSchedulingDispatch.Visible = false;
+            btnWorkOrder.Visible = false;
+            btnSalesRetention.Visible = false;
+            btnFinancial.Visible = false;
+            btnReportsAudit.Visible = false;
+            btnUserManagement.Visible = false;
+            btnManageSubscription.Visible = false;
+            btnTermsManagement.Visible = false;
+
+            lblHeaderOverview.Visible = false;
+            lblHeaderOperations.Visible = false;
+            lblHeaderPerformance.Visible = false;
+            lblHeaderAdministration.Visible = false;
+
+            _pnlContent.Controls.Clear();
+        }
+
+        private void RedirectToLogin()
+        {
+            BeginInvoke(new Action(() =>
+            {
+                using var loginForm = new Views.LoginForm();
+                if (loginForm.ShowDialog() == DialogResult.OK && SessionManager.CurrentUser != null)
+                {
+                    ApplyRolePermissions();
+                    LoadDefaultView();
+                }
+                else
+                {
+                    Close();
+                }
+            }));
+        }
+
+        // ============================================================
+        // Default View Routing: Loads Dashboard View on startup
+        // ============================================================
+        public void LoadDefaultView()
+        {
+            if (btnDashboard != null && btnDashboard.Visible)
+            {
+                btnDashboard.PerformClick();
+            }
+            else if (btnClientContract != null && btnClientContract.Visible)
+            {
+                btnClientContract.PerformClick();
+            }
+            else
+            {
+                SelectInitialView();
+            }
+        }
+
+        private void SelectInitialView()
+        {
+            Button? initialButton = null;
+
+            if (btnDashboard.Visible)
+                initialButton = btnDashboard;
+            else if (btnClientContract.Visible)
+                initialButton = btnClientContract;
+            else if (btnSchedulingDispatch.Visible)
+                initialButton = btnSchedulingDispatch;
+            else if (btnWorkOrder.Visible)
+                initialButton = btnWorkOrder;
+            else if (btnSalesRetention.Visible)
+                initialButton = btnSalesRetention;
+            else if (btnFinancial.Visible)
+                initialButton = btnFinancial;
+            else if (btnUserManagement.Visible)
+                initialButton = btnUserManagement;
+
+            if (initialButton != null)
+            {
+                SetActiveButton(initialButton);
+                var key = initialButton.Tag?.ToString() ?? "dashboard";
+                var headerText = GetCleanLabel(initialButton.Text);
+                ShowView(key, headerText);
+            }
         }
 
         // ============================================================
@@ -174,7 +437,7 @@ namespace App.WinForms
             return new Label
             {
                 Text = "  " + text,
-                ForeColor = Color.FromArgb(148, 163, 184),
+                ForeColor = Color.FromArgb(100, 116, 139), // #64748B
                 Font = new Font("Segoe UI", 8F, FontStyle.Bold),
                 Dock = DockStyle.Top,
                 Height = 34,
@@ -209,16 +472,31 @@ namespace App.WinForms
         {
             if (sender is not Button btn) return;
 
-            var key = btn.Tag?.ToString() ?? "";
-            var label = btn.Text.Trim();
-            var headerText = label.Substring(label.IndexOf(' ')).Trim();
+            SetActiveButton(btn);
 
+            var key = btn.Tag?.ToString() ?? "";
+            var headerText = GetCleanLabel(btn.Text);
+
+            ShowView(key, headerText);
+        }
+
+        private void SetActiveButton(Button activeBtn)
+        {
             foreach (var b in _sidebarButtons)
                 b.BackColor = Color.FromArgb(30, 41, 59);
 
-            btn.BackColor = Color.FromArgb(59, 130, 246);
+            activeBtn.BackColor = Color.FromArgb(59, 130, 246);
+        }
 
-            ShowView(key, headerText);
+        private static string GetCleanLabel(string buttonText)
+        {
+            var trimmed = buttonText.Trim();
+            var idx = 0;
+            while (idx < trimmed.Length && !char.IsLetter(trimmed[idx]))
+            {
+                idx++;
+            }
+            return idx < trimmed.Length ? trimmed.Substring(idx) : trimmed;
         }
 
         // ============================================================
@@ -239,6 +517,12 @@ namespace App.WinForms
 
             if (view != null)
             {
+                // VIEW-LEVEL ARCHITECTURE: Apply permissions before rendering
+                if (view is BaseView baseView && SessionManager.CurrentUser != null)
+                {
+                    baseView.ApplyViewPermissions(SessionManager.CurrentUser.Role);
+                }
+
                 view.Dock = DockStyle.Fill;
                 _pnlContent.Controls.Add(view);
             }

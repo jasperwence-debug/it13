@@ -1,11 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "TgdLNVYv9Cc=",
+  "dgSpecHash": "HHyLS1H5C1g=",
   "success": true,
   "projectFilePath": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\App.API.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\MECHREVO\\.nuget\\packages\\azure.core\\1.50.0\\azure.core.1.50.0.nupkg.sha512",
     "C:\\Users\\MECHREVO\\.nuget\\packages\\azure.identity\\1.17.1\\azure.identity.1.17.1.nupkg.sha512",
+    "C:\\Users\\MECHREVO\\.nuget\\packages\\bogus\\35.6.5\\bogus.35.6.5.nupkg.sha512",
     "C:\\Users\\MECHREVO\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\MECHREVO\\.nuget\\packages\\microsoft.aspnetcore.identity.entityframeworkcore\\10.0.12\\microsoft.aspnetcore.identity.entityframeworkcore.10.0.12.nupkg.sha512",
     "C:\\Users\\MECHREVO\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.12\\microsoft.aspnetcore.openapi.10.0.12.nupkg.sha512",

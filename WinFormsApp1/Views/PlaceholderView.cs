@@ -1,9 +1,9 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace App.WinForms.Views
 {
-    public class PlaceholderView : UserControl
+    public class PlaceholderView : BaseView
     {
         public PlaceholderView(string moduleName)
         {

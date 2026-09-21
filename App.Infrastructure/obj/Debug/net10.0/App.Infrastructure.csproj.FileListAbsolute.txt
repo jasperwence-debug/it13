@@ -1,4 +1,5 @@
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\bin\Debug\net10.0\App.Infrastructure.deps.json
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\bin\Debug\net10.0\App.Infrastructure.runtimeconfig.json
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\bin\Debug\net10.0\App.Infrastructure.dll
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\bin\Debug\net10.0\App.Infrastructure.pdb
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\bin\Debug\net10.0\App.Domain.dll
@@ -8,11 +9,10 @@ C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Deb
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\App.Infrastructure.AssemblyInfoInputs.cache
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\App.Infrastructure.AssemblyInfo.cs
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\App.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\App.Infrastructure.sourcelink.json
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\App.Infr.D9A1D18F.Up2Date
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\App.Infrastructure.dll
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\refint\App.Infrastructure.dll
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\App.Infrastructure.pdb
-C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\ref\App.Infrastructure.dll
-C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\bin\Debug\net10.0\App.Infrastructure.runtimeconfig.json
 C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\App.Infrastructure.genruntimeconfig.cache
-C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\App.Infrastructure.sourcelink.json
+C:\Users\MECHREVO\OneDrive\Desktop\App.Infrastructure\App.Infrastructure\obj\Debug\net10.0\ref\App.Infrastructure.dll

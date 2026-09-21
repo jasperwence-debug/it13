@@ -4,6 +4,7 @@ using System.Drawing.Drawing2D;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using App.WinForms;
+using App.WinForms.Core;
 
 namespace App.WinForms.Views
 {
@@ -25,6 +26,7 @@ namespace App.WinForms.Views
         // UI Layout Containers
         // ============================================================
         private Panel _pnlScrollWrapper = null!;
+        private Panel _pnlPageCenter = null!;
         private Panel _pnlCardWrapper = null!;
         private Panel _pnlStepIndicator = null!;
         private Panel _pnlHeader = null!;
@@ -46,6 +48,7 @@ namespace App.WinForms.Views
         private Label _lblFullNameTitle = null!;
         private TextBox _txtFullName = null!;
         private TextBox _txtContactInfo = null!;
+        private TextBox _txtEmail = null!;
         private ComboBox _cmbLeadSource = null!;
 
         private Label _lblErrorFullName = null!;
@@ -147,67 +150,39 @@ namespace App.WinForms.Views
             {
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
-                BackColor = Color.FromArgb(248, 250, 252),
-                Padding = new Padding(24, 20, 24, 20)
+                BackColor = Theme.Background,
+                Padding = new Padding(32, 20, 32, 20)
             };
             Controls.Add(_pnlScrollWrapper);
             _pnlToast.BringToFront();
 
-            // Centered Card Container (Max 800px width)
-            _pnlCardWrapper = new Panel
+            // Centered Page Container (Holds Header, Step Indicator, and Card)
+            _pnlPageCenter = new Panel
             {
-                BackColor = Color.White,
-                Width = 800,
-                Height = 700
+                BackColor = Theme.Background,
+                Width = 720
             };
-            _pnlCardWrapper.Paint += (s, e) =>
-            {
-                e.Graphics.Clear(_pnlCardWrapper.BackColor);
-                using var pen = new Pen(Color.FromArgb(226, 232, 240), 1);
-                e.Graphics.DrawRectangle(pen, 0, 0, _pnlCardWrapper.Width - 1, _pnlCardWrapper.Height - 1);
-            };
-            _pnlScrollWrapper.Controls.Add(_pnlCardWrapper);
+            _pnlScrollWrapper.Controls.Add(_pnlPageCenter);
 
             _pnlScrollWrapper.Resize += (s, e) => LayoutCenteredCard();
             Resize += (s, e) => LayoutToast();
 
             // -------------------------------------------------------------
-            // Step Indicator Header (Top)
-            // -------------------------------------------------------------
-            _pnlStepIndicator = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 78,
-                BackColor = Color.White
-            };
-            _pnlStepIndicator.Paint += PaintStepIndicator;
-            _pnlCardWrapper.Controls.Add(_pnlStepIndicator);
-
-            var pnlDiv1 = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 1,
-                BackColor = Color.FromArgb(226, 232, 240)
-            };
-            _pnlCardWrapper.Controls.Add(pnlDiv1);
-
-            // -------------------------------------------------------------
-            // Section Title & Subtitle Header
+            // Page Header (Top of Page - outside card)
             // -------------------------------------------------------------
             _pnlHeader = new Panel
             {
-                Dock = DockStyle.Top,
-                Height = 68,
-                BackColor = Color.White,
-                Padding = new Padding(28, 12, 28, 4)
+                Height = 54,
+                BackColor = Theme.Background,
+                Padding = new Padding(0, 0, 0, 4)
             };
 
             _lblSectionTitle = new Label
             {
-                Text = "Client Profile",
+                Text = "New Booking",
                 Font = new Font("Segoe UI", 16F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
-                BackColor = Color.White,
+                ForeColor = Theme.TextDark,
+                BackColor = Theme.Background,
                 Dock = DockStyle.Top,
                 Height = 28
             };
@@ -215,24 +190,47 @@ namespace App.WinForms.Views
 
             _lblSectionSubtitle = new Label
             {
-                Text = "Select client type and provide contact details",
-                Font = new Font("Segoe UI", 9F, FontStyle.Italic),
-                ForeColor = Color.FromArgb(100, 116, 139),
-                BackColor = Color.White,
+                Text = "Complete all three steps to schedule a service.",
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Theme.TextMuted,
+                BackColor = Theme.Background,
                 Dock = DockStyle.Top,
                 Height = 22
             };
             _pnlHeader.Controls.Add(_lblSectionSubtitle);
             _lblSectionSubtitle.BringToFront();
-            _pnlCardWrapper.Controls.Add(_pnlHeader);
+            _pnlPageCenter.Controls.Add(_pnlHeader);
 
-            var pnlDiv2 = new Panel
+            // -------------------------------------------------------------
+            // Step Indicator Header (Between Title and Card)
+            // -------------------------------------------------------------
+            _pnlStepIndicator = new Panel
             {
-                Dock = DockStyle.Top,
-                Height = 1,
-                BackColor = Color.FromArgb(241, 245, 249)
+                Height = 62,
+                BackColor = Theme.Background
             };
-            _pnlCardWrapper.Controls.Add(pnlDiv2);
+            _pnlStepIndicator.Paint += PaintStepIndicator;
+            _pnlPageCenter.Controls.Add(_pnlStepIndicator);
+
+            // -------------------------------------------------------------
+            // Centered Card Container
+            // -------------------------------------------------------------
+            _pnlCardWrapper = new Panel
+            {
+                BackColor = Theme.Surface,
+                Height = 580,
+                Padding = new Padding(28, 20, 28, 20)
+            };
+            _pnlCardWrapper.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using var brush = new SolidBrush(_pnlCardWrapper.BackColor);
+                using var pen = new Pen(Theme.Border, 1);
+                var rect = new Rectangle(0, 0, _pnlCardWrapper.Width - 1, _pnlCardWrapper.Height - 1);
+                e.Graphics.FillRectangle(brush, rect);
+                e.Graphics.DrawRectangle(pen, rect);
+            };
+            _pnlPageCenter.Controls.Add(_pnlCardWrapper);
 
             // -------------------------------------------------------------
             // Bottom Navigation Bar
@@ -240,45 +238,39 @@ namespace App.WinForms.Views
             _pnlNav = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 70,
+                Height = 56,
                 BackColor = Color.White,
-                Padding = new Padding(28, 15, 28, 15)
-            };
-            _pnlNav.Paint += (s, e) =>
-            {
-                e.Graphics.Clear(_pnlNav.BackColor);
-                using var pen = new Pen(Color.FromArgb(226, 232, 240), 1);
-                e.Graphics.DrawLine(pen, 0, 0, _pnlNav.Width, 0);
+                Padding = new Padding(0, 10, 0, 0)
             };
             _pnlCardWrapper.Controls.Add(_pnlNav);
 
             // Left Navigation Buttons
-            _btnCancel = CreateNavButton("Cancel", Color.FromArgb(226, 232, 240), Color.FromArgb(51, 65, 85), 120);
-            _btnCancel.Location = new Point(28, 15);
+            _btnCancel = CreateNavButton("Cancel", Color.Transparent, Theme.TextMuted, 90);
+            _btnCancel.Location = new Point(0, 10);
+            _btnCancel.Visible = true;
             _btnCancel.Click += (s, e) => HandleCancel();
             _pnlNav.Controls.Add(_btnCancel);
 
-            _btnBack = CreateNavButton("← Back", Color.FromArgb(226, 232, 240), Color.FromArgb(51, 65, 85), 120);
-            _btnBack.Location = new Point(28, 15);
+            _btnBack = CreateNavButton("← Back", Color.Transparent, Theme.TextMuted, 90);
+            _btnBack.Location = new Point(0, 10);
             _btnBack.Visible = false;
             _btnBack.Click += (s, e) => ShowStep(_currentStep - 1);
             _pnlNav.Controls.Add(_btnBack);
 
             // Right Navigation Buttons
-            _btnNext = CreateNavButton("Next →", Color.FromArgb(59, 130, 246), Color.White, 120);
+            _btnNext = CreateNavButton("Continue →", Theme.Primary, Color.White, 120);
             _btnNext.Click += (s, e) => OnNextClick();
             _pnlNav.Controls.Add(_btnNext);
 
-            _btnSave = CreateNavButton("✓ Save Customer", Color.FromArgb(34, 197, 94), Color.White, 150);
-            _btnSave.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
+            _btnSave = CreateNavButton("✓ Save", Color.FromArgb(34, 197, 94), Color.White, 120);
             _btnSave.Visible = false;
             _btnSave.Click += async (s, e) => await OnSaveClickAsync();
             _pnlNav.Controls.Add(_btnSave);
 
             _pnlNav.Resize += (s, e) =>
             {
-                _btnNext.Location = new Point(_pnlNav.Width - _btnNext.Width - 28, 15);
-                _btnSave.Location = new Point(_pnlNav.Width - _btnSave.Width - 28, 15);
+                _btnNext.Location = new Point(_pnlNav.Width - _btnNext.Width, 10);
+                _btnSave.Location = new Point(_pnlNav.Width - _btnSave.Width, 10);
             };
 
             // -------------------------------------------------------------
@@ -301,21 +293,37 @@ namespace App.WinForms.Views
 
         private void LayoutCenteredCard()
         {
-            if (_pnlScrollWrapper == null || _pnlCardWrapper == null) return;
+            if (_pnlScrollWrapper == null || _pnlPageCenter == null || _pnlCardWrapper == null) return;
 
             int clientW = _pnlScrollWrapper.ClientSize.Width;
-            int clientH = _pnlScrollWrapper.ClientSize.Height;
+            int targetW = Math.Min(740, clientW - 64);
+            if (targetW < 480) targetW = 480;
 
-            int cardW = Math.Min(800, clientW - 48);
-            if (cardW < 440) cardW = 440;
+            _pnlPageCenter.Width = targetW;
+            _pnlPageCenter.Location = new Point(Math.Max(24, (clientW - targetW) / 2), 16);
 
-            int cardH = Math.Max(660, clientH - 40);
+            _pnlHeader.Location = new Point(0, 0);
+            _pnlHeader.Width = targetW;
+            _pnlHeader.Height = 54;
 
-            _pnlCardWrapper.Size = new Size(cardW, cardH);
-            _pnlCardWrapper.Location = new Point(Math.Max(24, (clientW - cardW) / 2), 20);
+            _pnlStepIndicator.Location = new Point(0, _pnlHeader.Bottom + 4);
+            _pnlStepIndicator.Width = targetW;
+            _pnlStepIndicator.Height = 62;
 
-            _btnNext.Location = new Point(_pnlNav.Width - _btnNext.Width - 28, 15);
-            _btnSave.Location = new Point(_pnlNav.Width - _btnSave.Width - 28, 15);
+            int cardTop = _pnlStepIndicator.Bottom + 8;
+            int cardH = Math.Max(460, _pnlScrollWrapper.ClientSize.Height - cardTop - 32);
+
+            _pnlCardWrapper.Location = new Point(0, cardTop);
+            _pnlCardWrapper.Width = targetW;
+            _pnlCardWrapper.Height = cardH;
+
+            _pnlPageCenter.Height = cardTop + cardH + 20;
+
+            if (_btnNext != null && _pnlNav != null)
+            {
+                _btnNext.Location = new Point(_pnlNav.Width - _btnNext.Width, 10);
+                _btnSave.Location = new Point(_pnlNav.Width - _btnSave.Width, 10);
+            }
         }
 
         private void LayoutToast()
@@ -331,11 +339,11 @@ namespace App.WinForms.Views
             var btn = new Button
             {
                 Text = text,
-                Size = new Size(width, 40),
+                Size = new Size(width, 38),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = bg,
                 ForeColor = fg,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btn.FlatAppearance.BorderSize = 0;
@@ -360,17 +368,67 @@ namespace App.WinForms.Views
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 1,
-                RowCount = 4,
+                RowCount = 7,
                 BackColor = Color.White,
                 Padding = new Padding(28, 16, 28, 16)
             };
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-            // 1. Customer Type Segmented Toggle [ Individual ] [ Company ]
-            var pnlToggle = CreateSegmentedToggle();
-            tlp.Controls.Add(pnlToggle, 0, 0);
+            int row = 0;
 
-            // 2. Full Name
+            // SECTION 1: CONTACT INFORMATION
+            var lblSecContact = new Label
+            {
+                Text = "CONTACT INFORMATION",
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                BackColor = Color.White,
+                Height = 22,
+                Dock = DockStyle.Top,
+                Margin = new Padding(0, 0, 0, 4)
+            };
+            tlp.Controls.Add(lblSecContact, 0, row++);
+
+            // Phone Number (with auto-fill hint)
+            _txtContactInfo = new TextBox
+            {
+                Font = new Font("Segoe UI", 9.5F),
+                MaxLength = 150,
+                PlaceholderText = "(555) 000-0000"
+            };
+            _txtContactInfo.TextChanged += (s, e) => { ClearError(_txtContactInfo, _lblErrorContactInfo); _isModified = true; };
+            var pnlContact = CreateFieldGroup("Phone Number", true, _txtContactInfo, out _lblErrorContactInfo, 30, Color.White, null, "Try (555) 847-2290 for auto-fill");
+            tlp.Controls.Add(pnlContact, 0, row++);
+
+            // Email Address
+            _txtEmail = new TextBox
+            {
+                Font = new Font("Segoe UI", 9.5F),
+                MaxLength = 150,
+                PlaceholderText = "name@example.com"
+            };
+            _txtEmail.TextChanged += (s, e) => _isModified = true;
+            var pnlEmail = CreateFieldGroup("Email Address", false, _txtEmail, out _, 30, Color.White);
+            tlp.Controls.Add(pnlEmail, 0, row++);
+
+            // SECTION 2: CUSTOMER DETAILS
+            var lblSecDetails = new Label
+            {
+                Text = "CUSTOMER DETAILS",
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                BackColor = Color.White,
+                Height = 26,
+                Dock = DockStyle.Top,
+                Margin = new Padding(0, 10, 0, 4)
+            };
+            tlp.Controls.Add(lblSecDetails, 0, row++);
+
+            // Customer Type Segmented Cards [ Residential ] [ Commercial ]
+            var pnlToggle = CreateCustomerTypeSelector();
+            tlp.Controls.Add(pnlToggle, 0, row++);
+
+            // Full Name / Company Name
             _lblFullNameTitle = new Label
             {
                 Text = "Customer Name *",
@@ -386,24 +444,13 @@ namespace App.WinForms.Views
             {
                 Font = new Font("Segoe UI", 9.5F),
                 MaxLength = 100,
-                PlaceholderText = "Customer Name"
+                PlaceholderText = "e.g. Jane Doe"
             };
             _txtFullName.TextChanged += (s, e) => { ClearError(_txtFullName, _lblErrorFullName); _isModified = true; };
             var pnlFullName = CreateFieldGroup("Customer Name", true, _txtFullName, out _lblErrorFullName, 30, Color.White, _lblFullNameTitle);
-            tlp.Controls.Add(pnlFullName, 0, 1);
+            tlp.Controls.Add(pnlFullName, 0, row++);
 
-            // 3. Contact Info
-            _txtContactInfo = new TextBox
-            {
-                Font = new Font("Segoe UI", 9.5F),
-                MaxLength = 150,
-                PlaceholderText = "Mobile number or work email"
-            };
-            _txtContactInfo.TextChanged += (s, e) => { ClearError(_txtContactInfo, _lblErrorContactInfo); _isModified = true; };
-            var pnlContact = CreateFieldGroup("Contact Information", true, _txtContactInfo, out _lblErrorContactInfo, 30);
-            tlp.Controls.Add(pnlContact, 0, 2);
-
-            // 4. Lead Source
+            // Lead Source
             _cmbLeadSource = new ComboBox
             {
                 Font = new Font("Segoe UI", 9.5F),
@@ -411,27 +458,28 @@ namespace App.WinForms.Views
             };
             _cmbLeadSource.Items.AddRange(new object[]
             {
-                "Facebook", "Website", "Referral", "Walk-in", "Google Ads", "Other"
+                "Website", "Facebook", "Referral", "Walk-in", "Google Ads", "Other"
             });
+            _cmbLeadSource.SelectedIndex = 0;
             _cmbLeadSource.SelectedIndexChanged += (s, e) => { ClearError(_cmbLeadSource, _lblErrorLeadSource); _isModified = true; };
             var pnlSource = CreateFieldGroup("Lead Source", true, _cmbLeadSource, out _lblErrorLeadSource, 30);
-            tlp.Controls.Add(pnlSource, 0, 3);
+            tlp.Controls.Add(pnlSource, 0, row++);
 
             _pnlStep1.Controls.Add(tlp);
             _pnlStepsHost.Controls.Add(_pnlStep1);
         }
 
-        private Panel CreateSegmentedToggle()
+        private Panel CreateCustomerTypeSelector()
         {
             var pnlField = new Panel
             {
                 Dock = DockStyle.Fill,
-                Height = 66,
+                Height = 68,
                 Margin = new Padding(0, 4, 0, 10),
                 BackColor = Color.White
             };
 
-            var lblToggleTitle = new Label
+            var lblTitle = new Label
             {
                 Text = "Customer Type *",
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
@@ -441,88 +489,86 @@ namespace App.WinForms.Views
                 Size = new Size(pnlField.Width, 20),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
-            pnlField.Controls.Add(lblToggleTitle);
+            pnlField.Controls.Add(lblTitle);
 
-            var container = new Panel
+            var pnlCards = new TableLayoutPanel
             {
-                Location = new Point(0, 22),
-                Size = new Size(pnlField.Width, 38),
-                BackColor = Color.FromArgb(241, 245, 249),
-                Padding = new Padding(3),
+                Location = new Point(0, 24),
+                Size = new Size(pnlField.Width, 40),
+                ColumnCount = 2,
+                RowCount = 1,
+                BackColor = Color.White,
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
-            container.Paint += (s, e) =>
-            {
-                e.Graphics.Clear(container.BackColor);
-                using var pen = new Pen(Color.FromArgb(226, 232, 240), 1);
-                e.Graphics.DrawRectangle(pen, 0, 0, container.Width - 1, container.Height - 1);
-            };
+            pnlCards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            pnlCards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
             _rdoIndividual = new RadioButton
             {
-                Text = "👤  Individual",
+                Text = "🏠  Residential",
                 Appearance = Appearance.Button,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleCenter,
                 Checked = true,
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 0, 6, 0)
             };
-            _rdoIndividual.FlatAppearance.BorderSize = 0;
+            _rdoIndividual.FlatAppearance.BorderSize = 1;
 
             _rdoCompany = new RadioButton
             {
-                Text = "🏢  Company",
+                Text = "🏢  Commercial",
                 Appearance = Appearance.Button,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleCenter,
                 Checked = false,
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(6, 0, 0, 0)
             };
-            _rdoCompany.FlatAppearance.BorderSize = 0;
+            _rdoCompany.FlatAppearance.BorderSize = 1;
 
-            void UpdateToggleStyles()
+            void UpdateStyles()
             {
                 if (_rdoIndividual.Checked)
                 {
-                    _rdoIndividual.BackColor = Color.FromArgb(59, 130, 246);
-                    _rdoIndividual.ForeColor = Color.White;
-                    _rdoCompany.BackColor = Color.FromArgb(241, 245, 249);
-                    _rdoCompany.ForeColor = Color.FromArgb(71, 85, 105);
+                    _rdoIndividual.BackColor = Color.FromArgb(239, 246, 255);
+                    _rdoIndividual.ForeColor = Theme.Primary;
+                    _rdoIndividual.FlatAppearance.BorderColor = Theme.Primary;
 
-                    if (_txtFullName != null) _txtFullName.PlaceholderText = "Customer Name";
+                    _rdoCompany.BackColor = Color.FromArgb(248, 250, 252);
+                    _rdoCompany.ForeColor = Color.FromArgb(100, 116, 139);
+                    _rdoCompany.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+
+                    if (_txtFullName != null) _txtFullName.PlaceholderText = "e.g. Jane Doe";
                     if (_lblFullNameTitle != null) _lblFullNameTitle.Text = "Customer Name *";
                 }
                 else
                 {
-                    _rdoCompany.BackColor = Color.FromArgb(59, 130, 246);
-                    _rdoCompany.ForeColor = Color.White;
-                    _rdoIndividual.BackColor = Color.FromArgb(241, 245, 249);
-                    _rdoIndividual.ForeColor = Color.FromArgb(71, 85, 105);
+                    _rdoCompany.BackColor = Color.FromArgb(239, 246, 255);
+                    _rdoCompany.ForeColor = Theme.Primary;
+                    _rdoCompany.FlatAppearance.BorderColor = Theme.Primary;
 
-                    if (_txtFullName != null) _txtFullName.PlaceholderText = "Company / Org Name";
+                    _rdoIndividual.BackColor = Color.FromArgb(248, 250, 252);
+                    _rdoIndividual.ForeColor = Color.FromArgb(100, 116, 139);
+                    _rdoIndividual.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+
+                    if (_txtFullName != null) _txtFullName.PlaceholderText = "e.g. Acme Corp";
                     if (_lblFullNameTitle != null) _lblFullNameTitle.Text = "Company / Org Name *";
                 }
             }
 
-            _rdoIndividual.CheckedChanged += (s, e) => { UpdateToggleStyles(); _isModified = true; };
-            _rdoCompany.CheckedChanged += (s, e) => { UpdateToggleStyles(); _isModified = true; };
+            _rdoIndividual.CheckedChanged += (s, e) => { UpdateStyles(); _isModified = true; };
+            _rdoCompany.CheckedChanged += (s, e) => { UpdateStyles(); _isModified = true; };
 
-            container.Resize += (s, e) =>
-            {
-                int halfWidth = (container.ClientSize.Width - 6) / 2;
-                _rdoIndividual.Size = new Size(halfWidth, container.ClientSize.Height - 6);
-                _rdoIndividual.Location = new Point(3, 3);
-                _rdoCompany.Size = new Size(halfWidth, container.ClientSize.Height - 6);
-                _rdoCompany.Location = new Point(3 + halfWidth, 3);
-            };
+            pnlCards.Controls.Add(_rdoIndividual, 0, 0);
+            pnlCards.Controls.Add(_rdoCompany, 1, 0);
+            pnlField.Controls.Add(pnlCards);
 
-            container.Controls.Add(_rdoIndividual);
-            container.Controls.Add(_rdoCompany);
-            pnlField.Controls.Add(container);
-
-            UpdateToggleStyles();
+            UpdateStyles();
             return pnlField;
         }
 
@@ -763,7 +809,7 @@ namespace App.WinForms.Views
         // ============================================================
         // Field Group Helper
         // ============================================================
-        private static Panel CreateFieldGroup(string labelText, bool isRequired, Control inputControl, out Label errorLabel, int inputHeight, Color? bg = null, Label? externalTitleLabel = null)
+        private static Panel CreateFieldGroup(string labelText, bool isRequired, Control inputControl, out Label errorLabel, int inputHeight, Color? bg = null, Label? externalTitleLabel = null, string? hintText = null)
         {
             Color backColor = bg ?? Color.White;
             var panel = new Panel
@@ -784,6 +830,24 @@ namespace App.WinForms.Views
                 Size = new Size(panel.Width, 20),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
+            panel.Controls.Add(lbl);
+
+            if (!string.IsNullOrEmpty(hintText))
+            {
+                var lblHint = new Label
+                {
+                    Text = hintText,
+                    Font = new Font("Segoe UI", 8F, FontStyle.Italic),
+                    ForeColor = Color.FromArgb(148, 163, 184),
+                    BackColor = backColor,
+                    TextAlign = ContentAlignment.MiddleRight,
+                    Location = new Point(panel.Width - 240, 0),
+                    Size = new Size(240, 20),
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right
+                };
+                panel.Controls.Add(lblHint);
+                lblHint.BringToFront();
+            }
 
             inputControl.Location = new Point(0, 22);
             inputControl.Size = new Size(panel.Width, inputHeight);
@@ -801,7 +865,6 @@ namespace App.WinForms.Views
                 Visible = false
             };
 
-            panel.Controls.Add(lbl);
             panel.Controls.Add(inputControl);
             panel.Controls.Add(errorLabel);
 
@@ -820,35 +883,38 @@ namespace App.WinForms.Views
             int w = _pnlStepIndicator.Width;
             int circleSize = 32;
             int circleRadius = circleSize / 2;
-            int circleY = 14;
+            int circleY = 6;
             int centerY = circleY + circleRadius;
 
             int[] xCenters = { w / 6, w / 2, 5 * w / 6 };
             string[] labels = { "Profile", "Service", "Schedule" };
 
-            Color activeColor = Color.FromArgb(59, 130, 246);    // #3B82F6
-            Color completedColor = Color.FromArgb(34, 197, 94);  // #22C55E
-            Color inactiveColor = Color.FromArgb(203, 213, 225); // #CBD5E1
-            Color lineColor = Color.FromArgb(226, 232, 240);     // #E2E8F0
+            Color activeColor = Theme.Primary;                   // #2563EB
+            Color completedColor = Color.FromArgb(34, 197, 94);   // #22C55E
+            Color inactiveBg = Color.FromArgb(241, 245, 249);     // #F1F5F9
+            Color inactiveBorder = Color.FromArgb(203, 213, 225); // #CBD5E1
+            Color inactiveFg = Color.FromArgb(100, 116, 139);     // #64748B
+            Color lineColor = Color.FromArgb(226, 232, 240);      // #E2E8F0
 
             // Draw connecting lines between nodes
-            using var penCompleted = new Pen(completedColor, 3);
-            using var penInactive = new Pen(lineColor, 3);
+            using var penCompleted = new Pen(completedColor, 2);
+            using var penInactive = new Pen(lineColor, 2);
 
             // Line 1 to 2
-            int x1Right = xCenters[0] + circleRadius + 6;
-            int x2Left = xCenters[1] - circleRadius - 6;
-            g.DrawLine(_currentStep > 1 ? penCompleted : penInactive, x1Right, centerY, x2Left, centerY);
+            int x1Right = xCenters[0] + circleRadius + 8;
+            int x2Left = xCenters[1] - circleRadius - 8;
+            var line1Pen = _currentStep > 1 ? penCompleted : penInactive;
+            g.DrawLine(line1Pen, x1Right, centerY, x2Left, centerY);
 
             // Line 2 to 3
-            int x2Right = xCenters[1] + circleRadius + 6;
-            int x3Left = xCenters[2] - circleRadius - 6;
-            g.DrawLine(_currentStep > 2 ? penCompleted : penInactive, x2Right, centerY, x3Left, centerY);
+            int x2Right = xCenters[1] + circleRadius + 8;
+            int x3Left = xCenters[2] - circleRadius - 8;
+            var line2Pen = _currentStep > 2 ? penCompleted : penInactive;
+            g.DrawLine(line2Pen, x2Right, centerY, x3Left, centerY);
 
             using var fontNumber = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-            using var fontLabel = new Font("Segoe UI", 9.5F, FontStyle.Bold);
+            using var fontLabel = new Font("Segoe UI", 9F, FontStyle.Bold);
             using var brushWhite = new SolidBrush(Color.White);
-            using var brushLabel = new SolidBrush(Color.FromArgb(51, 65, 85));
             using var sfCenter = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
 
             for (int i = 0; i < 3; i++)
@@ -857,24 +923,38 @@ namespace App.WinForms.Views
                 int cx = xCenters[i];
                 var circleRect = new Rectangle(cx - circleRadius, circleY, circleSize, circleSize);
 
-                Color circleColor;
                 if (stepNum < _currentStep)
-                    circleColor = completedColor;
-                else if (stepNum == _currentStep)
-                    circleColor = activeColor;
-                else
-                    circleColor = inactiveColor;
-
-                using (var brushCircle = new SolidBrush(circleColor))
                 {
-                    g.FillEllipse(brushCircle, circleRect);
+                    using var brush = new SolidBrush(completedColor);
+                    g.FillEllipse(brush, circleRect);
+                    g.DrawString("✓", fontNumber, brushWhite, circleRect, sfCenter);
+
+                    using var brushLbl = new SolidBrush(Theme.TextDark);
+                    var labelRect = new Rectangle(cx - 70, circleY + circleSize + 4, 140, 20);
+                    g.DrawString(labels[i], fontLabel, brushLbl, labelRect, sfCenter);
                 }
+                else if (stepNum == _currentStep)
+                {
+                    using var brush = new SolidBrush(activeColor);
+                    g.FillEllipse(brush, circleRect);
+                    g.DrawString(stepNum.ToString(), fontNumber, brushWhite, circleRect, sfCenter);
 
-                string nodeText = stepNum < _currentStep ? "✓" : stepNum.ToString();
-                g.DrawString(nodeText, fontNumber, brushWhite, circleRect, sfCenter);
+                    using var brushLbl = new SolidBrush(activeColor);
+                    var labelRect = new Rectangle(cx - 70, circleY + circleSize + 4, 140, 20);
+                    g.DrawString(labels[i], fontLabel, brushLbl, labelRect, sfCenter);
+                }
+                else
+                {
+                    using var brush = new SolidBrush(inactiveBg);
+                    using var pen = new Pen(inactiveBorder, 1);
+                    using var brushText = new SolidBrush(inactiveFg);
+                    g.FillEllipse(brush, circleRect);
+                    g.DrawEllipse(pen, circleRect);
+                    g.DrawString(stepNum.ToString(), fontNumber, brushText, circleRect, sfCenter);
 
-                var labelRect = new Rectangle(cx - 70, circleY + circleSize + 5, 140, 20);
-                g.DrawString(labels[i], fontLabel, brushLabel, labelRect, sfCenter);
+                    var labelRect = new Rectangle(cx - 70, circleY + circleSize + 4, 140, 20);
+                    g.DrawString(labels[i], fontLabel, brushText, labelRect, sfCenter);
+                }
             }
         }
 
@@ -949,6 +1029,12 @@ namespace App.WinForms.Views
 
             ClearForm();
             ShowStep(1);
+
+            if (FindForm() is NewBookingModalForm modal)
+            {
+                modal.DialogResult = DialogResult.Cancel;
+                modal.Close();
+            }
         }
 
         // ============================================================
@@ -1102,6 +1188,12 @@ namespace App.WinForms.Views
                     ClearForm();
                     ShowStep(1);
                     RecordSaved?.Invoke();
+
+                    if (FindForm() is NewBookingModalForm modal)
+                    {
+                        modal.DialogResult = DialogResult.OK;
+                        modal.Close();
+                    }
                 }
                 else
                 {
@@ -1116,7 +1208,7 @@ namespace App.WinForms.Views
             {
                 _btnBack.Enabled = true;
                 _btnSave.Enabled = true;
-                _btnSave.Text = "✓ Save Customer";
+                _btnSave.Text = "✓ Save";
             }
         }
 
@@ -1128,7 +1220,8 @@ namespace App.WinForms.Views
             if (_rdoIndividual != null) _rdoIndividual.Checked = true;
             _txtFullName.Clear();
             _txtContactInfo.Clear();
-            _cmbLeadSource.SelectedIndex = -1;
+            if (_txtEmail != null) _txtEmail.Clear();
+            if (_cmbLeadSource.Items.Count > 0) _cmbLeadSource.SelectedIndex = 0;
 
             _cmbServiceRequested.SelectedIndex = -1;
             _txtStreet.Clear();
@@ -1143,6 +1236,30 @@ namespace App.WinForms.Views
 
             ClearValidationErrors();
             _isModified = false;
+        }
+
+        // ============================================================
+        // Role-Based Permissions
+        // ============================================================
+        public void ApplyViewPermissions(string userRole)
+        {
+            bool canSave = (userRole == Roles.SalesStaff);
+            if (_btnSave != null)
+            {
+                _btnSave.Enabled = canSave;
+                if (!canSave)
+                {
+                    _btnSave.BackColor = Color.FromArgb(226, 232, 240);
+                    _btnSave.ForeColor = Color.FromArgb(148, 163, 184);
+                    _btnSave.Cursor = Cursors.Default;
+                }
+                else
+                {
+                    _btnSave.BackColor = Color.FromArgb(34, 197, 94);
+                    _btnSave.ForeColor = Color.White;
+                    _btnSave.Cursor = Cursors.Hand;
+                }
+            }
         }
 
         // ============================================================
