@@ -48,8 +48,14 @@ namespace App.API.Controllers
             if (string.IsNullOrWhiteSpace(search))
                 return BadRequest("Contact information cannot be empty.");
 
+            var searchLower = search.ToLower();
             var customer = await _context.Customers
-                .FirstOrDefaultAsync(c => c.IsActive && c.ContactInfo == search);
+                .FirstOrDefaultAsync(c => c.IsActive && (
+                    (c.Email != null && c.Email.ToLower() == searchLower) ||
+                    c.ContactInfo == search ||
+                    c.ContactInfo.StartsWith(search + " |") ||
+                    c.ContactInfo.EndsWith("| " + search) ||
+                    c.ContactInfo.Contains(search)));
 
             if (customer == null)
                 return NotFound();
@@ -80,18 +86,66 @@ namespace App.API.Controllers
             if (string.IsNullOrWhiteSpace(contact))
                 return BadRequest("Contact information is required.");
 
+            // Detect email and phone components
+            string? email = null;
+            string? phone = null;
+
+            if (contact.Contains("@"))
+            {
+                if (contact.Contains("|"))
+                {
+                    var parts = contact.Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var p in parts)
+                    {
+                        if (p.Contains("@")) email = p.ToLower();
+                        else phone = p;
+                    }
+                }
+                else
+                {
+                    email = contact.ToLower();
+                }
+            }
+            else
+            {
+                phone = contact;
+            }
+
             using IDbContextTransaction tx = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Look up customer by ContactInfo (deduplication check)
-                var existingCustomer = await _context.Customers
-                    .FirstOrDefaultAsync(c => c.IsActive && c.ContactInfo == contact);
+                // Look up customer by email (case-insensitive) or phone (deduplication check)
+                Customer? existingCustomer = null;
+                if (!string.IsNullOrEmpty(email) && !string.IsNullOrEmpty(phone))
+                {
+                    existingCustomer = await _context.Customers
+                        .FirstOrDefaultAsync(c => c.IsActive && (
+                            (c.Email != null && c.Email.ToLower() == email) ||
+                            c.ContactInfo == phone ||
+                            c.ContactInfo.StartsWith(phone + " |") ||
+                            c.ContactInfo.EndsWith("| " + phone)));
+                }
+                else if (!string.IsNullOrEmpty(email))
+                {
+                    existingCustomer = await _context.Customers
+                        .FirstOrDefaultAsync(c => c.IsActive && (
+                            (c.Email != null && c.Email.ToLower() == email) ||
+                            c.ContactInfo.Contains(email)));
+                }
+                else
+                {
+                    existingCustomer = await _context.Customers
+                        .FirstOrDefaultAsync(c => c.IsActive && (
+                            c.ContactInfo == contact ||
+                            c.ContactInfo.StartsWith(contact + " |") ||
+                            c.ContactInfo.EndsWith("| " + contact)));
+                }
 
                 Customer targetCustomer;
 
                 if (existingCustomer != null)
                 {
-                    // If EXISTS: Do NOT insert a new Customer. Update their existing fields if changed
+                    // If EXISTS: Do NOT insert a new Customer. Update existing fields if provided
                     if (!string.IsNullOrWhiteSpace(dto.ServiceLocation) && existingCustomer.ServiceLocation != dto.ServiceLocation.Trim())
                     {
                         existingCustomer.ServiceLocation = dto.ServiceLocation.Trim();
@@ -107,6 +161,11 @@ namespace App.API.Controllers
                         existingCustomer.CustomerName = dto.CustomerName.Trim();
                     }
 
+                    if (existingCustomer.Email == null && email != null)
+                    {
+                        existingCustomer.Email = email;
+                    }
+
                     targetCustomer = existingCustomer;
                 }
                 else
@@ -117,6 +176,7 @@ namespace App.API.Controllers
                         CustomerType = dto.CustomerType?.Trim() ?? "Individual",
                         CustomerName = dto.CustomerName?.Trim() ?? "Valued Customer",
                         ContactInfo = contact,
+                        Email = email,
                         ServiceLocation = dto.ServiceLocation?.Trim() ?? string.Empty,
                         IsActive = true,
                         CreatedAt = DateTime.UtcNow

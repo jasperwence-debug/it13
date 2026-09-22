@@ -48,6 +48,13 @@ namespace App.Infrastructure
                         INSERT INTO [Users] ([Username], [PasswordHash], [Role]) VALUES ('manager', 'manager123', 'Manager');
                     IF NOT EXISTS (SELECT 1 FROM [Users] WHERE [Username] = 'staff')
                         INSERT INTO [Users] ([Username], [PasswordHash], [Role]) VALUES ('staff', 'staff123', 'SalesStaff');
+
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Customers') AND name = 'Email')
+                    BEGIN
+                        ALTER TABLE [Customers] ADD [Email] nvarchar(150) NULL;
+                    END
+
+                    EXEC('UPDATE [Customers] SET [Email] = LOWER(LTRIM(RTRIM(SUBSTRING(ContactDetails, CHARINDEX(''''|'''', ContactDetails) + 1, LEN(ContactDetails))))) WHERE [Email] IS NULL AND ContactDetails LIKE ''''%|%''''');
                 ");
             }
             catch
@@ -163,8 +170,15 @@ namespace App.Infrastructure
                     .HasMaxLength(300)
                     .IsRequired();
 
+                entity.Property(x => x.Email)
+                    .HasMaxLength(150);
+
+                entity.Ignore(x => x.Id);
                 entity.Ignore(x => x.FullName);
+                entity.Ignore(x => x.Type);
+                entity.Ignore(x => x.Location);
                 entity.Ignore(x => x.ContactDetails);
+                entity.Ignore(x => x.Phone);
             });
 
             // ==============================
@@ -199,6 +213,9 @@ namespace App.Infrastructure
                 entity.Property(x => x.RequestedService)
                     .HasMaxLength(100)
                     .IsRequired();
+
+                entity.Ignore(x => x.Id);
+                entity.Ignore(x => x.ServiceType);
 
                 entity.Property(x => x.Status)
                     .HasMaxLength(20)

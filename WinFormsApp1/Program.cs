@@ -13,18 +13,17 @@ namespace App.WinForms
 
             while (true)
             {
-                using var loginForm = new LoginForm();
-                if (loginForm.ShowDialog() != DialogResult.OK || SessionManager.CurrentUser == null)
+                using var loginView = new LoginView();
+
+                if (loginView.ShowDialog() != DialogResult.OK)
                 {
                     break;
                 }
 
-                var mainForm = new MainForm();
+                using var mainForm = new MainForm();
                 Application.Run(mainForm);
 
-                // If user logged out (SessionManager.CurrentUser == null), loop and show login form again.
-                // Otherwise (user closed the window), exit the application.
-                if (SessionManager.CurrentUser != null)
+                if (!mainForm.IsLoggedOut)
                 {
                     break;
                 }

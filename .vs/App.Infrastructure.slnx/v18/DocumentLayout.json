@@ -3,6 +3,14 @@
   "WorkspaceRootPath": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\app.winforms.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\app.winforms.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|solutionrelative:app.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\views\\recordsview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\views\\recordsview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -41,10 +49,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|solutionrelative:app.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\winformsapp1\\app.winforms.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-      "RelativeMoniker": "D:0:0:{D55DA197-8337-4DC6-B2F2-5C3BB8C451F5}|WinFormsApp1\\App.WinForms.csproj|solutionrelative:winformsapp1\\app.winforms.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
     {
       "AbsoluteMoniker": "D:0:0:{9DA71A78-A28F-8F84-EF7E-17686113D26D}|App.API\\App.API.csproj|c:\\users\\mechrevo\\onedrive\\desktop\\app.infrastructure\\app.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
@@ -86,11 +90,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 18,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\appsettings.Development.json",
               "RelativeDocumentMoniker": "App.API\\appsettings.Development.json",
@@ -99,24 +103,37 @@
               "ViewState": "AgIAAAMAAAAAAAAAAAAAAAcAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
               "WhenOpened": "2026-09-11T14:48:22.343Z",
-              "IsPinned": true,
+              "IsPinned": true
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "launchSettings.json",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\Properties\\launchSettings.json",
+              "RelativeDocumentMoniker": "App.API\\Properties\\launchSettings.json",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\Properties\\launchSettings.json",
+              "RelativeToolTip": "App.API\\Properties\\launchSettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-09-22T00:27:54.708Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "RecordsView.cs",
-              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\RecordsView.cs",
-              "RelativeDocumentMoniker": "WinFormsApp1\\Views\\RecordsView.cs",
-              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\RecordsView.cs",
-              "RelativeToolTip": "WinFormsApp1\\Views\\RecordsView.cs",
-              "ViewState": "AgIAAAQAAAAAAAAAAAAswBcAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-09-14T18:47:33.847Z"
+              "Title": "App.WinForms.csproj",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\App.WinForms.csproj",
+              "RelativeDocumentMoniker": "WinFormsApp1\\App.WinForms.csproj",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\App.WinForms.csproj",
+              "RelativeToolTip": "WinFormsApp1\\App.WinForms.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-09-14T17:33:42.552Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 5,
               "Title": "MainForm.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\MainForm.cs",
               "RelativeDocumentMoniker": "WinFormsApp1\\MainForm.cs",
@@ -128,7 +145,19 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 2,
+              "Title": "RecordsView.cs",
+              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\RecordsView.cs",
+              "RelativeDocumentMoniker": "WinFormsApp1\\Views\\RecordsView.cs",
+              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\RecordsView.cs",
+              "RelativeToolTip": "WinFormsApp1\\Views\\RecordsView.cs",
+              "ViewState": "AgIAAAQAAAAAAAAAAAAswBcAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-14T18:47:33.847Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
               "Title": "ApiClient.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\ApiClient.cs",
               "RelativeDocumentMoniker": "WinFormsApp1\\ApiClient.cs",
@@ -140,7 +169,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 7,
               "Title": "PlaceholderView.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\PlaceholderView.cs",
               "RelativeDocumentMoniker": "WinFormsApp1\\Views\\PlaceholderView.cs",
@@ -152,7 +181,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Program.cs",
               "RelativeDocumentMoniker": "WinFormsApp1\\Program.cs",
@@ -164,7 +193,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "ClientContractView.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\ClientContractView.cs",
               "RelativeDocumentMoniker": "WinFormsApp1\\ClientContractView.cs",
@@ -176,7 +205,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 8,
               "Title": "DataCollectionView.cs [Design]",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\DataCollectionView.cs",
               "RelativeDocumentMoniker": "WinFormsApp1\\Views\\DataCollectionView.cs",
@@ -187,7 +216,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 9,
               "Title": "DashboardView.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\Views\\DashboardView.cs",
               "RelativeDocumentMoniker": "WinFormsApp1\\Views\\DashboardView.cs",
@@ -199,7 +228,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 11,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\Program.cs",
               "RelativeDocumentMoniker": "App.API\\Program.cs",
@@ -211,7 +240,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 10,
               "Title": "DataCollectionDto.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\DataCollectionDto.cs",
               "RelativeDocumentMoniker": "App.API\\DataCollectionDto.cs",
@@ -223,19 +252,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
-              "Title": "App.WinForms.csproj",
-              "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\App.WinForms.csproj",
-              "RelativeDocumentMoniker": "WinFormsApp1\\App.WinForms.csproj",
-              "ToolTip": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\WinFormsApp1\\App.WinForms.csproj",
-              "RelativeToolTip": "WinFormsApp1\\App.WinForms.csproj",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2026-09-14T17:33:42.552Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 12,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.API\\appsettings.json",
               "RelativeDocumentMoniker": "App.API\\appsettings.json",
@@ -247,7 +264,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 13,
               "Title": "AppDbContextModelSnapshot.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Infrastructure\\Migrations\\AppDbContextModelSnapshot.cs",
               "RelativeDocumentMoniker": "App.Infrastructure\\Migrations\\AppDbContextModelSnapshot.cs",
@@ -259,7 +276,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 19,
               "Title": "20260914171107_AddDataCollectionTables.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Infrastructure\\Migrations\\20260914171107_AddDataCollectionTables.cs",
               "RelativeDocumentMoniker": "App.Infrastructure\\Migrations\\20260914171107_AddDataCollectionTables.cs",
@@ -271,7 +288,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 14,
               "Title": "AppDbContext.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Infrastructure\\AppDbContext.cs",
               "RelativeDocumentMoniker": "App.Infrastructure\\AppDbContext.cs",
@@ -283,7 +300,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 15,
               "Title": "Lead.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Domain\\Entities\\Lead.cs",
               "RelativeDocumentMoniker": "App.Domain\\Entities\\Lead.cs",
@@ -295,7 +312,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 16,
               "Title": "Customer.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Domain\\Entities\\Customer.cs",
               "RelativeDocumentMoniker": "App.Domain\\Entities\\Customer.cs",
@@ -307,7 +324,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 17,
               "Title": "ServiceRequest.cs",
               "DocumentMoniker": "C:\\Users\\MECHREVO\\OneDrive\\Desktop\\App.Infrastructure\\App.Domain\\Entities\\ServiceRequest.cs",
               "RelativeDocumentMoniker": "App.Domain\\Entities\\ServiceRequest.cs",

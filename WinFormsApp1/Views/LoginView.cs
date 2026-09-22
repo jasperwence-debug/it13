@@ -10,15 +10,11 @@ using App.WinForms.Core;
 namespace App.WinForms.Views
 {
     /// <summary>
-    /// Modern flat SaaS login screen matching the Figma design reference:
-    /// - Outer Background: Deep dark navy/slate (#0F172A).
-    /// - Top Header: Blue icon badge, "CLEANING SERVICES CRM" title, and platform subtitle.
-    /// - Centered Card: Solid white card with smooth rounded corners (#FFFFFF).
-    /// - Form: "Sign in" header, uppercase "USERNAME" & "PASSWORD" flat inputs with subtle border and placeholder.
-    /// - Action: Wide flat blue "Sign In" button (#2563EB).
-    /// - Demo Credentials: 3 clickable helper cards (Admin, SuperAdmin, Sales Staff) that auto-fill credentials.
+    /// Standalone Form for user authentication.
+    /// Manages the single-instance sign-in flow with zero UI duplication.
+    /// Sets DialogResult.OK and closes upon successful authentication.
     /// </summary>
-    public class LoginView : BaseView
+    public class LoginView : Form
     {
         private Panel _pnlCenter = null!;
         private Panel _pnlCard = null!;
@@ -30,15 +26,36 @@ namespace App.WinForms.Views
         public event EventHandler? LoginSuccess;
         public Button LoginButton => _btnLogin;
 
+        // WS_EX_COMPOSITED — prevents ghosting, flickering, and repaint artifacts
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
+                return cp;
+            }
+        }
+
         public LoginView()
         {
+            // Desktop Form Configuration
+            Text = "Cleaning Services CRM - Sign In";
+            StartPosition = FormStartPosition.CenterScreen;
+            FormBorderStyle = FormBorderStyle.Sizable;
+            MinimumSize = new Size(800, 600);
+            ClientSize = new Size(960, 680);
+            MaximizeBox = true;
+            MinimizeBox = true;
+            BackColor = Color.FromArgb(15, 23, 42); // #0F172A Deep Navy
+            DoubleBuffered = true;
+
             InitializeFigmaLoginUI();
+            AcceptButton = _btnLogin;
         }
 
         private void InitializeFigmaLoginUI()
         {
-            Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(15, 23, 42); // #0F172A Deep Navy
             AutoScroll = true;
 
             // Centered master container hosting Header + White Card
@@ -83,7 +100,7 @@ namespace App.WinForms.Views
                 BackColor = Color.Transparent
             };
 
-            // Blue Square Badge (44x44, rounded, with white cloud/cloud-download vector icon)
+            // Blue Square Badge (44x44, rounded, with white cloud/download vector icon)
             var pnlBadge = new Panel
             {
                 Size = new Size(44, 44),
@@ -495,17 +512,19 @@ namespace App.WinForms.Views
             return path;
         }
 
-        protected override void OnVisibleChanged(EventArgs e)
+        protected override void OnShown(EventArgs e)
         {
-            base.OnVisibleChanged(e);
-            if (Visible && _txtUsername != null)
+            base.OnShown(e);
+            if (_txtUsername != null)
             {
-                BeginInvoke(new Action(() => _txtUsername.Focus()));
+                _txtUsername.Focus();
             }
         }
 
         // ============================================================
         // AUTHENTICATION LOGIC & ROUTING
+        // Sets DialogResult = DialogResult.OK and closes form cleanly.
+        // Never instantiates duplicate MainForm or hides parents.
         // ============================================================
         private void BtnLogin_Click(object? sender, EventArgs e)
         {
@@ -561,19 +580,9 @@ namespace App.WinForms.Views
                 SessionManager.Login(user);
                 LoginSuccess?.Invoke(this, EventArgs.Empty);
 
-                var parent = FindForm();
-                if (parent is LoginForm lf)
-                {
-                    lf.DialogResult = DialogResult.OK;
-                    lf.Close();
-                }
-                else if (parent != null)
-                {
-                    var mainForm = new MainForm();
-                    mainForm.FormClosed += (s, e) => Application.Exit();
-                    mainForm.Show();
-                    parent.Hide();
-                }
+                // Clean single-instance termination: return DialogResult.OK to caller
+                DialogResult = DialogResult.OK;
+                Close();
             }
             else
             {
@@ -631,27 +640,9 @@ namespace App.WinForms.Views
     }
 
     /// <summary>
-    /// Desktop-grade window hosting the LoginView.
-    /// Resizable, centered on screen, with dark navy backdrop.
+    /// Backward-compatible alias for LoginView.
     /// </summary>
-    public class LoginForm : Form
+    public class LoginForm : LoginView
     {
-        public LoginView View { get; }
-
-        public LoginForm()
-        {
-            Text = "Cleaning Services CRM - Sign In";
-            StartPosition = FormStartPosition.CenterScreen;
-            FormBorderStyle = FormBorderStyle.Sizable;
-            MinimumSize = new Size(800, 600);
-            ClientSize = new Size(960, 680);
-            MaximizeBox = true;
-            MinimizeBox = true;
-            BackColor = Color.FromArgb(15, 23, 42);
-
-            View = new LoginView { Dock = DockStyle.Fill };
-            Controls.Add(View);
-            AcceptButton = View.LoginButton;
-        }
     }
 }

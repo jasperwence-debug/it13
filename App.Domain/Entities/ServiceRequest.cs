@@ -3,6 +3,11 @@ namespace App.Domain.Entities
     public class ServiceRequest
     {
         public int ServiceRequestId { get; set; }
+        public int Id
+        {
+            get => ServiceRequestId;
+            set => ServiceRequestId = value;
+        }
 
         // Foreign key to Lead (optional)
         public int? LeadId { get; set; }
@@ -18,6 +23,11 @@ namespace App.Domain.Entities
 
         // Service info
         public string RequestedService { get; set; } = string.Empty;
+        public string ServiceType
+        {
+            get => RequestedService;
+            set => RequestedService = value;
+        }
         public DateTime BookingDate { get; set; } = DateTime.UtcNow;
         public DateTime PreferredDate { get; set; }
         public string? SpecialRequests { get; set; }

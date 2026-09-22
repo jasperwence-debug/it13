@@ -39,6 +39,8 @@ namespace App.WinForms
         private readonly List<Button> _sidebarButtons = new();
         private Control[] _sidebarControlsInOrder = null!;
 
+        public bool IsLoggedOut { get; private set; }
+
         public MainForm()
         {
             InitializeUI();
@@ -140,6 +142,7 @@ namespace App.WinForms
             {
                 if (MessageBox.Show("Are you sure you want to sign out?", "Confirm Sign Out", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 {
+                    IsLoggedOut = true;
                     SessionManager.Logout();
                     Close();
                 }
@@ -369,8 +372,8 @@ namespace App.WinForms
         {
             BeginInvoke(new Action(() =>
             {
-                using var loginForm = new Views.LoginForm();
-                if (loginForm.ShowDialog() == DialogResult.OK && SessionManager.CurrentUser != null)
+                using var loginView = new Views.LoginView();
+                if (loginView.ShowDialog() == DialogResult.OK && SessionManager.CurrentUser != null)
                 {
                     ApplyRolePermissions();
                     LoadDefaultView();
