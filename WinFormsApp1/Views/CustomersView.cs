@@ -45,6 +45,7 @@ namespace App.WinForms.Views
         private Label _lblCount = null!;
         private Button _btnRefresh = null!;
         private Button _btnExportCsv = null!;
+        private Button _btnViewLeads = null!;
         private Button _btnNew = null!;
 
         public Button btnNew => _btnNew;
@@ -174,9 +175,9 @@ namespace App.WinForms.Views
             // Right header actions
             _btnNew = new Button
             {
-                Text = "+ Add Lead",
+                Text = "+ Inquire (New Lead)",
                 Dock = DockStyle.Right,
-                Width = 135,
+                Width = 160,
                 Height = 36
             };
             Theme.ApplyPrimaryButtonStyle(_btnNew);
@@ -185,13 +186,40 @@ namespace App.WinForms.Views
                 using var dialog = new NewLeadDialog();
                 if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
                 {
-                    await LoadAsync();
+                    var choice = MessageBox.Show(
+                        "New lead inquiry captured successfully!\n\nLeads are managed in the 'Leads & Inquiries' pipeline where you can quote pricing and convert them to formal customer accounts.\n\nWould you like to open Leads & Inquiries now?",
+                        "Lead Captured",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Information);
+
+                    if (choice == DialogResult.Yes)
+                    {
+                        (FindForm() as MainForm)?.NavigateToKey("leads");
+                    }
+                    else
+                    {
+                        await LoadAsync();
+                    }
                 }
             };
             pnlHeader.Controls.Add(_btnNew);
 
             var pnlSpH1 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
             pnlHeader.Controls.Add(pnlSpH1);
+
+            _btnViewLeads = new Button
+            {
+                Text = "🎯  Leads Pipeline",
+                Dock = DockStyle.Right,
+                Width = 140,
+                Height = 36
+            };
+            Theme.ApplySecondaryButtonStyle(_btnViewLeads);
+            _btnViewLeads.Click += (s, e) => (FindForm() as MainForm)?.NavigateToKey("leads");
+            pnlHeader.Controls.Add(_btnViewLeads);
+
+            var pnlSpH2 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+            pnlHeader.Controls.Add(pnlSpH2);
 
             _btnExportCsv = new Button
             {
@@ -204,8 +232,8 @@ namespace App.WinForms.Views
             _btnExportCsv.Click += (s, e) => ExportCustomersToCsv(_customers, "All_Customers");
             pnlHeader.Controls.Add(_btnExportCsv);
 
-            var pnlSpH2 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
-            pnlHeader.Controls.Add(pnlSpH2);
+            var pnlSpH3 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+            pnlHeader.Controls.Add(pnlSpH3);
 
             _btnRefresh = new Button
             {

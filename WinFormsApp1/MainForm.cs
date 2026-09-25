@@ -46,6 +46,7 @@ namespace App.WinForms
 
         // Sidebar Buttons
         private Button btnDashboard = null!;
+        private Button btnLeads = null!;
         private Button btnClientContract = null!;
         private Button btnSchedulingDispatch = null!;
         private Button btnWorkOrder = null!;
@@ -213,6 +214,7 @@ namespace App.WinForms
 
             // Create Sidebar Buttons with display names matching official Use Cases
             btnDashboard = CreateSidebarButton("dashboard", "📊", "BI Dashboard");
+            btnLeads = CreateSidebarButton("leads", "🎯", "Leads & Inquiries");
             btnClientContract = CreateSidebarButton("clients", "📋", "Client & Contract");
             btnSchedulingDispatch = CreateSidebarButton("scheduling", "📅", "Scheduling & Dispatch");
             btnWorkOrder = CreateSidebarButton("workorders", "🔧", "Work Orders");
@@ -228,6 +230,7 @@ namespace App.WinForms
             _sidebarButtons.AddRange(new[]
             {
                 btnDashboard,
+                btnLeads,
                 btnClientContract,
                 btnSchedulingDispatch,
                 btnWorkOrder,
@@ -247,6 +250,7 @@ namespace App.WinForms
                 btnDashboard,
 
                 lblHeaderOperations,
+                btnLeads,
                 btnClientContract,
                 btnSchedulingDispatch,
                 btnWorkOrder,
@@ -551,6 +555,7 @@ namespace App.WinForms
                 btnDashboard.Visible = true;
                 lblHeaderOverview.Visible = true;
 
+                btnLeads.Visible = true;
                 btnClientContract.Visible = true;
                 btnSchedulingDispatch.Visible = true;
                 btnWorkOrder.Visible = true;
@@ -576,13 +581,14 @@ namespace App.WinForms
                 btnDashboard.Visible = (role != Roles.SuperAdmin);
                 lblHeaderOverview.Visible = btnDashboard.Visible;
 
-                // OPERATIONS: Customers, Schedule, Work Orders, Branches.
+                // OPERATIONS: Leads, Customers, Schedule, Work Orders, Branches.
                 // Super Admin does NOT handle customer operations, bookings, or branches.
+                btnLeads.Visible = (role != Roles.SuperAdmin);
                 btnClientContract.Visible = (role != Roles.SuperAdmin);
                 btnSchedulingDispatch.Visible = (role != Roles.SuperAdmin);
                 btnWorkOrder.Visible = (role != Roles.SalesStaff && role != Roles.SuperAdmin);
                 btnBranches.Visible = (role != Roles.SalesStaff && role != Roles.SuperAdmin);
-                lblHeaderOperations.Visible = (btnClientContract.Visible || btnSchedulingDispatch.Visible || btnWorkOrder.Visible || btnBranches.Visible);
+                lblHeaderOperations.Visible = (btnLeads.Visible || btnClientContract.Visible || btnSchedulingDispatch.Visible || btnWorkOrder.Visible || btnBranches.Visible);
 
                 // PERFORMANCE: Retention visible to Tenant roles. Financials visible ONLY to Tenant Admin. Reports/Audit visible to SuperAdmin and Management.
                 btnSalesRetention.Visible = (role != Roles.SuperAdmin);
@@ -609,6 +615,7 @@ namespace App.WinForms
             _pnlMaintenanceBanner.Visible = false;
 
             btnDashboard.Visible = false;
+            btnLeads.Visible = false;
             btnClientContract.Visible = false;
             btnSchedulingDispatch.Visible = false;
             btnWorkOrder.Visible = false;
@@ -762,7 +769,7 @@ namespace App.WinForms
             _lblBrand.Font = _isSidebarCollapsed ? new Font("Segoe UI", 16F, FontStyle.Bold) : new Font("Segoe UI", 12F, FontStyle.Bold);
 
             lblHeaderOverview.Visible = !_isSidebarCollapsed && btnDashboard.Visible;
-            lblHeaderOperations.Visible = !_isSidebarCollapsed && (btnClientContract.Visible || btnSchedulingDispatch.Visible || btnWorkOrder.Visible || btnBranches.Visible);
+            lblHeaderOperations.Visible = !_isSidebarCollapsed && (btnLeads.Visible || btnClientContract.Visible || btnSchedulingDispatch.Visible || btnWorkOrder.Visible || btnBranches.Visible);
             lblHeaderPerformance.Visible = !_isSidebarCollapsed && (btnSalesRetention.Visible || btnFinancial.Visible || btnReportsAudit.Visible);
             lblHeaderAdministration.Visible = !_isSidebarCollapsed && (btnUserManagement.Visible || btnManageSubscription.Visible || btnTermsManagement.Visible);
 

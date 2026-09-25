@@ -29,6 +29,9 @@ namespace App.WinForms.Views
         private Button _btnRefresh = null!;
         private Button _btnNewLead = null!;
         private Button _btnConvert = null!;
+        private Button _btnQuote = null!;
+        private Button _btnMarkWon = null!;
+        private ContextMenuStrip _gridContextMenu = null!;
 
         // Filter & Search controls
         private TextBox _txtSearch = null!;
@@ -101,12 +104,12 @@ namespace App.WinForms.Views
             };
             pnlHeader.Controls.Add(_lblCount);
 
-            // Right-aligned header buttons (order: Refresh, Convert, New Lead)
+            // Right-aligned header buttons (order: Refresh, Mark Won, Quote Price, Convert, New Lead)
             _btnNewLead = new Button
             {
                 Text = "+ New Lead",
                 Dock = DockStyle.Right,
-                Width = 135,
+                Width = 120,
                 Height = 36
             };
             Theme.ApplyPrimaryButtonStyle(_btnNewLead);
@@ -118,9 +121,9 @@ namespace App.WinForms.Views
 
             _btnConvert = new Button
             {
-                Text = "★  Convert to Customer",
+                Text = "★  Convert",
                 Dock = DockStyle.Right,
-                Width = 180,
+                Width = 120,
                 Height = 36,
                 Enabled = false
             };
@@ -132,11 +135,41 @@ namespace App.WinForms.Views
             var pnlSpacerH2 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
             pnlHeader.Controls.Add(pnlSpacerH2);
 
-            _btnRefresh = new Button
+            _btnQuote = new Button
             {
-                Text = "↻  Refresh",
+                Text = "💲 Quote",
+                Dock = DockStyle.Right,
+                Width = 100,
+                Height = 36,
+                Enabled = false
+            };
+            Theme.ApplySecondaryButtonStyle(_btnQuote);
+            _btnQuote.Click += async (s, e) => await OnQuoteClickAsync();
+            pnlHeader.Controls.Add(_btnQuote);
+
+            var pnlSpacerH3 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+            pnlHeader.Controls.Add(pnlSpacerH3);
+
+            _btnMarkWon = new Button
+            {
+                Text = "🏆 Won",
                 Dock = DockStyle.Right,
                 Width = 95,
+                Height = 36,
+                Enabled = false
+            };
+            Theme.ApplySecondaryButtonStyle(_btnMarkWon);
+            _btnMarkWon.Click += async (s, e) => await OnMarkWonClickAsync();
+            pnlHeader.Controls.Add(_btnMarkWon);
+
+            var pnlSpacerH4 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+            pnlHeader.Controls.Add(pnlSpacerH4);
+
+            _btnRefresh = new Button
+            {
+                Text = "↻ Refresh",
+                Dock = DockStyle.Right,
+                Width = 90,
                 Height = 36
             };
             Theme.ApplySecondaryButtonStyle(_btnRefresh);
@@ -291,6 +324,63 @@ namespace App.WinForms.Views
                 }
             };
 
+            // Context menu for row actions
+            _gridContextMenu = new ContextMenuStrip { Font = new Font("Segoe UI", 9F) };
+
+            var mnuQuote = new ToolStripMenuItem("💲  Set Quoted Price...", null, async (s, e) => await OnQuoteClickAsync());
+            var mnuWon = new ToolStripMenuItem("🏆  Mark as Won (Ready to Convert)", null, async (s, e) => await OnMarkWonClickAsync());
+            var mnuContacted = new ToolStripMenuItem("📞  Mark as Contacted", null, async (s, e) => await OnMarkContactedClickAsync());
+            var mnuLost = new ToolStripMenuItem("❌  Mark as Lost...", null, async (s, e) => await OnMarkLostClickAsync());
+            var mnuConvert = new ToolStripMenuItem("★  Convert to Customer", null, async (s, e) => await OnConvertClickAsync());
+            var mnuRefresh = new ToolStripMenuItem("↻  Refresh", null, async (s, e) => await LoadAsync());
+
+            _gridContextMenu.Items.AddRange(new ToolStripItem[]
+            {
+                mnuQuote,
+                mnuWon,
+                mnuContacted,
+                mnuLost,
+                new ToolStripSeparator(),
+                mnuConvert,
+                new ToolStripSeparator(),
+                mnuRefresh
+            });
+
+            _gridContextMenu.Opening += (s, e) =>
+            {
+                var sel = GetSelectedLead();
+                if (sel == null || SessionManager.IsManager)
+                {
+                    mnuQuote.Enabled = false;
+                    mnuWon.Enabled = false;
+                    mnuContacted.Enabled = false;
+                    mnuLost.Enabled = false;
+                    mnuConvert.Enabled = false;
+                    return;
+                }
+
+                bool isConverted = string.Equals(sel.Status, "Converted", StringComparison.OrdinalIgnoreCase);
+                bool isWon = string.Equals(sel.Status, "Won", StringComparison.OrdinalIgnoreCase);
+                bool isQuoted = string.Equals(sel.Status, "Quoted", StringComparison.OrdinalIgnoreCase);
+
+                mnuQuote.Enabled = !isConverted;
+                mnuWon.Enabled = !isConverted && !isWon;
+                mnuContacted.Enabled = !isConverted && sel.Status == "New";
+                mnuLost.Enabled = !isConverted && sel.Status != "Lost";
+                mnuConvert.Enabled = !isConverted && (isWon || isQuoted);
+            };
+
+            _grid.ContextMenuStrip = _gridContextMenu;
+            _grid.CellMouseDown += (s, e) =>
+            {
+                if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+                {
+                    _grid.ClearSelection();
+                    _grid.Rows[e.RowIndex].Selected = true;
+                    UpdateConvertButtonState();
+                }
+            };
+
             _grid.SelectionChanged += (s, e) => UpdateConvertButtonState();
 
             card.Controls.Add(_grid);
@@ -313,11 +403,15 @@ namespace App.WinForms.Views
                 // Manager is view-only on Leads
                 _btnNewLead.Visible = false;
                 _btnConvert.Visible = false;
+                _btnQuote.Visible = false;
+                _btnMarkWon.Visible = false;
             }
             else
             {
                 _btnNewLead.Visible = true;
                 _btnConvert.Visible = true;
+                _btnQuote.Visible = true;
+                _btnMarkWon.Visible = true;
                 UpdateConvertButtonState();
             }
         }
@@ -327,6 +421,8 @@ namespace App.WinForms.Views
             if (SessionManager.IsManager)
             {
                 _btnConvert.Enabled = false;
+                _btnQuote.Enabled = false;
+                _btnMarkWon.Enabled = false;
                 return;
             }
 
@@ -334,14 +430,19 @@ namespace App.WinForms.Views
             if (selectedLead == null)
             {
                 _btnConvert.Enabled = false;
+                _btnQuote.Enabled = false;
+                _btnMarkWon.Enabled = false;
                 return;
             }
 
-            // Only Quoted or Won leads can be converted to Customers
-            bool canConvert = string.Equals(selectedLead.Status, "Won", StringComparison.OrdinalIgnoreCase) ||
-                              string.Equals(selectedLead.Status, "Quoted", StringComparison.OrdinalIgnoreCase);
+            bool isConverted = string.Equals(selectedLead.Status, "Converted", StringComparison.OrdinalIgnoreCase);
+            bool isWon = string.Equals(selectedLead.Status, "Won", StringComparison.OrdinalIgnoreCase);
+            bool isQuoted = string.Equals(selectedLead.Status, "Quoted", StringComparison.OrdinalIgnoreCase);
 
-            _btnConvert.Enabled = canConvert;
+            // Only Quoted or Won leads can be converted to Customers
+            _btnConvert.Enabled = !isConverted && (isWon || isQuoted);
+            _btnQuote.Enabled = !isConverted;
+            _btnMarkWon.Enabled = !isConverted && !isWon;
         }
 
         private LeadDto? GetSelectedLead()
@@ -479,6 +580,103 @@ namespace App.WinForms.Views
             }
 
             UpdateConvertButtonState();
+        }
+
+        // ============================================================
+        // Actions: Lead Lifecycle Progression
+        // ============================================================
+        private async Task OnQuoteClickAsync()
+        {
+            var lead = GetSelectedLead();
+            if (lead == null) return;
+
+            using var dlg = new LeadQuoteDialog(lead);
+            if (dlg.ShowDialog(FindForm()) == DialogResult.OK)
+            {
+                var (success, message, _) = await _api.UpdateLeadStatusAsync(lead.LeadId, new LeadStatusUpdateDto
+                {
+                    Status = "Quoted",
+                    QuotedPrice = dlg.QuotedPrice
+                });
+
+                if (success)
+                {
+                    ShowToast($"Lead LD-{lead.LeadId:D4} quoted at ${dlg.QuotedPrice:N2}. Ready to convert!", true);
+                    await LoadAsync();
+                }
+                else
+                {
+                    ShowToast(message, false);
+                }
+            }
+        }
+
+        private async Task OnMarkWonClickAsync()
+        {
+            var lead = GetSelectedLead();
+            if (lead == null) return;
+
+            var (success, message, _) = await _api.UpdateLeadStatusAsync(lead.LeadId, new LeadStatusUpdateDto
+            {
+                Status = "Won"
+            });
+
+            if (success)
+            {
+                ShowToast($"Lead LD-{lead.LeadId:D4} marked as Won! Click 'Convert to Customer' to create account.", true);
+                await LoadAsync();
+            }
+            else
+            {
+                ShowToast(message, false);
+            }
+        }
+
+        private async Task OnMarkContactedClickAsync()
+        {
+            var lead = GetSelectedLead();
+            if (lead == null) return;
+
+            var (success, message, _) = await _api.UpdateLeadStatusAsync(lead.LeadId, new LeadStatusUpdateDto
+            {
+                Status = "Contacted"
+            });
+
+            if (success)
+            {
+                ShowToast($"Lead LD-{lead.LeadId:D4} marked as Contacted.", true);
+                await LoadAsync();
+            }
+            else
+            {
+                ShowToast(message, false);
+            }
+        }
+
+        private async Task OnMarkLostClickAsync()
+        {
+            var lead = GetSelectedLead();
+            if (lead == null) return;
+
+            using var dlg = new LeadLostDialog(lead);
+            if (dlg.ShowDialog(FindForm()) == DialogResult.OK)
+            {
+                var (success, message, _) = await _api.UpdateLeadStatusAsync(lead.LeadId, new LeadStatusUpdateDto
+                {
+                    Status = "Lost",
+                    LostReason = dlg.LostReason
+                });
+
+                if (success)
+                {
+                    ShowToast($"Lead LD-{lead.LeadId:D4} marked as Lost.", true);
+                    await LoadAsync();
+                }
+                else
+                {
+                    ShowToast(message, false);
+                }
+            }
         }
     }
 }
