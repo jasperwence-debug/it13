@@ -164,7 +164,8 @@ namespace App.WinForms.Views
                 BackColor = Theme.Surface,
                 Dock = DockStyle.Top,
                 Height = 32,
-                TextAlign = ContentAlignment.BottomLeft
+                TextAlign = ContentAlignment.BottomLeft,
+                UseMnemonic = false
             };
             pnlHeaderLeft.Controls.Add(_lblTitle);
 
@@ -229,11 +230,11 @@ namespace App.WinForms.Views
             var pnlKpis = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 98,
+                Height = 108,
                 ColumnCount = 4,
                 RowCount = 1,
                 BackColor = Theme.Surface,
-                Padding = new Padding(20, 4, 20, 8)
+                Padding = new Padding(20, 4, 20, 6)
             };
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
@@ -279,7 +280,7 @@ namespace App.WinForms.Views
             var pnlSearchBox = new Panel
             {
                 Dock = DockStyle.Left,
-                Width = 350,
+                Width = 330,
                 Height = 32,
                 BackColor = Color.White
             };
@@ -333,17 +334,18 @@ namespace App.WinForms.Views
             {
                 Text = "Filter:",
                 Dock = DockStyle.Left,
-                Width = 45,
+                Width = 55,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(71, 85, 105),
-                TextAlign = ContentAlignment.MiddleRight
+                TextAlign = ContentAlignment.MiddleLeft,
+                UseMnemonic = false
             };
             pnlSearch.Controls.Add(lblHealth);
 
             _cmbHealthFilter = new ComboBox
             {
                 Dock = DockStyle.Left,
-                Width = 260,
+                Width = 270,
                 Font = Theme.BodyFont,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
@@ -369,11 +371,11 @@ namespace App.WinForms.Views
             };
             pnlSearch.Controls.Add(_cmbHealthFilter);
 
-            // Dock order alignment
-            _cmbHealthFilter.BringToFront();
-            lblHealth.BringToFront();
-            pnlSpacer.BringToFront();
-            pnlSearchBox.SendToBack();
+            // Dock order alignment: pnlSearchBox (3) -> pnlSpacer (2) -> lblHealth (1) -> _cmbHealthFilter (0)
+            pnlSearch.Controls.SetChildIndex(_cmbHealthFilter, 0);
+            pnlSearch.Controls.SetChildIndex(lblHealth, 1);
+            pnlSearch.Controls.SetChildIndex(pnlSpacer, 2);
+            pnlSearch.Controls.SetChildIndex(pnlSearchBox, 3);
 
             var pnlDivider = new Panel
             {
@@ -682,15 +684,15 @@ namespace App.WinForms.Views
             {
                 colSelect,
                 new DataGridViewTextBoxColumn { Name = "colName",      HeaderText = "Customer Name",   Width = 180, MinimumWidth = 140, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colType",      HeaderText = "Type",            Width = 115, MinimumWidth = 95,  ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colContact",   HeaderText = "Contact Info",    Width = 200, MinimumWidth = 160, ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colLocation",  HeaderText = "Service Location",Width = 160, MinimumWidth = 120, ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colCompleted", HeaderText = "Jobs Done",       Width = 85,  MinimumWidth = 70,  ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colSpent",     HeaderText = "Total Revenue",   Width = 120, MinimumWidth = 95,  ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colLastDate",  HeaderText = "Last Completed",  Width = 115, MinimumWidth = 95,  ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colInactive",  HeaderText = "Days Inactive",   Width = 110, MinimumWidth = 90,  ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colStatus",    HeaderText = "Health Status",   Width = 150, MinimumWidth = 125, ReadOnly = true },
-                new DataGridViewButtonColumn  { Name = "colAction",    HeaderText = "Re-engage",       Width = 115, MinimumWidth = 95,
+                new DataGridViewTextBoxColumn { Name = "colType",      HeaderText = "Account Type",    Width = 130, MinimumWidth = 110, ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colContact",   HeaderText = "Contact Details", Width = 230, MinimumWidth = 170, ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colLocation",  HeaderText = "Service Location",Width = 150, MinimumWidth = 120, ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colCompleted", HeaderText = "Jobs Done",       Width = 90,  MinimumWidth = 75,  ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colSpent",     HeaderText = "Total Revenue",   Width = 125, MinimumWidth = 100, ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colLastDate",  HeaderText = "Last Completed",  Width = 125, MinimumWidth = 105, ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colInactive",  HeaderText = "Days Inactive",   Width = 115, MinimumWidth = 95,  ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colStatus",    HeaderText = "Health Status",   Width = 165, MinimumWidth = 140, ReadOnly = true },
+                new DataGridViewButtonColumn  { Name = "colAction",    HeaderText = "Action",          Width = 110, MinimumWidth = 95,
                     Text = "★ Win Back", UseColumnTextForButtonValue = true,
                     FlatStyle = FlatStyle.Flat, ReadOnly = true }
             });
@@ -878,14 +880,15 @@ namespace App.WinForms.Views
                 string baseName = col.Name switch
                 {
                     "colName" => "Customer Name",
-                    "colType" => "Type",
-                    "colContact" => "Contact Info",
+                    "colType" => "Account Type",
+                    "colContact" => "Contact Details",
                     "colLocation" => "Service Location",
                     "colCompleted" => "Jobs Done",
                     "colSpent" => "Total Revenue",
                     "colLastDate" => "Last Completed",
                     "colInactive" => "Days Inactive",
                     "colStatus" => "Health Status",
+                    "colAction" => "Action",
                     _ => col.HeaderText.Replace(" ▲", "").Replace(" ▼", "")
                 };
 
@@ -993,7 +996,7 @@ namespace App.WinForms.Views
 
                     string healthText;
                     if (days >= 90 && c.CompletedBookings > 0)
-                        healthText = "🔥 Critical Churn (90d+)";
+                        healthText = "🔥 Critical Churn";
                     else if (c.IsAtRisk)
                         healthText = "⚠ Inactive (60d+)";
                     else if (c.CompletedBookings > 1)
@@ -1348,7 +1351,7 @@ namespace App.WinForms.Views
                 Dock = DockStyle.Fill,
                 BackColor = Theme.Surface,
                 Margin = new Padding(4),
-                Padding = new Padding(14, 8, 14, 8),
+                Padding = new Padding(14, 8, 14, 6),
                 Cursor = Cursors.Hand
             };
 
@@ -1371,31 +1374,34 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
                 ForeColor = Theme.TextMuted,
                 Dock = DockStyle.Top,
-                Height = 16,
-                Cursor = Cursors.Hand
+                Height = 18,
+                Cursor = Cursors.Hand,
+                UseMnemonic = false
             };
             card.Controls.Add(lblTitle);
 
             var valLabel = new Label
             {
                 Text = initialVal,
-                Font = new Font("Segoe UI", 17F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                 ForeColor = valColor,
                 Dock = DockStyle.Top,
-                Height = 34,
+                Height = 32,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                UseMnemonic = false
             };
             card.Controls.Add(valLabel);
 
             var lblSub = new Label
             {
                 Text = subtext,
-                Font = new Font("Segoe UI", 7.5F, FontStyle.Regular),
+                Font = new Font("Segoe UI", 8F, FontStyle.Regular),
                 ForeColor = Theme.TextSubtle,
                 Dock = DockStyle.Bottom,
-                Height = 16,
-                Cursor = Cursors.Hand
+                Height = 18,
+                Cursor = Cursors.Hand,
+                UseMnemonic = false
             };
             card.Controls.Add(lblSub);
 

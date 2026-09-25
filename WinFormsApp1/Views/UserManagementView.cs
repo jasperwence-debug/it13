@@ -163,7 +163,8 @@ namespace App.WinForms.Views
                 BackColor = Theme.Surface,
                 Dock = DockStyle.Top,
                 Height = 32,
-                TextAlign = ContentAlignment.BottomLeft
+                TextAlign = ContentAlignment.BottomLeft,
+                UseMnemonic = false
             };
             pnlHeaderLeft.Controls.Add(_lblTitle);
 

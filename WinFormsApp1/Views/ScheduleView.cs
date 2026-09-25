@@ -152,7 +152,8 @@ namespace App.WinForms.Views
                 Font = Theme.SubHeaderFont,
                 ForeColor = Theme.TextDark,
                 Location = new Point(0, 10),
-                AutoSize = true
+                AutoSize = true,
+                UseMnemonic = false
             };
             pnlTitleBox.Controls.Add(_lblTitle);
 

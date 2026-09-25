@@ -145,7 +145,8 @@ namespace App.WinForms
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter
+                TextAlign = ContentAlignment.MiddleCenter,
+                UseMnemonic = false
             };
             pnlBrand.Controls.Add(_lblBrand);
 
@@ -166,7 +167,8 @@ namespace App.WinForms
                 ForeColor = Color.FromArgb(203, 213, 225),
                 Dock = DockStyle.Top,
                 Height = 22,
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                UseMnemonic = false
             };
             pnlSidebarFooter.Controls.Add(_lblSidebarUserInfo);
 
@@ -281,49 +283,8 @@ namespace App.WinForms
                 Padding = new Padding(16, 11, 16, 11)
             };
             Controls.Add(_pnlHeader);
-            _pnlHeader.BringToFront();
 
-            // Left Area: Sidebar Toggle + Breadcrumb Title
-            var pnlLeft = new Panel
-            {
-                Dock = DockStyle.Left,
-                Width = 460,
-                BackColor = Color.White
-            };
-            _pnlHeader.Controls.Add(pnlLeft);
-
-            _btnSidebarToggle = new Button
-            {
-                Text = "☰",
-                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-                Dock = DockStyle.Left,
-                Width = 38,
-                Height = 38,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(241, 245, 249),
-                ForeColor = Color.FromArgb(51, 65, 85),
-                Cursor = Cursors.Hand
-            };
-            _btnSidebarToggle.FlatAppearance.BorderSize = 0;
-            _btnSidebarToggle.Click += (s, e) => ToggleSidebar();
-            _toolTip.SetToolTip(_btnSidebarToggle, "Toggle sidebar (Ctrl+B)");
-            pnlLeft.Controls.Add(_btnSidebarToggle);
-
-            var pnlSpcLeft = new Panel { Dock = DockStyle.Left, Width = 12, BackColor = Color.White };
-            pnlLeft.Controls.Add(pnlSpcLeft);
-
-            _lblPageTitle = new Label
-            {
-                Text = "Cleaning CRM  ›  Dashboard",
-                Font = new Font("Segoe UI", 12.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(15, 23, 42),
-                BackColor = Color.White,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            pnlLeft.Controls.Add(_lblPageTitle);
-
-            // Right Area: User Pill + Quick Action + Quick Search
+            // Right Area: User Pill + Quick Action + Quick Search (Dock = Right)
             var pnlRight = new FlowLayoutPanel
             {
                 Dock = DockStyle.Right,
@@ -348,7 +309,8 @@ namespace App.WinForms
                 AutoSize = true,
                 Padding = new Padding(12, 0, 12, 0),
                 TextAlign = ContentAlignment.MiddleCenter,
-                Margin = new Padding(8, 0, 0, 0)
+                Margin = new Padding(8, 0, 0, 0),
+                UseMnemonic = false
             };
             pnlRight.Controls.Add(_lblUser);
 
@@ -362,7 +324,8 @@ namespace App.WinForms
                 Width = 46,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
-                Margin = new Padding(8, 0, 0, 0)
+                Margin = new Padding(8, 0, 0, 0),
+                UseMnemonic = false
             };
             _btnNotifications.FlatAppearance.BorderSize = 0;
             _btnNotifications.Click += (s, e) => OpenNotificationCenter();
@@ -379,7 +342,8 @@ namespace App.WinForms
                 Width = 165,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
-                Margin = new Padding(8, 0, 0, 0)
+                Margin = new Padding(8, 0, 0, 0),
+                UseMnemonic = false
             };
             _btnQuickAction.FlatAppearance.BorderSize = 0;
             Theme.ApplyPrimaryButtonStyle(_btnQuickAction);
@@ -392,23 +356,75 @@ namespace App.WinForms
 
             _btnQuickSearch = new Button
             {
-                Text = "🔍   Search or press Ctrl+K",
+                Text = "🔍   Search (Ctrl+K)",
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.FromArgb(100, 116, 139),
                 BackColor = Color.FromArgb(248, 250, 252),
                 Height = 38,
-                Width = 230,
+                Width = 200,
                 FlatStyle = FlatStyle.Flat,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(10, 0, 0, 0),
                 Cursor = Cursors.Hand,
-                Margin = new Padding(0)
+                Margin = new Padding(0),
+                UseMnemonic = false
             };
             _btnQuickSearch.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
             _btnQuickSearch.FlatAppearance.BorderSize = 1;
             _btnQuickSearch.Click += (s, e) => OpenCommandPalette();
             _toolTip.SetToolTip(_btnQuickSearch, "Universal Spotlight Search (Ctrl+K)");
             pnlRight.Controls.Add(_btnQuickSearch);
+
+            // Left Area: Sidebar Toggle + Breadcrumb Title (Dock = Fill)
+            var pnlLeft = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White
+            };
+            _pnlHeader.Controls.Add(pnlLeft);
+
+            _btnSidebarToggle = new Button
+            {
+                Text = "☰",
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                Dock = DockStyle.Left,
+                Width = 38,
+                Height = 38,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(51, 65, 85),
+                Cursor = Cursors.Hand,
+                UseMnemonic = false
+            };
+            _btnSidebarToggle.FlatAppearance.BorderSize = 0;
+            _btnSidebarToggle.Click += (s, e) => ToggleSidebar();
+            _toolTip.SetToolTip(_btnSidebarToggle, "Toggle sidebar (Ctrl+B)");
+            pnlLeft.Controls.Add(_btnSidebarToggle);
+
+            var pnlSpcLeft = new Panel { Dock = DockStyle.Left, Width = 12, BackColor = Color.White };
+            pnlLeft.Controls.Add(pnlSpcLeft);
+
+            _lblPageTitle = new Label
+            {
+                Text = "Cleaning CRM  ›  Dashboard",
+                Font = new Font("Segoe UI", 12.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                BackColor = Color.White,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                UseMnemonic = false,
+                AutoEllipsis = true
+            };
+            pnlLeft.Controls.Add(_lblPageTitle);
+
+            // Ensure proper layout inside _pnlHeader (pnlRight docked Right first, pnlLeft fills remaining)
+            _pnlHeader.Controls.SetChildIndex(pnlLeft, 0);
+            _pnlHeader.Controls.SetChildIndex(pnlRight, 1);
+
+            // Ensure proper layout inside pnlLeft (toggle button on left, label fills remainder)
+            pnlLeft.Controls.SetChildIndex(_lblPageTitle, 0);
+            pnlLeft.Controls.SetChildIndex(pnlSpcLeft, 1);
+            pnlLeft.Controls.SetChildIndex(_btnSidebarToggle, 2);
 
             var pnlHeaderBorder = new Panel
             {
@@ -443,7 +459,8 @@ namespace App.WinForms
                 ForeColor = Color.FromArgb(146, 64, 14), // Amber-800
                 Dock = DockStyle.Left,
                 AutoSize = true,
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                UseMnemonic = false
             };
             _pnlMaintenanceBanner.Controls.Add(_lblMaintenanceInfo);
 
@@ -457,7 +474,8 @@ namespace App.WinForms
                 Height = 30,
                 Width = 195,
                 Dock = DockStyle.Right,
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                UseMnemonic = false
             };
             _btnExitMaintenance.FlatAppearance.BorderSize = 0;
             _btnExitMaintenance.Click += (s, e) => DeactivateTenantMaintenanceMode();
@@ -474,10 +492,16 @@ namespace App.WinForms
             };
             Controls.Add(_pnlContent);
 
-            // Ensure proper vertical stacking order: Header -> Maintenance Banner -> Content
-            _pnlContent.BringToFront();
-            _pnlMaintenanceBanner.BringToFront();
-            _pnlHeader.BringToFront();
+            // Enforce explicit docking priority in Form.Controls:
+            // WinForms docks controls in reverse ChildIndex order (3 -> 2 -> 1 -> 0):
+            // Index 3: _pnlSidebar (DockStyle.Left) - claims full height on the left
+            // Index 2: _pnlHeader (DockStyle.Top) - claims top edge
+            // Index 1: _pnlMaintenanceBanner (DockStyle.Top) - claims space below header when active
+            // Index 0: _pnlContent (DockStyle.Fill) - fills remaining space (NEVER overlaps header!)
+            Controls.SetChildIndex(_pnlContent, 0);
+            Controls.SetChildIndex(_pnlMaintenanceBanner, 1);
+            Controls.SetChildIndex(_pnlHeader, 2);
+            Controls.SetChildIndex(_pnlSidebar, 3);
         }
 
         // ============================================================
@@ -1004,7 +1028,8 @@ namespace App.WinForms
                 Dock = DockStyle.Top,
                 Height = 34,
                 TextAlign = ContentAlignment.BottomLeft,
-                Padding = new Padding(10, 0, 0, 6)
+                Padding = new Padding(10, 0, 0, 6),
+                UseMnemonic = false
             };
         }
 
@@ -1022,7 +1047,8 @@ namespace App.WinForms
                 Font = new Font("Segoe UI", 9.5F),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(12, 0, 0, 0),
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                UseMnemonic = false
             };
             btn.FlatAppearance.BorderSize = 0;
             btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(51, 65, 85);
