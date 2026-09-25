@@ -4,6 +4,7 @@ using App.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace App.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260923175227_AddLeadConversionTraceability")]
+    partial class AddLeadConversionTraceability
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -299,20 +302,8 @@ namespace App.Infrastructure.Migrations
                     b.Property<int>("CustomerId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("FeedbackDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("FeedbackNotes")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime?>("FollowUpDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("InspectedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("InspectionStatus")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -330,9 +321,6 @@ namespace App.Infrastructure.Migrations
                     b.Property<decimal?>("QuotedPrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<int?>("Rating")
-                        .HasColumnType("int");
 
                     b.Property<string>("RequestedService")
                         .IsRequired()

@@ -22,6 +22,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await context.Database.MigrateAsync();
+    AppDbContext.EnsureSeedData(context);
     await DatabaseSeeder.SeedAsync(context);
 }
 
@@ -31,7 +32,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Only redirect HTTPS if an HTTPS port is configured
+if (app.Configuration["HTTPS_PORT"] != null || !app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseAuthorization();
 app.MapControllers();
 
@@ -240,7 +245,7 @@ app.MapGet("/api/analytics/dashboard", async (AppDbContext db) =>
 
     var totalRevenue = await activeRequestsQuery
         .Where(sr => sr.Status == "Completed")
-        .SumAsync(sr => (decimal?)sr.ActualPrice) ?? 0m;
+        .SumAsync(sr => (decimal?)(sr.ActualPrice ?? sr.QuotedPrice)) ?? 0m;
 
     var averageBookingValue = completedBookings > 0
         ? Math.Round(totalRevenue / completedBookings, 2)
@@ -264,7 +269,7 @@ app.MapGet("/api/analytics/dashboard", async (AppDbContext db) =>
     var latestCompletedDates = await activeRequestsQuery
         .Where(sr => sr.Status == "Completed")
         .GroupBy(sr => sr.CustomerId)
-        .Select(g => g.Max(sr => sr.BookingDate))
+        .Select(g => g.Max(sr => sr.PreferredDate != default ? sr.PreferredDate : sr.BookingDate))
         .ToListAsync();
 
     var atRiskCustomerCount = latestCompletedDates.Count(date => date <= cutoff60Days);
@@ -280,7 +285,7 @@ app.MapGet("/api/analytics/dashboard", async (AppDbContext db) =>
             Year = g.Key.Year,
             Month = g.Key.Month,
             Bookings = g.Count(),
-            Revenue = g.Where(sr => sr.Status == "Completed").Sum(sr => (decimal?)sr.ActualPrice) ?? 0m
+            Revenue = g.Where(sr => sr.Status == "Completed").Sum(sr => (decimal?)(sr.ActualPrice ?? sr.QuotedPrice)) ?? 0m
         })
         .ToListAsync();
 
@@ -305,7 +310,7 @@ app.MapGet("/api/analytics/dashboard", async (AppDbContext db) =>
         {
             serviceName = g.Key,
             count = g.Count(),
-            revenue = g.Where(sr => sr.Status == "Completed").Sum(sr => (decimal?)sr.ActualPrice) ?? 0m
+            revenue = g.Where(sr => sr.Status == "Completed").Sum(sr => (decimal?)(sr.ActualPrice ?? sr.QuotedPrice)) ?? 0m
         })
         .OrderByDescending(x => x.count)
         .Take(5)
@@ -320,7 +325,7 @@ app.MapGet("/api/analytics/dashboard", async (AppDbContext db) =>
         {
             category = g.Key,
             count = g.Count(),
-            revenue = g.Where(sr => sr.Status == "Completed").Sum(sr => (decimal?)sr.ActualPrice) ?? 0m
+            revenue = g.Where(sr => sr.Status == "Completed").Sum(sr => (decimal?)(sr.ActualPrice ?? sr.QuotedPrice)) ?? 0m
         })
         .ToListAsync();
 
@@ -352,6 +357,76 @@ app.MapGet("/api/analytics/dashboard", async (AppDbContext db) =>
         topServices,
         categoryBreakdown
     });
+});
+
+// ============================================================
+// GET /api/analytics/at-risk-customers
+// Returns list of customers needing re-engagement (60+ days since last completed service)
+// ============================================================
+app.MapGet("/api/analytics/at-risk-customers", async (AppDbContext db) =>
+{
+    var cutoff60Days = DateTime.UtcNow.AddDays(-60);
+    var now = DateTime.UtcNow;
+
+    var customers = await db.Customers
+        .AsNoTracking()
+        .Where(c => c.IsActive)
+        .Select(c => new
+        {
+            c.CustomerId,
+            c.CustomerName,
+            c.CustomerType,
+            ContactDetails = c.ContactInfo,
+            c.ServiceLocation,
+            CompletedRequests = db.ServiceRequests
+                .Where(sr => sr.CustomerId == c.CustomerId && sr.IsActive && sr.Status == "Completed")
+                .Select(sr => new
+                {
+                    sr.ServiceRequestId,
+                    sr.RequestedService,
+                    ServiceDate = sr.PreferredDate != default ? sr.PreferredDate : sr.BookingDate,
+                    Price = sr.ActualPrice ?? sr.QuotedPrice ?? 0m,
+                    sr.Rating,
+                    sr.InspectionStatus
+                })
+                .OrderByDescending(sr => sr.ServiceDate)
+                .ToList()
+        })
+        .Where(x => x.CompletedRequests.Any())
+        .ToListAsync();
+
+    var atRisk = customers
+        .Select(x =>
+        {
+            var latest = x.CompletedRequests.First();
+            var daysSince = (int)(now - latest.ServiceDate).TotalDays;
+            bool isQualityRisk = (latest.Rating.HasValue && latest.Rating.Value <= 2) || latest.InspectionStatus == "NeedsRework";
+            return new
+            {
+                Dto = new AtRiskCustomerDto
+                {
+                    CustomerId = x.CustomerId,
+                    CustomerName = x.CustomerName,
+                    CustomerType = x.CustomerType,
+                    ContactDetails = x.ContactDetails,
+                    ServiceLocation = x.ServiceLocation,
+                    LastCompletedDate = latest.ServiceDate,
+                    DaysSinceLastService = daysSince,
+                    CompletedBookings = x.CompletedRequests.Count,
+                    TotalSpent = x.CompletedRequests.Sum(r => r.Price),
+                    LastServiceType = latest.RequestedService
+                },
+                IsQualityRisk = isQualityRisk,
+                DaysSince = daysSince
+            };
+        })
+        .Where(x => x.DaysSince >= 60 || x.IsQualityRisk)
+        .OrderByDescending(x => x.IsQualityRisk)
+        .ThenByDescending(x => x.DaysSince)
+        .Select(x => x.Dto)
+        .ToList();
+
+    return Results.Ok(atRisk);
 });
 
 app.Run();

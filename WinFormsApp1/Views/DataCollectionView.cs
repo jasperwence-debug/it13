@@ -8,6 +8,15 @@ using App.WinForms.Core;
 
 namespace App.WinForms.Views
 {
+    /// <summary>
+    /// Lead Capture Wizard — 2-Step form.
+    ///
+    /// Step 1: Contact Information (Name, Phone, Email, Lead Source)
+    /// Step 2: Inquiry Details (Optional notes / service of interest)
+    ///
+    /// RULE: This form ONLY creates Lead records via POST /api/leads.
+    ///       No DateTimePicker, no Service Type, no Staff Assignment.
+    /// </summary>
     public partial class DataCollectionView : UserControl
     {
         // ============================================================
@@ -36,44 +45,30 @@ namespace App.WinForms.Views
         private Panel _pnlNav = null!;
 
         // ============================================================
-        // Wizard Step Panels
+        // Wizard Step Panels — 2 steps only (no scheduling step)
         // ============================================================
         private Panel _pnlStep1 = null!;
         private Panel _pnlStep2 = null!;
-        private Panel _pnlStep3 = null!;
 
-        // Step 1: Client Profile (Who)
-        private RadioButton _rdoIndividual = null!;
-        private RadioButton _rdoCompany = null!;
+        // Step 1: Contact Information
         private Label _lblFullNameTitle = null!;
         private TextBox _txtFullName = null!;
-        private TextBox _txtContactInfo = null!;
+        private TextBox _txtContactInfo = null!;   // Phone
         private TextBox _txtEmail = null!;
         private ComboBox _cmbLeadSource = null!;
 
         private Label _lblErrorFullName = null!;
         private Label _lblErrorContactInfo = null!;
+        private Label _lblErrorEmail = null!;
         private Label _lblErrorLeadSource = null!;
 
-        // Step 2: Service & Location (What & Where)
-        private ComboBox _cmbServiceRequested = null!;
-        private TextBox _txtStreet = null!;
-        private ComboBox _cmbCity = null!;
-        private TextBox _txtLandmark = null!;
-        private TextBox _txtSpecialRequests = null!;
-
-        private Label _lblErrorServiceRequested = null!;
-        private Label _lblErrorStreet = null!;
-        private Label _lblErrorCity = null!;
-
-        // Step 3: Schedule & Dispatch (When)
-        private DateTimePicker _dtpPreferredDate = null!;
-        private DateTimePicker _dtpFollowUpDate = null!;
-        private ComboBox _cmbAssignedStaff = null!;
-        private TextBox _txtNotes = null!;
-
-        private Label _lblErrorPreferredDate = null!;
-        private Label _lblErrorAssignedStaff = null!;
+        // Step 2: Inquiry Details (optional)
+        private TextBox _txtInquiryDetails = null!;
+        private TextBox _txtServiceAddress = null!;
+        private TextBox _txtQuotedPrice = null!;
+        private Label _lblErrorServiceAddress = null!;
+        private Label _lblErrorQuotedPrice = null!;
+        private Label _lblErrorInquiryDetails = null!;
 
         // Navigation Buttons
         private Button _btnCancel = null!;
@@ -86,19 +81,9 @@ namespace App.WinForms.Views
         private Label _lblToast = null!;
         private System.Windows.Forms.Timer _toastTimer = null!;
 
-        protected override CreateParams CreateParams
-        {
-            get
-            {
-                CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED: Prevents repaint bleed & ghosting
-                return cp;
-            }
-        }
-
         public DataCollectionView()
         {
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
             UpdateStyles();
 
             _apiClient = new ApiClient();
@@ -108,11 +93,11 @@ namespace App.WinForms.Views
 
         private void InitializeComponent()
         {
-            BackColor = Color.FromArgb(248, 250, 252); // #F8FAFC
+            BackColor = Color.FromArgb(248, 250, 252);
             Dock = DockStyle.Fill;
             DoubleBuffered = true;
 
-            // Toast Floating Notification (Top-right corner)
+            // Toast
             _pnlToast = new Panel
             {
                 Size = new Size(380, 48),
@@ -156,7 +141,7 @@ namespace App.WinForms.Views
             Controls.Add(_pnlScrollWrapper);
             _pnlToast.BringToFront();
 
-            // Centered Page Container (Holds Header, Step Indicator, and Card)
+            // Centered Page Container
             _pnlPageCenter = new Panel
             {
                 BackColor = Theme.Background,
@@ -167,9 +152,7 @@ namespace App.WinForms.Views
             _pnlScrollWrapper.Resize += (s, e) => LayoutCenteredCard();
             Resize += (s, e) => LayoutToast();
 
-            // -------------------------------------------------------------
-            // Page Header (Top of Page - outside card)
-            // -------------------------------------------------------------
+            // Page Header
             _pnlHeader = new Panel
             {
                 Height = 54,
@@ -179,7 +162,7 @@ namespace App.WinForms.Views
 
             _lblSectionTitle = new Label
             {
-                Text = "New Booking",
+                Text = "New Lead",
                 Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                 ForeColor = Theme.TextDark,
                 BackColor = Theme.Background,
@@ -190,7 +173,7 @@ namespace App.WinForms.Views
 
             _lblSectionSubtitle = new Label
             {
-                Text = "Complete all three steps to schedule a service.",
+                Text = "Capture inquiry details. No scheduling — that happens in Work Orders.",
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
                 ForeColor = Theme.TextMuted,
                 BackColor = Theme.Background,
@@ -201,9 +184,7 @@ namespace App.WinForms.Views
             _lblSectionSubtitle.BringToFront();
             _pnlPageCenter.Controls.Add(_pnlHeader);
 
-            // -------------------------------------------------------------
-            // Step Indicator Header (Between Title and Card)
-            // -------------------------------------------------------------
+            // Step Indicator
             _pnlStepIndicator = new Panel
             {
                 Height = 62,
@@ -212,13 +193,11 @@ namespace App.WinForms.Views
             _pnlStepIndicator.Paint += PaintStepIndicator;
             _pnlPageCenter.Controls.Add(_pnlStepIndicator);
 
-            // -------------------------------------------------------------
-            // Centered Card Container
-            // -------------------------------------------------------------
+            // Card
             _pnlCardWrapper = new Panel
             {
                 BackColor = Theme.Surface,
-                Height = 580,
+                Height = 480,
                 Padding = new Padding(28, 20, 28, 20)
             };
             _pnlCardWrapper.Paint += (s, e) =>
@@ -232,9 +211,7 @@ namespace App.WinForms.Views
             };
             _pnlPageCenter.Controls.Add(_pnlCardWrapper);
 
-            // -------------------------------------------------------------
-            // Bottom Navigation Bar
-            // -------------------------------------------------------------
+            // Nav Bar
             _pnlNav = new Panel
             {
                 Dock = DockStyle.Bottom,
@@ -244,25 +221,26 @@ namespace App.WinForms.Views
             };
             _pnlCardWrapper.Controls.Add(_pnlNav);
 
-            // Left Navigation Buttons
-            _btnCancel = CreateNavButton("Cancel", Color.Transparent, Theme.TextMuted, 90);
+            _btnCancel = new Button { Text = "Cancel", Width = 95, Height = 38 };
+            Theme.ApplySecondaryButtonStyle(_btnCancel);
             _btnCancel.Location = new Point(0, 10);
-            _btnCancel.Visible = true;
             _btnCancel.Click += (s, e) => HandleCancel();
             _pnlNav.Controls.Add(_btnCancel);
 
-            _btnBack = CreateNavButton("← Back", Color.Transparent, Theme.TextMuted, 90);
+            _btnBack = new Button { Text = "← Back", Width = 95, Height = 38 };
+            Theme.ApplySecondaryButtonStyle(_btnBack);
             _btnBack.Location = new Point(0, 10);
             _btnBack.Visible = false;
             _btnBack.Click += (s, e) => ShowStep(_currentStep - 1);
             _pnlNav.Controls.Add(_btnBack);
 
-            // Right Navigation Buttons
-            _btnNext = CreateNavButton("Continue →", Theme.Primary, Color.White, 120);
+            _btnNext = new Button { Text = "Continue →", Width = 140, Height = 38 };
+            Theme.ApplyPrimaryButtonStyle(_btnNext);
             _btnNext.Click += (s, e) => OnNextClick();
             _pnlNav.Controls.Add(_btnNext);
 
-            _btnSave = CreateNavButton("✓ Save", Color.FromArgb(34, 197, 94), Color.White, 120);
+            _btnSave = new Button { Text = "✓  Save Lead", Width = 160, Height = 38 };
+            Theme.ApplyPrimaryButtonStyle(_btnSave);
             _btnSave.Visible = false;
             _btnSave.Click += async (s, e) => await OnSaveClickAsync();
             _pnlNav.Controls.Add(_btnSave);
@@ -273,9 +251,7 @@ namespace App.WinForms.Views
                 _btnSave.Location = new Point(_pnlNav.Width - _btnSave.Width, 10);
             };
 
-            // -------------------------------------------------------------
-            // Step Content Host Panel
-            // -------------------------------------------------------------
+            // Step Host
             _pnlStepsHost = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -286,7 +262,6 @@ namespace App.WinForms.Views
 
             BuildStep1();
             BuildStep2();
-            BuildStep3();
 
             LayoutCenteredCard();
         }
@@ -311,7 +286,7 @@ namespace App.WinForms.Views
             _pnlStepIndicator.Height = 62;
 
             int cardTop = _pnlStepIndicator.Bottom + 8;
-            int cardH = Math.Max(460, _pnlScrollWrapper.ClientSize.Height - cardTop - 32);
+            int cardH = Math.Max(380, _pnlScrollWrapper.ClientSize.Height - cardTop - 32);
 
             _pnlCardWrapper.Location = new Point(0, cardTop);
             _pnlCardWrapper.Width = targetW;
@@ -329,9 +304,7 @@ namespace App.WinForms.Views
         private void LayoutToast()
         {
             if (_pnlToast != null)
-            {
                 _pnlToast.Location = new Point(Math.Max(10, Width - _pnlToast.Width - 28), 16);
-            }
         }
 
         private static Button CreateNavButton(string text, Color bg, Color fg, int width)
@@ -351,7 +324,8 @@ namespace App.WinForms.Views
         }
 
         // ============================================================
-        // STEP 1: Client Profile (Who)
+        // STEP 1: Contact Information
+        // Fields: Customer Type, Full Name, Phone, Email, Lead Source
         // ============================================================
         private void BuildStep1()
         {
@@ -368,7 +342,7 @@ namespace App.WinForms.Views
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 1,
-                RowCount = 7,
+                RowCount = 6,
                 BackColor = Color.White,
                 Padding = new Padding(28, 16, 28, 16)
             };
@@ -376,7 +350,7 @@ namespace App.WinForms.Views
 
             int row = 0;
 
-            // SECTION 1: CONTACT INFORMATION
+            // SECTION: CONTACT INFORMATION
             var lblSecContact = new Label
             {
                 Text = "CONTACT INFORMATION",
@@ -389,32 +363,40 @@ namespace App.WinForms.Views
             };
             tlp.Controls.Add(lblSecContact, 0, row++);
 
-            // Phone Number (with auto-fill hint)
+            // Phone Number
             _txtContactInfo = new TextBox
             {
                 Font = new Font("Segoe UI", 9.5F),
-                MaxLength = 150,
-                PlaceholderText = "(555) 000-0000"
+                MaxLength = 20,
+                PlaceholderText = "e.g. 0917-123-4567 or +63 917 123 4567"
             };
             _txtContactInfo.TextChanged += (s, e) => { ClearError(_txtContactInfo, _lblErrorContactInfo); _isModified = true; };
-            var pnlContact = CreateFieldGroup("Phone Number", true, _txtContactInfo, out _lblErrorContactInfo, 30, Color.White, null, "Try (555) 847-2290 for auto-fill");
+            _txtContactInfo.KeyPress += (s, e) =>
+            {
+                // Disallow letters - allow control keys (backspace, delete) and valid phone characters
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && e.KeyChar != '+' && e.KeyChar != '-' && e.KeyChar != ' ' && e.KeyChar != '(' && e.KeyChar != ')')
+                {
+                    e.Handled = true;
+                }
+            };
+            var pnlContact = CreateFieldGroup("Phone Number", true, _txtContactInfo, out _lblErrorContactInfo, 30, Color.White);
             tlp.Controls.Add(pnlContact, 0, row++);
 
             // Email Address
             _txtEmail = new TextBox
             {
                 Font = new Font("Segoe UI", 9.5F),
-                MaxLength = 150,
+                MaxLength = 120,
                 PlaceholderText = "name@example.com"
             };
-            _txtEmail.TextChanged += (s, e) => _isModified = true;
-            var pnlEmail = CreateFieldGroup("Email Address", false, _txtEmail, out _, 30, Color.White);
+            _txtEmail.TextChanged += (s, e) => { ClearError(_txtEmail, _lblErrorEmail); _isModified = true; };
+            var pnlEmail = CreateFieldGroup("Email Address", false, _txtEmail, out _lblErrorEmail, 30, Color.White);
             tlp.Controls.Add(pnlEmail, 0, row++);
 
-            // SECTION 2: CUSTOMER DETAILS
+            // SECTION: LEAD DETAILS
             var lblSecDetails = new Label
             {
-                Text = "CUSTOMER DETAILS",
+                Text = "LEAD DETAILS",
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(100, 116, 139),
                 BackColor = Color.White,
@@ -424,14 +406,10 @@ namespace App.WinForms.Views
             };
             tlp.Controls.Add(lblSecDetails, 0, row++);
 
-            // Customer Type Segmented Cards [ Residential ] [ Commercial ]
-            var pnlToggle = CreateCustomerTypeSelector();
-            tlp.Controls.Add(pnlToggle, 0, row++);
-
-            // Full Name / Company Name
+            // Full Name
             _lblFullNameTitle = new Label
             {
-                Text = "Customer Name *",
+                Text = "Lead Name *",
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(51, 65, 85),
                 BackColor = Color.White,
@@ -447,7 +425,7 @@ namespace App.WinForms.Views
                 PlaceholderText = "e.g. Jane Doe"
             };
             _txtFullName.TextChanged += (s, e) => { ClearError(_txtFullName, _lblErrorFullName); _isModified = true; };
-            var pnlFullName = CreateFieldGroup("Customer Name", true, _txtFullName, out _lblErrorFullName, 30, Color.White, _lblFullNameTitle);
+            var pnlFullName = CreateFieldGroup("Lead Name", true, _txtFullName, out _lblErrorFullName, 30, Color.White, _lblFullNameTitle);
             tlp.Controls.Add(pnlFullName, 0, row++);
 
             // Lead Source
@@ -469,111 +447,8 @@ namespace App.WinForms.Views
             _pnlStepsHost.Controls.Add(_pnlStep1);
         }
 
-        private Panel CreateCustomerTypeSelector()
-        {
-            var pnlField = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Height = 68,
-                Margin = new Padding(0, 4, 0, 10),
-                BackColor = Color.White
-            };
-
-            var lblTitle = new Label
-            {
-                Text = "Customer Type *",
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85),
-                BackColor = Color.White,
-                Location = new Point(0, 0),
-                Size = new Size(pnlField.Width, 20),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
-            };
-            pnlField.Controls.Add(lblTitle);
-
-            var pnlCards = new TableLayoutPanel
-            {
-                Location = new Point(0, 24),
-                Size = new Size(pnlField.Width, 40),
-                ColumnCount = 2,
-                RowCount = 1,
-                BackColor = Color.White,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
-            };
-            pnlCards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            pnlCards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-
-            _rdoIndividual = new RadioButton
-            {
-                Text = "🏠  Residential",
-                Appearance = Appearance.Button,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleCenter,
-                Checked = true,
-                Cursor = Cursors.Hand,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 0, 6, 0)
-            };
-            _rdoIndividual.FlatAppearance.BorderSize = 1;
-
-            _rdoCompany = new RadioButton
-            {
-                Text = "🏢  Commercial",
-                Appearance = Appearance.Button,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleCenter,
-                Checked = false,
-                Cursor = Cursors.Hand,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(6, 0, 0, 0)
-            };
-            _rdoCompany.FlatAppearance.BorderSize = 1;
-
-            void UpdateStyles()
-            {
-                if (_rdoIndividual.Checked)
-                {
-                    _rdoIndividual.BackColor = Color.FromArgb(239, 246, 255);
-                    _rdoIndividual.ForeColor = Theme.Primary;
-                    _rdoIndividual.FlatAppearance.BorderColor = Theme.Primary;
-
-                    _rdoCompany.BackColor = Color.FromArgb(248, 250, 252);
-                    _rdoCompany.ForeColor = Color.FromArgb(100, 116, 139);
-                    _rdoCompany.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
-
-                    if (_txtFullName != null) _txtFullName.PlaceholderText = "e.g. Jane Doe";
-                    if (_lblFullNameTitle != null) _lblFullNameTitle.Text = "Customer Name *";
-                }
-                else
-                {
-                    _rdoCompany.BackColor = Color.FromArgb(239, 246, 255);
-                    _rdoCompany.ForeColor = Theme.Primary;
-                    _rdoCompany.FlatAppearance.BorderColor = Theme.Primary;
-
-                    _rdoIndividual.BackColor = Color.FromArgb(248, 250, 252);
-                    _rdoIndividual.ForeColor = Color.FromArgb(100, 116, 139);
-                    _rdoIndividual.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
-
-                    if (_txtFullName != null) _txtFullName.PlaceholderText = "e.g. Acme Corp";
-                    if (_lblFullNameTitle != null) _lblFullNameTitle.Text = "Company / Org Name *";
-                }
-            }
-
-            _rdoIndividual.CheckedChanged += (s, e) => { UpdateStyles(); _isModified = true; };
-            _rdoCompany.CheckedChanged += (s, e) => { UpdateStyles(); _isModified = true; };
-
-            pnlCards.Controls.Add(_rdoIndividual, 0, 0);
-            pnlCards.Controls.Add(_rdoCompany, 1, 0);
-            pnlField.Controls.Add(pnlCards);
-
-            UpdateStyles();
-            return pnlField;
-        }
-
         // ============================================================
-        // STEP 2: Service & Location (What & Where)
+        // STEP 2: Inquiry Details (optional notes)
         // ============================================================
         private void BuildStep2()
         {
@@ -591,219 +466,88 @@ namespace App.WinForms.Views
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 2,
                 BackColor = Color.White,
                 Padding = new Padding(28, 16, 28, 16)
             };
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-            // 1. Service Requested
-            _cmbServiceRequested = new ComboBox
+            // Info banner — clarify this is lead-only
+            var pnlBanner = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Height = 52,
+                BackColor = Color.FromArgb(239, 246, 255),
+                Margin = new Padding(0, 0, 0, 12)
+            };
+            pnlBanner.Paint += (s, e) =>
+            {
+                using var pen = new Pen(Color.FromArgb(147, 197, 253), 1);
+                e.Graphics.DrawRectangle(pen, 0, 0, pnlBanner.Width - 1, pnlBanner.Height - 1);
+            };
+            var lblBanner = new Label
+            {
+                Text = "ℹ  Leads capture inquiry intent only. To schedule a service, convert this lead to a Customer first, then create a Work Order.",
+                Font = new Font("Segoe UI", 8.5F),
+                ForeColor = Color.FromArgb(37, 99, 235),
+                BackColor = Color.FromArgb(239, 246, 255),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(12, 0, 12, 0)
+            };
+            pnlBanner.Controls.Add(lblBanner);
+            tlp.Controls.Add(pnlBanner, 0, 0);
+
+            // Service Address (Optional)
+            _txtServiceAddress = new TextBox
             {
                 Font = new Font("Segoe UI", 9.5F),
-                DropDownStyle = ComboBoxStyle.DropDownList
+                MaxLength = 250,
+                PlaceholderText = "e.g. 123 Main St, Suite 400"
             };
-            _cmbServiceRequested.Items.AddRange(new object[]
+            _txtServiceAddress.TextChanged += (s, e) => { ClearError(_txtServiceAddress, _lblErrorServiceAddress); _isModified = true; };
+            var pnlAddress = CreateFieldGroup("Service Location / Address (Optional)", false, _txtServiceAddress, out _lblErrorServiceAddress, 30);
+            tlp.Controls.Add(pnlAddress, 0, 1);
+
+            // Quoted Price (Optional)
+            _txtQuotedPrice = new TextBox
             {
-                "General Cleaning", "Deep Cleaning", "Office Cleaning", "Move-in Cleaning", "Move-out Cleaning"
-            });
-            _cmbServiceRequested.SelectedIndexChanged += (s, e) => { ClearError(_cmbServiceRequested, _lblErrorServiceRequested); _isModified = true; };
-            var pnlService = CreateFieldGroup("Service Requested", true, _cmbServiceRequested, out _lblErrorServiceRequested, 30);
-            tlp.Controls.Add(pnlService, 0, 0);
+                Font = new Font("Segoe UI", 9.5F),
+                MaxLength = 15,
+                PlaceholderText = "e.g. 2500.00"
+            };
+            _txtQuotedPrice.TextChanged += (s, e) => { ClearError(_txtQuotedPrice, _lblErrorQuotedPrice); _isModified = true; };
+            _txtQuotedPrice.KeyPress += (s, e) =>
+            {
+                // Disallow non-numeric characters (allow digits, '.', and control keys)
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && e.KeyChar != '.')
+                {
+                    e.Handled = true;
+                }
+                // Disallow multiple decimal points
+                if (e.KeyChar == '.' && _txtQuotedPrice.Text.Contains('.'))
+                {
+                    e.Handled = true;
+                }
+            };
+            var pnlPrice = CreateFieldGroup("Initial Quoted Price (₱, Optional)", false, _txtQuotedPrice, out _lblErrorQuotedPrice, 30);
+            tlp.Controls.Add(pnlPrice, 0, 2);
 
-            // 2. Service Location Container (Structured Card Layout)
-            var pnlLocationCard = CreateLocationSubCard();
-            tlp.Controls.Add(pnlLocationCard, 0, 1);
-
-            // 3. Special Cleaning Requests (replaces redundant inquiry fields)
-            _txtSpecialRequests = new TextBox
+            // Inquiry Notes
+            _txtInquiryDetails = new TextBox
             {
                 Font = new Font("Segoe UI", 9.5F),
                 Multiline = true,
                 ScrollBars = ScrollBars.Vertical,
                 MaxLength = 500,
-                PlaceholderText = "Specific instructions, special areas to focus on, or crew requirements"
+                PlaceholderText = "Optional — any specific requirements the lead mentioned during inquiry"
             };
-            _txtSpecialRequests.TextChanged += (s, e) => _isModified = true;
-            var pnlRequests = CreateFieldGroup("Special Cleaning Requests", false, _txtSpecialRequests, out _, 75);
-            tlp.Controls.Add(pnlRequests, 0, 2);
+            _txtInquiryDetails.TextChanged += (s, e) => { ClearError(_txtInquiryDetails, _lblErrorInquiryDetails); _isModified = true; };
+            var pnlNotes = CreateFieldGroup("Inquiry Notes (Optional)", false, _txtInquiryDetails, out _lblErrorInquiryDetails, 90);
+            tlp.Controls.Add(pnlNotes, 0, 3);
 
             _pnlStep2.Controls.Add(tlp);
             _pnlStepsHost.Controls.Add(_pnlStep2);
-        }
-
-        private Panel CreateLocationSubCard()
-        {
-            var card = new Panel
-            {
-                Dock = DockStyle.Fill,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                BackColor = Color.FromArgb(248, 250, 252),
-                Padding = new Padding(16, 12, 16, 14),
-                Margin = new Padding(0, 6, 0, 12)
-            };
-            card.Paint += (s, e) =>
-            {
-                e.Graphics.Clear(card.BackColor);
-                using var pen = new Pen(Color.FromArgb(226, 232, 240), 1);
-                e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
-            };
-
-            var lblCardHeader = new Label
-            {
-                Text = "📍  SERVICE LOCATION DETAILS",
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(71, 85, 105),
-                BackColor = Color.FromArgb(248, 250, 252),
-                Dock = DockStyle.Top,
-                Height = 22
-            };
-            card.Controls.Add(lblCardHeader);
-
-            var tlpLoc = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 2,
-                RowCount = 2,
-                BackColor = Color.FromArgb(248, 250, 252),
-                Padding = new Padding(0, 4, 0, 0)
-            };
-            tlpLoc.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tlpLoc.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-
-            // Street / Unit / Building (Full width across 2 columns)
-            _txtStreet = new TextBox
-            {
-                Font = new Font("Segoe UI", 9.5F),
-                MaxLength = 150,
-                PlaceholderText = "Street address, building, or unit no."
-            };
-            _txtStreet.TextChanged += (s, e) => { ClearError(_txtStreet, _lblErrorStreet); _isModified = true; };
-            var pnlStreet = CreateFieldGroup("Street / Unit / Building", true, _txtStreet, out _lblErrorStreet, 30, Color.FromArgb(248, 250, 252));
-            tlpLoc.Controls.Add(pnlStreet, 0, 0);
-            tlpLoc.SetColumnSpan(pnlStreet, 2);
-
-            // City / Region (Left column)
-            _cmbCity = new ComboBox
-            {
-                Font = new Font("Segoe UI", 9.5F),
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            _cmbCity.Items.AddRange(new object[]
-            {
-                "Davao City", "Cebu City", "Metro Manila", "Baguio", "Iloilo"
-            });
-            _cmbCity.SelectedIndexChanged += (s, e) => { ClearError(_cmbCity, _lblErrorCity); _isModified = true; };
-            var pnlCity = CreateFieldGroup("City / Region", true, _cmbCity, out _lblErrorCity, 30, Color.FromArgb(248, 250, 252));
-            pnlCity.Margin = new Padding(0, 4, 8, 4);
-            tlpLoc.Controls.Add(pnlCity, 0, 1);
-
-            // Landmark / Gate Notes (Right column, optional)
-            _txtLandmark = new TextBox
-            {
-                Font = new Font("Segoe UI", 9.5F),
-                MaxLength = 150,
-                PlaceholderText = "Landmark, gate access, or entrance details"
-            };
-            _txtLandmark.TextChanged += (s, e) => _isModified = true;
-            var pnlLandmark = CreateFieldGroup("Landmark / Gate Notes", false, _txtLandmark, out _, 30, Color.FromArgb(248, 250, 252));
-            pnlLandmark.Margin = new Padding(8, 4, 0, 4);
-            tlpLoc.Controls.Add(pnlLandmark, 1, 1);
-
-            card.Controls.Add(tlpLoc);
-            tlpLoc.BringToFront();
-
-            return card;
-        }
-
-        // ============================================================
-        // STEP 3: Schedule & Dispatch (When)
-        // ============================================================
-        private void BuildStep3()
-        {
-            _pnlStep3 = new Panel
-            {
-                Dock = DockStyle.Fill,
-                AutoScroll = true,
-                BackColor = Color.White,
-                Visible = false
-            };
-
-            var tlp = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 2,
-                RowCount = 3,
-                BackColor = Color.White,
-                Padding = new Padding(28, 16, 28, 16)
-            };
-            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-
-            // Preferred Date (Left)
-            _dtpPreferredDate = new DateTimePicker
-            {
-                Font = new Font("Segoe UI", 9.5F),
-                Format = DateTimePickerFormat.Short,
-                MinDate = DateTime.Today,
-                Value = DateTime.Today.AddDays(1)
-            };
-            _dtpPreferredDate.ValueChanged += (s, e) => { ClearError(_dtpPreferredDate, _lblErrorPreferredDate); _isModified = true; };
-            var pnlPrefDate = CreateFieldGroup("Preferred Date", true, _dtpPreferredDate, out _lblErrorPreferredDate, 30);
-            pnlPrefDate.Margin = new Padding(0, 4, 8, 8);
-            tlp.Controls.Add(pnlPrefDate, 0, 0);
-
-            // Follow-Up Date (Right)
-            _dtpFollowUpDate = new DateTimePicker
-            {
-                Font = new Font("Segoe UI", 9.5F),
-                Format = DateTimePickerFormat.Short,
-                ShowCheckBox = true,
-                Checked = false,
-                MinDate = DateTime.Today,
-                Value = DateTime.Today.AddDays(7)
-            };
-            _dtpFollowUpDate.ValueChanged += (s, e) => _isModified = true;
-            var pnlFollowUp = CreateFieldGroup("Follow-Up Date (Optional)", false, _dtpFollowUpDate, out _, 30);
-            pnlFollowUp.Margin = new Padding(8, 4, 0, 8);
-            tlp.Controls.Add(pnlFollowUp, 1, 0);
-
-            // Assigned Sales Staff (Full width)
-            _cmbAssignedStaff = new ComboBox
-            {
-                Font = new Font("Segoe UI", 9.5F),
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            _cmbAssignedStaff.Items.AddRange(new object[]
-            {
-                "Juan Dela Cruz", "Maria Santos", "Pedro Reyes", "Ana Lopez"
-            });
-            _cmbAssignedStaff.SelectedIndexChanged += (s, e) => { ClearError(_cmbAssignedStaff, _lblErrorAssignedStaff); _isModified = true; };
-            var pnlStaff = CreateFieldGroup("Assigned Sales Staff", true, _cmbAssignedStaff, out _lblErrorAssignedStaff, 30);
-            tlp.Controls.Add(pnlStaff, 0, 1);
-            tlp.SetColumnSpan(pnlStaff, 2);
-
-            // Internal Notes (Full width)
-            _txtNotes = new TextBox
-            {
-                Font = new Font("Segoe UI", 9.5F),
-                Multiline = true,
-                ScrollBars = ScrollBars.Vertical,
-                MaxLength = 1000,
-                PlaceholderText = "Additional operational context, pricing notes, or dispatch instructions"
-            };
-            _txtNotes.TextChanged += (s, e) => _isModified = true;
-            var pnlNotes = CreateFieldGroup("Internal Notes", false, _txtNotes, out _, 80);
-            tlp.Controls.Add(pnlNotes, 0, 2);
-            tlp.SetColumnSpan(pnlNotes, 2);
-
-            _pnlStep3.Controls.Add(tlp);
-            _pnlStepsHost.Controls.Add(_pnlStep3);
         }
 
         // ============================================================
@@ -872,7 +616,7 @@ namespace App.WinForms.Views
         }
 
         // ============================================================
-        // Step Indicator Painting
+        // Step Indicator (2 steps: Contact, Inquiry)
         // ============================================================
         private void PaintStepIndicator(object? sender, PaintEventArgs e)
         {
@@ -886,38 +630,30 @@ namespace App.WinForms.Views
             int circleY = 6;
             int centerY = circleY + circleRadius;
 
-            int[] xCenters = { w / 6, w / 2, 5 * w / 6 };
-            string[] labels = { "Profile", "Service", "Schedule" };
+            int[] xCenters = { w / 3, 2 * w / 3 };
+            string[] labels = { "Contact Info", "Inquiry Details" };
 
-            Color activeColor = Theme.Primary;                   // #2563EB
-            Color completedColor = Color.FromArgb(34, 197, 94);   // #22C55E
-            Color inactiveBg = Color.FromArgb(241, 245, 249);     // #F1F5F9
-            Color inactiveBorder = Color.FromArgb(203, 213, 225); // #CBD5E1
-            Color inactiveFg = Color.FromArgb(100, 116, 139);     // #64748B
-            Color lineColor = Color.FromArgb(226, 232, 240);      // #E2E8F0
+            Color activeColor = Theme.Primary;
+            Color completedColor = Color.FromArgb(34, 197, 94);
+            Color inactiveBg = Color.FromArgb(241, 245, 249);
+            Color inactiveBorder = Color.FromArgb(203, 213, 225);
+            Color inactiveFg = Color.FromArgb(100, 116, 139);
+            Color lineColor = Color.FromArgb(226, 232, 240);
 
-            // Draw connecting lines between nodes
             using var penCompleted = new Pen(completedColor, 2);
             using var penInactive = new Pen(lineColor, 2);
 
-            // Line 1 to 2
             int x1Right = xCenters[0] + circleRadius + 8;
             int x2Left = xCenters[1] - circleRadius - 8;
             var line1Pen = _currentStep > 1 ? penCompleted : penInactive;
             g.DrawLine(line1Pen, x1Right, centerY, x2Left, centerY);
-
-            // Line 2 to 3
-            int x2Right = xCenters[1] + circleRadius + 8;
-            int x3Left = xCenters[2] - circleRadius - 8;
-            var line2Pen = _currentStep > 2 ? penCompleted : penInactive;
-            g.DrawLine(line2Pen, x2Right, centerY, x3Left, centerY);
 
             using var fontNumber = new Font("Segoe UI", 9.5F, FontStyle.Bold);
             using var fontLabel = new Font("Segoe UI", 9F, FontStyle.Bold);
             using var brushWhite = new SolidBrush(Color.White);
             using var sfCenter = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 2; i++)
             {
                 int stepNum = i + 1;
                 int cx = xCenters[i];
@@ -928,20 +664,16 @@ namespace App.WinForms.Views
                     using var brush = new SolidBrush(completedColor);
                     g.FillEllipse(brush, circleRect);
                     g.DrawString("✓", fontNumber, brushWhite, circleRect, sfCenter);
-
                     using var brushLbl = new SolidBrush(Theme.TextDark);
-                    var labelRect = new Rectangle(cx - 70, circleY + circleSize + 4, 140, 20);
-                    g.DrawString(labels[i], fontLabel, brushLbl, labelRect, sfCenter);
+                    g.DrawString(labels[i], fontLabel, brushLbl, new Rectangle(cx - 70, circleY + circleSize + 4, 140, 20), sfCenter);
                 }
                 else if (stepNum == _currentStep)
                 {
                     using var brush = new SolidBrush(activeColor);
                     g.FillEllipse(brush, circleRect);
                     g.DrawString(stepNum.ToString(), fontNumber, brushWhite, circleRect, sfCenter);
-
                     using var brushLbl = new SolidBrush(activeColor);
-                    var labelRect = new Rectangle(cx - 70, circleY + circleSize + 4, 140, 20);
-                    g.DrawString(labels[i], fontLabel, brushLbl, labelRect, sfCenter);
+                    g.DrawString(labels[i], fontLabel, brushLbl, new Rectangle(cx - 70, circleY + circleSize + 4, 140, 20), sfCenter);
                 }
                 else
                 {
@@ -951,9 +683,7 @@ namespace App.WinForms.Views
                     g.FillEllipse(brush, circleRect);
                     g.DrawEllipse(pen, circleRect);
                     g.DrawString(stepNum.ToString(), fontNumber, brushText, circleRect, sfCenter);
-
-                    var labelRect = new Rectangle(cx - 70, circleY + circleSize + 4, 140, 20);
-                    g.DrawString(labels[i], fontLabel, brushText, labelRect, sfCenter);
+                    g.DrawString(labels[i], fontLabel, brushText, new Rectangle(cx - 70, circleY + circleSize + 4, 140, 20), sfCenter);
                 }
             }
         }
@@ -963,20 +693,19 @@ namespace App.WinForms.Views
         // ============================================================
         private void ShowStep(int step)
         {
-            if (step < 1 || step > 3) return;
+            if (step < 1 || step > 2) return;
 
             _currentStep = step;
             ClearValidationErrors();
 
             _pnlStep1.Visible = (_currentStep == 1);
             _pnlStep2.Visible = (_currentStep == 2);
-            _pnlStep3.Visible = (_currentStep == 3);
 
             switch (_currentStep)
             {
                 case 1:
-                    _lblSectionTitle.Text = "Client Profile";
-                    _lblSectionSubtitle.Text = "Select client type and provide contact details";
+                    _lblSectionTitle.Text = "Contact Information";
+                    _lblSectionSubtitle.Text = "Provide lead name, phone, email, and source";
                     _btnCancel.Visible = true;
                     _btnBack.Visible = false;
                     _btnNext.Visible = true;
@@ -984,17 +713,8 @@ namespace App.WinForms.Views
                     break;
 
                 case 2:
-                    _lblSectionTitle.Text = "Service & Location";
-                    _lblSectionSubtitle.Text = "Specify service requirements and physical site location";
-                    _btnCancel.Visible = false;
-                    _btnBack.Visible = true;
-                    _btnNext.Visible = true;
-                    _btnSave.Visible = false;
-                    break;
-
-                case 3:
-                    _lblSectionTitle.Text = "Schedule & Dispatch";
-                    _lblSectionSubtitle.Text = "Set preferred appointment dates and assign staff";
+                    _lblSectionTitle.Text = "Inquiry Details";
+                    _lblSectionSubtitle.Text = "Optional notes about what the lead is looking for";
                     _btnCancel.Visible = false;
                     _btnBack.Visible = true;
                     _btnNext.Visible = false;
@@ -1008,9 +728,7 @@ namespace App.WinForms.Views
         private void OnNextClick()
         {
             if (ValidateCurrentStep())
-            {
                 ShowStep(_currentStep + 1);
-            }
         }
 
         private void HandleCancel()
@@ -1030,7 +748,7 @@ namespace App.WinForms.Views
             ClearForm();
             ShowStep(1);
 
-            if (FindForm() is NewBookingModalForm modal)
+            if (FindForm() is NewLeadDialog modal)
             {
                 modal.DialogResult = DialogResult.Cancel;
                 modal.Close();
@@ -1038,7 +756,7 @@ namespace App.WinForms.Views
         }
 
         // ============================================================
-        // Validation (Inline red borders & helper labels, no popups)
+        // Validation
         // ============================================================
         private bool ValidateCurrentStep()
         {
@@ -1047,17 +765,36 @@ namespace App.WinForms.Views
 
             if (_currentStep == 1)
             {
-                if (string.IsNullOrWhiteSpace(_txtFullName.Text))
+                // Full Name validation
+                if (!ValidationHelper.IsValidName(_txtFullName.Text, 100, out var nameErr))
                 {
-                    string nameField = _rdoCompany.Checked ? "Company / Org Name" : "Customer Name";
-                    SetError(_txtFullName, _lblErrorFullName, $"⚠ {nameField} is required.");
+                    SetError(_txtFullName, _lblErrorFullName, nameErr);
                     isValid = false;
                 }
 
-                if (string.IsNullOrWhiteSpace(_txtContactInfo.Text))
+                // Phone & Email validation
+                bool hasPhone = !string.IsNullOrWhiteSpace(_txtContactInfo.Text);
+                bool hasEmail = !string.IsNullOrWhiteSpace(_txtEmail.Text);
+
+                if (!hasPhone && !hasEmail)
                 {
-                    SetError(_txtContactInfo, _lblErrorContactInfo, "⚠ Contact Information is required.");
+                    SetError(_txtContactInfo, _lblErrorContactInfo, "⚠ Please provide either a phone number or email address.");
+                    SetError(_txtEmail, _lblErrorEmail, "⚠ Please provide either a phone number or email address.");
                     isValid = false;
+                }
+                else
+                {
+                    if (hasPhone && !ValidationHelper.IsValidPhoneNumber(_txtContactInfo.Text, false, out var phoneErr))
+                    {
+                        SetError(_txtContactInfo, _lblErrorContactInfo, phoneErr);
+                        isValid = false;
+                    }
+
+                    if (hasEmail && !ValidationHelper.IsValidEmail(_txtEmail.Text, false, out var emailErr))
+                    {
+                        SetError(_txtEmail, _lblErrorEmail, emailErr);
+                        isValid = false;
+                    }
                 }
 
                 if (_cmbLeadSource.SelectedIndex < 0)
@@ -1068,35 +805,27 @@ namespace App.WinForms.Views
             }
             else if (_currentStep == 2)
             {
-                if (_cmbServiceRequested.SelectedIndex < 0)
+                // Service Address length validation
+                if (!string.IsNullOrWhiteSpace(_txtServiceAddress?.Text) &&
+                    !ValidationHelper.IsValidTextLength(_txtServiceAddress.Text, "Service Location", 250, false, out var addrErr))
                 {
-                    SetError(_cmbServiceRequested, _lblErrorServiceRequested, "⚠ Please select Service Requested.");
+                    SetError(_txtServiceAddress, _lblErrorServiceAddress, addrErr);
                     isValid = false;
                 }
 
-                if (string.IsNullOrWhiteSpace(_txtStreet.Text))
+                // Quoted Price validation
+                if (!string.IsNullOrWhiteSpace(_txtQuotedPrice?.Text) &&
+                    !ValidationHelper.IsValidPrice(_txtQuotedPrice.Text, false, out _, out var priceErr))
                 {
-                    SetError(_txtStreet, _lblErrorStreet, "⚠ Street address / unit is required.");
+                    SetError(_txtQuotedPrice, _lblErrorQuotedPrice, priceErr);
                     isValid = false;
                 }
 
-                if (_cmbCity.SelectedIndex < 0)
+                // Inquiry Notes length validation
+                if (!string.IsNullOrWhiteSpace(_txtInquiryDetails?.Text) &&
+                    !ValidationHelper.IsValidTextLength(_txtInquiryDetails.Text, "Inquiry Notes", 500, false, out var notesErr))
                 {
-                    SetError(_cmbCity, _lblErrorCity, "⚠ Please select a City / Region.");
-                    isValid = false;
-                }
-            }
-            else if (_currentStep == 3)
-            {
-                if (_dtpPreferredDate.Value.Date < DateTime.Today)
-                {
-                    SetError(_dtpPreferredDate, _lblErrorPreferredDate, "⚠ Preferred date cannot be in the past.");
-                    isValid = false;
-                }
-
-                if (_cmbAssignedStaff.SelectedIndex < 0)
-                {
-                    SetError(_cmbAssignedStaff, _lblErrorAssignedStaff, "⚠ Please assign a Sales Staff.");
+                    SetError(_txtInquiryDetails, _lblErrorInquiryDetails, notesErr);
                     isValid = false;
                 }
             }
@@ -1106,7 +835,7 @@ namespace App.WinForms.Views
 
         private static void SetError(Control control, Label errorLabel, string message)
         {
-            control.BackColor = Color.FromArgb(254, 226, 226); // #FEE2E2
+            control.BackColor = Color.FromArgb(254, 226, 226);
             errorLabel.Text = message;
             errorLabel.Visible = true;
         }
@@ -1122,16 +851,15 @@ namespace App.WinForms.Views
         {
             if (_txtFullName != null) ClearError(_txtFullName, _lblErrorFullName);
             if (_txtContactInfo != null) ClearError(_txtContactInfo, _lblErrorContactInfo);
+            if (_txtEmail != null) ClearError(_txtEmail, _lblErrorEmail);
             if (_cmbLeadSource != null) ClearError(_cmbLeadSource, _lblErrorLeadSource);
-            if (_cmbServiceRequested != null) ClearError(_cmbServiceRequested, _lblErrorServiceRequested);
-            if (_txtStreet != null) ClearError(_txtStreet, _lblErrorStreet);
-            if (_cmbCity != null) ClearError(_cmbCity, _lblErrorCity);
-            if (_dtpPreferredDate != null) ClearError(_dtpPreferredDate, _lblErrorPreferredDate);
-            if (_cmbAssignedStaff != null) ClearError(_cmbAssignedStaff, _lblErrorAssignedStaff);
+            if (_txtServiceAddress != null) ClearError(_txtServiceAddress, _lblErrorServiceAddress);
+            if (_txtQuotedPrice != null) ClearError(_txtQuotedPrice, _lblErrorQuotedPrice);
+            if (_txtInquiryDetails != null) ClearError(_txtInquiryDetails, _lblErrorInquiryDetails);
         }
 
         // ============================================================
-        // Save Execution
+        // Save — POST /api/leads (inquiry only, no scheduling)
         // ============================================================
         private async Task OnSaveClickAsync()
         {
@@ -1144,52 +872,35 @@ namespace App.WinForms.Views
 
             try
             {
-                // Format location cleanly: Street, City, Ref: Landmark
-                string street = _txtStreet.Text.Trim();
-                string city = _cmbCity.SelectedItem?.ToString() ?? string.Empty;
-                string landmark = _txtLandmark.Text.Trim();
-
-                string serviceLocation = string.IsNullOrWhiteSpace(landmark)
-                    ? $"{street}, {city}".TrimEnd(',', ' ')
-                    : $"{street}, {city}, Ref: {landmark}".TrimEnd(',', ' ');
-
-                string specialReq = string.IsNullOrWhiteSpace(_txtSpecialRequests.Text) ? null! : _txtSpecialRequests.Text.Trim();
-                string notes = string.IsNullOrWhiteSpace(_txtNotes.Text) ? null! : _txtNotes.Text.Trim();
-
-                var dto = new DataCollectionDto
+                decimal? quotedPrice = null;
+                if (!string.IsNullOrWhiteSpace(_txtQuotedPrice?.Text) && decimal.TryParse(_txtQuotedPrice.Text.Trim(), out var parsedPrice))
                 {
-                    // Lead & Customer Shared Mappings
-                    LeadName = _txtFullName.Text.Trim(),
-                    CustomerName = _txtFullName.Text.Trim(),
-                    ContactInfo = _txtContactInfo.Text.Trim(),
-                    ContactDetails = _txtContactInfo.Text.Trim(),
-                    LeadSource = _cmbLeadSource.SelectedItem?.ToString() ?? string.Empty,
-                    RequestedService = _cmbServiceRequested.SelectedItem?.ToString() ?? string.Empty,
-                    ServiceOfInterest = _cmbServiceRequested.SelectedItem?.ToString() ?? string.Empty,
-                    InquiryDetails = specialReq,
+                    quotedPrice = parsedPrice;
+                }
 
-                    // Customer Details
-                    CustomerType = _rdoCompany.Checked ? "Company" : "Individual",
-                    ServiceLocation = serviceLocation,
-
-                    // Service Schedule
-                    PreferredDate = _dtpPreferredDate.Value.Date,
-                    FollowUpDate = _dtpFollowUpDate.Checked ? _dtpFollowUpDate.Value.Date : null,
-                    SpecialRequests = specialReq,
-                    Notes = notes,
-                    AssignedSalesStaff = _cmbAssignedStaff.SelectedItem?.ToString() ?? string.Empty
+                var dto = new LeadCreateDto
+                {
+                    LeadName       = _txtFullName.Text.Trim(),
+                    Phone          = _txtContactInfo.Text.Trim(),
+                    Email          = _txtEmail.Text.Trim(),
+                    LeadSource     = _cmbLeadSource.SelectedItem?.ToString() ?? string.Empty,
+                    ServiceAddress = string.IsNullOrWhiteSpace(_txtServiceAddress?.Text) ? null : _txtServiceAddress.Text.Trim(),
+                    QuotedPrice    = quotedPrice,
+                    InquiryDetails = string.IsNullOrWhiteSpace(_txtInquiryDetails?.Text)
+                                       ? null
+                                       : _txtInquiryDetails.Text.Trim()
                 };
 
-                var (success, message) = await _apiClient.SaveAsync(dto);
+                var (success, message, _) = await _apiClient.CreateLeadAsync(dto);
 
                 if (success)
                 {
-                    ShowToast("Record saved successfully!", true);
+                    ShowToast("Lead captured successfully!", true);
                     ClearForm();
                     ShowStep(1);
                     RecordSaved?.Invoke();
 
-                    if (FindForm() is NewBookingModalForm modal)
+                    if (FindForm() is NewLeadDialog modal)
                     {
                         modal.DialogResult = DialogResult.OK;
                         modal.Close();
@@ -1208,7 +919,7 @@ namespace App.WinForms.Views
             {
                 _btnBack.Enabled = true;
                 _btnSave.Enabled = true;
-                _btnSave.Text = "✓ Save";
+                _btnSave.Text = "✓ Save Lead";
             }
         }
 
@@ -1217,22 +928,13 @@ namespace App.WinForms.Views
         // ============================================================
         public void ClearForm()
         {
-            if (_rdoIndividual != null) _rdoIndividual.Checked = true;
-            _txtFullName.Clear();
-            _txtContactInfo.Clear();
-            if (_txtEmail != null) _txtEmail.Clear();
-            if (_cmbLeadSource.Items.Count > 0) _cmbLeadSource.SelectedIndex = 0;
-
-            _cmbServiceRequested.SelectedIndex = -1;
-            _txtStreet.Clear();
-            _cmbCity.SelectedIndex = -1;
-            _txtLandmark.Clear();
-            _txtSpecialRequests.Clear();
-
-            _dtpPreferredDate.Value = DateTime.Today.AddDays(1);
-            _dtpFollowUpDate.Checked = false;
-            _cmbAssignedStaff.SelectedIndex = -1;
-            _txtNotes.Clear();
+            _txtFullName?.Clear();
+            _txtContactInfo?.Clear();
+            _txtEmail?.Clear();
+            if (_cmbLeadSource?.Items.Count > 0) _cmbLeadSource.SelectedIndex = 0;
+            _txtServiceAddress?.Clear();
+            _txtQuotedPrice?.Clear();
+            _txtInquiryDetails?.Clear();
 
             ClearValidationErrors();
             _isModified = false;
@@ -1279,7 +981,7 @@ namespace App.WinForms.Views
         }
 
         // ============================================================
-        // Keyboard Shortcuts (Enter -> Next/Save, Escape -> Cancel)
+        // Keyboard Shortcuts
         // ============================================================
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
@@ -1287,11 +989,9 @@ namespace App.WinForms.Views
             {
                 var focused = FindActiveControl(this);
                 if (focused is TextBox tb && tb.Multiline)
-                {
                     return base.ProcessCmdKey(ref msg, keyData);
-                }
 
-                if (_currentStep < 3)
+                if (_currentStep < 2)
                 {
                     if (_btnNext.Visible && _btnNext.Enabled)
                     {
@@ -1299,7 +999,7 @@ namespace App.WinForms.Views
                         return true;
                     }
                 }
-                else if (_currentStep == 3)
+                else if (_currentStep == 2)
                 {
                     if (_btnSave.Visible && _btnSave.Enabled)
                     {
@@ -1320,9 +1020,7 @@ namespace App.WinForms.Views
         private static Control? FindActiveControl(Control? root)
         {
             if (root is ContainerControl cc && cc.ActiveControl != null)
-            {
                 return FindActiveControl(cc.ActiveControl);
-            }
             return root;
         }
     }

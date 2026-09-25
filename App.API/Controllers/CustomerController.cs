@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using App.Domain.Entities;
 using App.Infrastructure;
@@ -18,6 +19,85 @@ namespace App.API.Controllers
         public CustomerController(AppDbContext context)
         {
             _context = context;
+        }
+
+        // ============================================================
+        // GET /api/customers
+        // Returns distinct master customer records — 1 customer = 1 row.
+        // Includes computed aggregates: TotalBookings, LatestService, LatestDate.
+        // Read-only: AsNoTracking() throughout.
+        // ============================================================
+        [HttpGet]
+        public async Task<IActionResult> GetCustomers()
+        {
+            var now = DateTime.UtcNow;
+
+            var rawCustomers = await _context.Customers
+                .AsNoTracking()
+                .Where(c => c.IsActive)
+                .Select(c => new
+                {
+                    c.CustomerId,
+                    c.LeadId,
+                    c.CustomerName,
+                    c.CustomerType,
+                    ContactDetails = c.ContactInfo,
+                    c.ServiceLocation,
+                    TotalBookings = _context.ServiceRequests.Count(sr => sr.CustomerId == c.CustomerId && sr.IsActive),
+                    CompletedBookings = _context.ServiceRequests.Count(sr => sr.CustomerId == c.CustomerId && sr.IsActive && sr.Status == "Completed"),
+                    TotalSpent = _context.ServiceRequests
+                        .Where(sr => sr.CustomerId == c.CustomerId && sr.IsActive && sr.Status == "Completed")
+                        .Sum(sr => (decimal?)sr.ActualPrice) ?? 0m,
+                    LatestService = _context.ServiceRequests
+                        .Where(sr => sr.CustomerId == c.CustomerId && sr.IsActive)
+                        .OrderByDescending(sr => sr.PreferredDate)
+                        .Select(sr => sr.RequestedService)
+                        .FirstOrDefault(),
+                    LatestDate = _context.ServiceRequests
+                        .Where(sr => sr.CustomerId == c.CustomerId && sr.IsActive)
+                        .OrderByDescending(sr => sr.PreferredDate)
+                        .Select(sr => (DateTime?)sr.PreferredDate)
+                        .FirstOrDefault(),
+                    LatestCompletedDate = _context.ServiceRequests
+                        .Where(sr => sr.CustomerId == c.CustomerId && sr.IsActive && sr.Status == "Completed")
+                        .OrderByDescending(sr => sr.PreferredDate)
+                        .Select(sr => (DateTime?)sr.PreferredDate)
+                        .FirstOrDefault()
+                })
+                .OrderBy(c => c.CustomerName)
+                .ToListAsync();
+
+            var result = rawCustomers.Select(c =>
+            {
+                int? daysSince = c.LatestCompletedDate.HasValue
+                    ? (int?)Math.Max(0, (now - c.LatestCompletedDate.Value).TotalDays)
+                    : (c.LatestDate.HasValue ? (int?)Math.Max(0, (now - c.LatestDate.Value).TotalDays) : null);
+
+                bool isAtRisk = c.CompletedBookings > 0 && daysSince.HasValue && daysSince.Value >= 60;
+                string retentionStatus = isAtRisk
+                    ? "At-Risk"
+                    : (c.CompletedBookings > 1 ? "Repeat" : (c.CompletedBookings == 1 ? "Active" : "New"));
+
+                return new CustomerSummaryDto
+                {
+                    CustomerId           = c.CustomerId,
+                    LeadId               = c.LeadId,
+                    CustomerName         = c.CustomerName,
+                    CustomerType         = c.CustomerType,
+                    ContactDetails       = c.ContactDetails,
+                    ServiceLocation      = c.ServiceLocation,
+                    TotalBookings        = c.TotalBookings,
+                    CompletedBookings    = c.CompletedBookings,
+                    TotalSpent           = c.TotalSpent,
+                    DaysSinceLastService = daysSince,
+                    IsAtRisk             = isAtRisk,
+                    RetentionStatus      = retentionStatus,
+                    LatestService        = c.LatestService,
+                    LatestDate           = c.LatestDate
+                };
+            }).ToList();
+
+            return Ok(result);
         }
 
         // ============================================================

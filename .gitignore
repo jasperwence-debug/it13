@@ -1,0 +1,16 @@
+## Visual Studio / Build Artifacts
+[Bb]in/
+[Oo]bj/
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Backup / Temporary Folders
+App.Infrastructure - Copy/
+*.user.user
+*.tmp
+*.log

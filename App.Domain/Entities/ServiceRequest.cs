@@ -21,6 +21,10 @@ namespace App.Domain.Entities
         public int? ServiceId { get; set; }
         public Service? Service { get; set; }
 
+        // Foreign key to Branch (optional — used by Tenant C Medium Enterprise multi-branch routing)
+        public int? BranchId { get; set; }
+        public Branch? Branch { get; set; }
+
         // Service info
         public string RequestedService { get; set; } = string.Empty;
         public string ServiceType
@@ -35,9 +39,17 @@ namespace App.Domain.Entities
         public string? Notes { get; set; }
         public string AssignedSalesStaff { get; set; } = string.Empty;
         public string Status { get; set; } = "Requested";
+        public decimal? QuotedPrice { get; set; }
         public decimal? ActualPrice { get; set; }
 
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // Quality Assurance & Customer Feedback (Phase 6)
+        public int? Rating { get; set; } // 1 to 5 stars
+        public string? FeedbackNotes { get; set; }
+        public string? InspectionStatus { get; set; } // "Passed", "NeedsRework", "Pending"
+        public string? InspectedBy { get; set; }
+        public DateTime? FeedbackDate { get; set; }
     }
 }

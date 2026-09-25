@@ -13,6 +13,11 @@ namespace App.Domain.Entities
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        /// <summary>
+        /// Traceability back to the originating Lead if this customer was converted from an inquiry.
+        /// </summary>
+        public int? LeadId { get; set; }
+
         // Domain property aliases
         public int Id
         {

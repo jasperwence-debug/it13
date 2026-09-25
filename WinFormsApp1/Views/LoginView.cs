@@ -26,32 +26,48 @@ namespace App.WinForms.Views
         public event EventHandler? LoginSuccess;
         public Button LoginButton => _btnLogin;
 
-        // WS_EX_COMPOSITED — prevents ghosting, flickering, and repaint artifacts
-        protected override CreateParams CreateParams
-        {
-            get
-            {
-                CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
-                return cp;
-            }
-        }
-
         public LoginView()
         {
             // Desktop Form Configuration
             Text = "Cleaning Services CRM - Sign In";
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.Sizable;
-            MinimumSize = new Size(800, 600);
-            ClientSize = new Size(960, 680);
+            MinimumSize = new Size(800, 640);
+            ClientSize = new Size(960, 720);
             MaximizeBox = true;
             MinimizeBox = true;
-            BackColor = Color.FromArgb(15, 23, 42); // #0F172A Deep Navy
+            BackColor = Color.FromArgb(248, 250, 252); // #F8FAFC slate-50 base
             DoubleBuffered = true;
+            ResizeRedraw = true;
 
             InitializeFigmaLoginUI();
             AcceptButton = _btnLogin;
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            base.OnPaintBackground(e);
+            if (ClientRectangle.Width <= 0 || ClientRectangle.Height <= 0) return;
+
+            // Soft wash: slate-50 (#F8FAFC) -> blue-50 (#EFF6FF) -> indigo-100 (#E0E7FF)
+            using var brush = new LinearGradientBrush(
+                ClientRectangle,
+                Color.FromArgb(248, 250, 252),
+                Color.FromArgb(224, 231, 255),
+                LinearGradientMode.ForwardDiagonal);
+
+            var cb = new ColorBlend(3)
+            {
+                Colors = new[]
+                {
+                    Color.FromArgb(248, 250, 252), // slate-50 #F8FAFC
+                    Color.FromArgb(239, 246, 255), // blue-50 #EFF6FF
+                    Color.FromArgb(224, 231, 255)  // indigo-100 #E0E7FF
+                },
+                Positions = new[] { 0f, 0.5f, 1f }
+            };
+            brush.InterpolationColors = cb;
+            e.Graphics.FillRectangle(brush, ClientRectangle);
         }
 
         private void InitializeFigmaLoginUI()
@@ -61,7 +77,7 @@ namespace App.WinForms.Views
             // Centered master container hosting Header + White Card
             _pnlCenter = new Panel
             {
-                Size = new Size(460, 500),
+                Size = new Size(460, 600),
                 BackColor = Color.Transparent
             };
             Controls.Add(_pnlCenter);
@@ -73,7 +89,7 @@ namespace App.WinForms.Views
 
             // 2. Centered White Card
             _pnlCard = CreateLoginCard();
-            _pnlCard.Location = new Point(0, 116);
+            _pnlCard.Location = new Point(0, 136);
             _pnlCenter.Controls.Add(_pnlCard);
 
             // Re-center on window resize
@@ -96,22 +112,26 @@ namespace App.WinForms.Views
         {
             var pnl = new Panel
             {
-                Size = new Size(460, 104),
+                Size = new Size(460, 126),
                 BackColor = Color.Transparent
             };
 
-            // Blue Square Badge (44x44, rounded, with white cloud/download vector icon)
+            // Blue-Indigo Diagonal Gradient Badge (46x46, rounded, with white cloud/download vector icon)
             var pnlBadge = new Panel
             {
-                Size = new Size(44, 44),
-                Location = new Point((460 - 44) / 2, 0),
+                Size = new Size(46, 46),
+                Location = new Point((460 - 46) / 2, 0),
                 BackColor = Color.Transparent
             };
             pnlBadge.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using var brush = new SolidBrush(Color.FromArgb(37, 99, 235)); // Vibrant Blue #2563EB
-                using var path = CreateRoundedPath(new Rectangle(0, 0, 44, 44), 10);
+                using var brush = new LinearGradientBrush(
+                    new Rectangle(0, 0, 46, 46),
+                    Color.FromArgb(37, 99, 235), // blue-600 #2563EB
+                    Color.FromArgb(79, 70, 229), // indigo-600 #4F46E5
+                    LinearGradientMode.ForwardDiagonal);
+                using var path = CreateRoundedPath(new Rectangle(0, 0, 46, 46), 10);
                 e.Graphics.FillPath(brush, path);
 
                 // Cloud + arrow vector in crisp white
@@ -123,38 +143,38 @@ namespace App.WinForms.Views
                 };
 
                 // Cloud body
-                e.Graphics.DrawArc(pen, 13, 14, 10, 10, 150, 180);
-                e.Graphics.DrawArc(pen, 20, 11, 12, 12, 180, 160);
-                e.Graphics.DrawLine(pen, 12, 23, 32, 23);
+                e.Graphics.DrawArc(pen, 14, 15, 10, 10, 150, 180);
+                e.Graphics.DrawArc(pen, 21, 12, 12, 12, 180, 160);
+                e.Graphics.DrawLine(pen, 13, 24, 33, 24);
 
                 // Down arrow in center of cloud
-                e.Graphics.DrawLine(pen, 22, 17, 22, 28);
-                e.Graphics.DrawLine(pen, 19, 25, 22, 28);
-                e.Graphics.DrawLine(pen, 25, 25, 22, 28);
+                e.Graphics.DrawLine(pen, 23, 18, 23, 29);
+                e.Graphics.DrawLine(pen, 20, 26, 23, 29);
+                e.Graphics.DrawLine(pen, 26, 26, 23, 29);
             };
             pnl.Controls.Add(pnlBadge);
 
-            // Main Title
+            // Main Title - Generous height prevents vertical font clipping
             var lblTitle = new Label
             {
                 Text = "CLEANING SERVICES CRM",
                 Font = new Font("Segoe UI", 13.5F, FontStyle.Bold),
-                ForeColor = Color.White,
+                ForeColor = Color.FromArgb(15, 23, 42), // Slate-900
                 TextAlign = ContentAlignment.MiddleCenter,
-                Size = new Size(460, 26),
-                Location = new Point(0, 52)
+                Size = new Size(460, 36),
+                Location = new Point(0, 56)
             };
             pnl.Controls.Add(lblTitle);
 
-            // Subtitle
+            // Subtitle - Clear separation and height prevents text overlap
             var lblSub = new Label
             {
                 Text = "Operations & Client Management Platform",
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(148, 163, 184), // Slate-400
+                ForeColor = Color.FromArgb(71, 85, 105), // Slate-600
                 TextAlign = ContentAlignment.MiddleCenter,
-                Size = new Size(460, 20),
-                Location = new Point(0, 80)
+                Size = new Size(460, 24),
+                Location = new Point(0, 94)
             };
             pnl.Controls.Add(lblSub);
 
@@ -168,7 +188,7 @@ namespace App.WinForms.Views
         {
             var card = new Panel
             {
-                Size = new Size(460, 384),
+                Size = new Size(460, 440),
                 BackColor = Color.White
             };
 
@@ -186,26 +206,49 @@ namespace App.WinForms.Views
             card.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+                // Left panel accent with diagonal gradient: blue-600 (#2563EB) -> indigo-600 (#4F46E5) -> purple-700 (#7E22CE)
+                var accentRect = new Rectangle(0, 0, 6, card.Height);
+                using (var accentBrush = new LinearGradientBrush(
+                    accentRect,
+                    Color.FromArgb(37, 99, 235),
+                    Color.FromArgb(126, 34, 206),
+                    LinearGradientMode.ForwardDiagonal))
+                {
+                    var cb = new ColorBlend(3)
+                    {
+                        Colors = new[]
+                        {
+                            Color.FromArgb(37, 99, 235),  // blue-600 #2563EB
+                            Color.FromArgb(79, 70, 229),  // indigo-600 #4F46E5
+                            Color.FromArgb(126, 34, 206)  // purple-700 #7E22CE
+                        },
+                        Positions = new[] { 0f, 0.5f, 1f }
+                    };
+                    accentBrush.InterpolationColors = cb;
+                    e.Graphics.FillRectangle(accentBrush, accentRect);
+                }
+
                 using var borderPen = new Pen(Color.FromArgb(226, 232, 240), 1f);
                 using var path = CreateRoundedPath(new Rectangle(0, 0, card.Width - 1, card.Height - 1), 12);
                 e.Graphics.DrawPath(borderPen, path);
             };
 
-            int top = 28;
+            int top = 26;
             const int left = 32;
             const int width = 396; // 460 - 64
 
-            // Section Title: "Sign in"
+            // Section Title: "Sign in" - Generous height prevents vertical clipping
             var lblSectionTitle = new Label
             {
                 Text = "Sign in",
                 Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(15, 23, 42), // Dark Slate
                 Location = new Point(left, top),
-                Size = new Size(width, 28)
+                Size = new Size(width, 36)
             };
             card.Controls.Add(lblSectionTitle);
-            top += 30;
+            top += 40;
 
             // Subtext: "Enter your credentials to access the platform."
             var lblSectionSub = new Label
@@ -214,10 +257,10 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(100, 116, 139), // Slate-500
                 Location = new Point(left, top),
-                Size = new Size(width, 20)
+                Size = new Size(width, 22)
             };
             card.Controls.Add(lblSectionSub);
-            top += 28;
+            top += 30;
 
             // USERNAME Label
             var lblUser = new Label
@@ -226,10 +269,10 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(100, 116, 139),
                 Location = new Point(left, top),
-                Size = new Size(width, 16)
+                Size = new Size(width, 18)
             };
             card.Controls.Add(lblUser);
-            top += 18;
+            top += 20;
 
             // USERNAME Flat Input Box
             var pnlUser = CreateFlatInput(out _txtUsername, isPassword: false, placeholder: "admin, superadmin, or sales");
@@ -245,44 +288,31 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(100, 116, 139),
                 Location = new Point(left, top),
-                Size = new Size(width, 16)
+                Size = new Size(width, 18)
             };
             card.Controls.Add(lblPass);
-            top += 18;
+            top += 20;
 
             // PASSWORD Flat Input Box
             var pnlPass = CreateFlatInput(out _txtPassword, isPassword: true, placeholder: "");
             pnlPass.Location = new Point(left, top);
             pnlPass.Size = new Size(width, 40);
             card.Controls.Add(pnlPass);
-            top += 52;
+            top += 50;
 
-            // Primary Action Button: "Sign In"
-            _btnLogin = new Button
+            // Primary Action Button: "Sign In" with gradient, scale & shadow effects
+            _btnLogin = new LoginGradientButton
             {
                 Text = "Sign In",
                 Location = new Point(left, top),
-                Size = new Size(width, 42),
+                Size = new Size(width, 44),
                 Cursor = Cursors.Hand,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(37, 99, 235), // Primary Blue #2563EB
                 ForeColor = Color.White
             };
-            _btnLogin.FlatAppearance.BorderSize = 0;
-            _btnLogin.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
-            _btnLogin.Resize += (s, e) =>
-            {
-                using var btnPath = CreateRoundedPath(new Rectangle(0, 0, _btnLogin.Width, _btnLogin.Height), 6);
-                _btnLogin.Region = new Region(btnPath);
-            };
-            using (var btnPath = CreateRoundedPath(new Rectangle(0, 0, _btnLogin.Width, _btnLogin.Height), 6))
-            {
-                _btnLogin.Region = new Region(btnPath);
-            }
             _btnLogin.Click += BtnLogin_Click;
             card.Controls.Add(_btnLogin);
-            top += 46;
+            top += 52;
 
             // Status message label (subtle, non-intrusive)
             _lblStatus = new Label
@@ -292,10 +322,10 @@ namespace App.WinForms.Views
                 ForeColor = Color.FromArgb(220, 38, 38),
                 TextAlign = ContentAlignment.MiddleCenter,
                 Location = new Point(left, top),
-                Size = new Size(width, 16)
+                Size = new Size(width, 18)
             };
             card.Controls.Add(_lblStatus);
-            top += 18;
+            top += 20;
 
             // 3. DEMO CREDENTIALS HELPER SECTION
             var lblDemo = new Label
@@ -304,10 +334,10 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 8F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(148, 163, 184), // Slate-400
                 Location = new Point(left, top),
-                Size = new Size(width, 16)
+                Size = new Size(width, 18)
             };
             card.Controls.Add(lblDemo);
-            top += 18;
+            top += 22;
 
             // 3 Side-by-Side Demo Cards
             var pnlDemoCards = CreateDemoCredentialsRow(width);
@@ -456,8 +486,8 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(51, 65, 85), // Slate-700
                 TextAlign = ContentAlignment.MiddleCenter,
-                Size = new Size(width, 18),
-                Location = new Point(0, 7),
+                Size = new Size(width, 20),
+                Location = new Point(0, 5),
                 Cursor = Cursors.Hand
             };
             card.Controls.Add(lblTitle);
@@ -468,7 +498,7 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 7.5F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(100, 116, 139), // Slate-500
                 TextAlign = ContentAlignment.MiddleCenter,
-                Size = new Size(width, 16),
+                Size = new Size(width, 18),
                 Location = new Point(0, 25),
                 Cursor = Cursors.Hand
             };
@@ -636,6 +666,152 @@ namespace App.WinForms.Views
                 return new User { Id = 3, Username = "manager", PasswordHash = "manager123", Role = Roles.Manager };
 
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Specialized gradient CTA button for the Login View.
+    /// Features left-to-right gradient (#2563EB -> #4F46E5), hover shift (#1D4ED8 -> #4338CA),
+    /// scale effect (1.02 on hover, 0.98 on click), and dynamic drop shadows (shadow-lg to shadow-xl).
+    /// </summary>
+    internal class LoginGradientButton : Button
+    {
+        private bool _isHovered;
+        private bool _isPressed;
+
+        public LoginGradientButton()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.ResizeRedraw |
+                     ControlStyles.UserPaint, true);
+            DoubleBuffered = true;
+            Cursor = Cursors.Hand;
+            FlatStyle = FlatStyle.Flat;
+            FlatAppearance.BorderSize = 0;
+        }
+
+        protected override void OnMouseEnter(EventArgs e)
+        {
+            base.OnMouseEnter(e);
+            _isHovered = true;
+            Invalidate();
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            _isHovered = false;
+            _isPressed = false;
+            Invalidate();
+        }
+
+        protected override void OnMouseDown(MouseEventArgs mevent)
+        {
+            base.OnMouseDown(mevent);
+            if (mevent.Button == MouseButtons.Left)
+            {
+                _isPressed = true;
+                Invalidate();
+            }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs mevent)
+        {
+            base.OnMouseUp(mevent);
+            _isPressed = false;
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+            // Clear background with parent's backcolor
+            using (var bgBrush = new SolidBrush(Parent?.BackColor ?? Color.White))
+            {
+                g.FillRectangle(bgBrush, ClientRectangle);
+            }
+
+            // Inset bounds slightly to provide room for shadow and 1.02 scale
+            int marginX = 4;
+            int marginY = 4;
+            var baseRect = new Rectangle(marginX, marginY, Width - (marginX * 2), Height - (marginY * 2));
+
+            Rectangle drawRect;
+            if (_isPressed)
+            {
+                // Scale 0.98 on click
+                int dx = Math.Max(1, (int)Math.Round(baseRect.Width * 0.01f));
+                int dy = Math.Max(1, (int)Math.Round(baseRect.Height * 0.01f));
+                drawRect = new Rectangle(baseRect.X + dx, baseRect.Y + dy, baseRect.Width - (dx * 2), baseRect.Height - (dy * 2));
+            }
+            else if (_isHovered)
+            {
+                // Scale 1.02 on hover
+                int dx = Math.Max(1, (int)Math.Round(baseRect.Width * 0.01f));
+                int dy = Math.Max(1, (int)Math.Round(baseRect.Height * 0.01f));
+                drawRect = new Rectangle(baseRect.X - dx, baseRect.Y - dy, baseRect.Width + (dx * 2), baseRect.Height + (dy * 2));
+            }
+            else
+            {
+                drawRect = baseRect;
+            }
+
+            // Shadow grows from shadow-lg at rest to shadow-xl on hover
+            int shadowLayers = _isHovered ? 4 : 2;
+            int shadowAlpha = _isHovered ? 20 : 12;
+            for (int i = shadowLayers; i >= 1; i--)
+            {
+                var shadowRect = new Rectangle(drawRect.X - i, drawRect.Y + (i * 2) - 1, drawRect.Width + (i * 2), drawRect.Height + (i * 2));
+                using var shadowPath = CreateRoundedPath(shadowRect, 8);
+                using var shadowBrush = new SolidBrush(Color.FromArgb(shadowAlpha, 37, 99, 235));
+                g.FillPath(shadowBrush, shadowPath);
+            }
+
+            // Gradient: Left-to-right from blue-600 (#2563eb) to indigo-600 (#4f46e5)
+            // Hover/Pressed: blue-700 (#1d4ed8) to indigo-700 (#4338ca)
+            Color startColor = (_isHovered || _isPressed) ? Color.FromArgb(29, 78, 216) : Color.FromArgb(37, 99, 235);
+            Color endColor = (_isHovered || _isPressed) ? Color.FromArgb(67, 56, 202) : Color.FromArgb(79, 70, 229);
+
+            if (!Enabled)
+            {
+                startColor = Color.FromArgb(148, 163, 184); // Slate-400
+                endColor = Color.FromArgb(148, 163, 184);
+            }
+
+            using (var fillBrush = new LinearGradientBrush(drawRect, startColor, endColor, LinearGradientMode.Horizontal))
+            {
+                using var buttonPath = CreateRoundedPath(drawRect, 6);
+                g.FillPath(fillBrush, buttonPath);
+            }
+
+            // Button label centered in crisp white bold font
+            TextRenderer.DrawText(
+                g,
+                Text,
+                Font,
+                drawRect,
+                ForeColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine
+            );
+        }
+
+        private static GraphicsPath CreateRoundedPath(Rectangle rect, int radius)
+        {
+            var path = new GraphicsPath();
+            int d = radius * 2;
+            if (d > rect.Width) d = rect.Width;
+            if (d > rect.Height) d = rect.Height;
+
+            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
+            path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
+            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
         }
     }
 

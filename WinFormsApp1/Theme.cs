@@ -1,4 +1,6 @@
+using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace App.WinForms
@@ -188,33 +190,128 @@ namespace App.WinForms
         // ============================================================
 
         /// <summary>
-        /// Primary CTA button: solid blue background, white label, flat.
-        /// Use for the most important action in a view (Save, Next, Confirm).
+        /// Primary CTA button: modern gradient (#2563EB -> #4F46E5), hover shift (#1D4ED8 -> #4338CA),
+        /// crisp white label, smooth rounded corners.
+        /// Use for the single most important action in a view or dialog (Submit, Create, Save, Confirm).
         /// </summary>
         public static void ApplyPrimaryButtonStyle(Button btn)
         {
             btn.FlatStyle = FlatStyle.Flat;
             btn.FlatAppearance.BorderSize = 0;
-            btn.FlatAppearance.MouseOverBackColor = PrimaryDark;
             btn.BackColor = Primary;
             btn.ForeColor = Color.White;
-            btn.Font = BodyBoldFont;
+            btn.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
+            btn.Cursor = Cursors.Hand;
+            btn.UseVisualStyleBackColor = false;
+
+            btn.Paint -= OnPrimaryButtonPaint;
+            btn.Paint += OnPrimaryButtonPaint;
+
+            btn.MouseEnter -= OnButtonStateInvalidate;
+            btn.MouseEnter += OnButtonStateInvalidate;
+            btn.MouseLeave -= OnButtonStateInvalidate;
+            btn.MouseLeave += OnButtonStateInvalidate;
+            btn.MouseDown -= OnButtonStateInvalidate;
+            btn.MouseDown += OnButtonStateInvalidate;
+            btn.MouseUp -= OnButtonStateInvalidate;
+            btn.MouseUp += OnButtonStateInvalidate;
+        }
+
+        private static void OnButtonStateInvalidate(object? sender, EventArgs e)
+        {
+            if (sender is Button b) b.Invalidate();
+        }
+
+        private static void OnPrimaryButtonPaint(object? sender, PaintEventArgs e)
+        {
+            if (sender is not Button btn) return;
+
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            var rect = btn.ClientRectangle;
+            if (rect.Width <= 0 || rect.Height <= 0) return;
+
+            using (var bgBrush = new SolidBrush(btn.Parent?.BackColor ?? Surface))
+            {
+                g.FillRectangle(bgBrush, rect);
+            }
+
+            var isHover = btn.ClientRectangle.Contains(btn.PointToClient(Cursor.Position));
+            var isPressed = isHover && (Control.MouseButtons & MouseButtons.Left) != 0;
+
+            var drawRect = new Rectangle(0, 0, btn.Width, btn.Height);
+
+            Color startColor = (isHover || isPressed) ? Color.FromArgb(29, 78, 216) : Color.FromArgb(37, 99, 235);
+            Color endColor = (isHover || isPressed) ? Color.FromArgb(67, 56, 202) : Color.FromArgb(79, 70, 229);
+
+            if (!btn.Enabled)
+            {
+                startColor = Color.FromArgb(148, 163, 184);
+                endColor = Color.FromArgb(148, 163, 184);
+            }
+
+            using (var brush = new LinearGradientBrush(drawRect, startColor, endColor, LinearGradientMode.Horizontal))
+            {
+                using var path = CreateRoundedRectanglePath(drawRect, 6);
+                g.FillPath(brush, path);
+            }
+
+            TextRenderer.DrawText(
+                g,
+                btn.Text,
+                btn.Font,
+                drawRect,
+                btn.ForeColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine
+            );
+        }
+
+        private static GraphicsPath CreateRoundedRectanglePath(Rectangle rect, int radius)
+        {
+            var path = new GraphicsPath();
+            int d = radius * 2;
+            if (d > rect.Width) d = rect.Width;
+            if (d > rect.Height) d = rect.Height;
+
+            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
+            path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
+            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        /// <summary>
+        /// Secondary / neutral button: light slate background, subtle border, dark label.
+        /// Use for Cancel, Back, Refresh, and secondary operational actions without visual noise.
+        /// </summary>
+        public static void ApplySecondaryButtonStyle(Button btn)
+        {
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 1;
+            btn.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225); // #CBD5E1
+            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(226, 232, 240); // #E2E8F0
+            btn.BackColor = Color.FromArgb(241, 245, 249); // #F1F5F9
+            btn.ForeColor = Color.FromArgb(51, 65, 85);    // #334155
+            btn.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
             btn.Cursor = Cursors.Hand;
             btn.UseVisualStyleBackColor = false;
         }
 
         /// <summary>
-        /// Secondary / ghost button: light border background, dark label, flat.
-        /// Use for Cancel, Back, and non-destructive secondary actions.
+        /// Destructive / cancellation button: subtle muted red border & tint, dark crimson label.
+        /// Avoids screaming loud colors while maintaining clear intent.
         /// </summary>
-        public static void ApplySecondaryButtonStyle(Button btn)
+        public static void ApplyDestructiveButtonStyle(Button btn)
         {
             btn.FlatStyle = FlatStyle.Flat;
-            btn.FlatAppearance.BorderSize = 0;
-            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(203, 213, 225); // #CBD5E1
-            btn.BackColor = Border;
-            btn.ForeColor = TextDark;
-            btn.Font = BodyFont;
+            btn.FlatAppearance.BorderSize = 1;
+            btn.FlatAppearance.BorderColor = Color.FromArgb(254, 202, 202); // #FECDD3
+            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(254, 226, 226); // #FEE2E2
+            btn.BackColor = Color.FromArgb(254, 242, 242); // #FEF2F2
+            btn.ForeColor = Color.FromArgb(185, 28, 28);    // #B91C1C
+            btn.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             btn.Cursor = Cursors.Hand;
             btn.UseVisualStyleBackColor = false;
         }

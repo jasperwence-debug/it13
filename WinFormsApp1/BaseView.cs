@@ -26,25 +26,11 @@ namespace App.WinForms
         private Label _lblToast = null!;
         private System.Windows.Forms.Timer _toastTimer = null!;
 
-        // ----------------------------------------------------------------
-        // WS_EX_COMPOSITED — prevents ghosting in layered WinForms controls
-        // ----------------------------------------------------------------
-        protected override CreateParams CreateParams
-        {
-            get
-            {
-                CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
-                return cp;
-            }
-        }
-
         public BaseView()
         {
-            // ---- Anti-flicker ----
+            // ---- Anti-flicker double buffering ----
             SetStyle(
                 ControlStyles.AllPaintingInWmPaint |
-                ControlStyles.UserPaint |
                 ControlStyles.OptimizedDoubleBuffer,
                 true);
             UpdateStyles();
@@ -118,7 +104,7 @@ namespace App.WinForms
                 Font = Theme.CaptionFont,
                 ForeColor = Theme.TextMuted,
                 BackColor = Theme.Surface,
-                Location = new Point(0, lblTitle.PreferredHeight + 10),
+                Location = new Point(0, 28),
                 AutoSize = true,
                 Margin = new Padding(0, 4, 0, 10)
             };

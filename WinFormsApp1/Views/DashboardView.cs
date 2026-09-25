@@ -85,7 +85,7 @@ namespace App.WinForms.Views
             };
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 68F));   // Row 0: Header (68px)
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 136F));  // Row 1: 4 KPI Cards (136px)
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 142F));  // Row 1: 4 KPI Cards (142px)
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 350F));  // Row 2: Middle Split (350px)
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 330F));  // Row 3: Bottom Split (330px)
             mainScrollPanel.Controls.Add(mainLayout);
@@ -169,7 +169,7 @@ namespace App.WinForms.Views
             {
                 MinimumSize = new Size(10, 10),
                 Dock = DockStyle.Fill,
-                Height = 136,
+                Height = 142,
                 ColumnCount = 4,
                 RowCount = 1,
                 Margin = new Padding(0, 0, 0, 16),
@@ -384,37 +384,37 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 8F, FontStyle.Bold),
                 ForeColor = Theme.TextMuted,
                 BackColor = Theme.Surface,
-                Location = new Point(18, 14),
-                Size = new Size(200, 18),
+                Location = new Point(18, 12),
+                Size = new Size(200, 20),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 AutoSize = false
             };
             card.Controls.Add(lblTitle);
 
-            // Value Label (24pt Bold, AutoSize = false, Height = 45, ContentAlignment.MiddleLeft)
+            // Value Label (24pt Bold, Height = 50, ContentAlignment.MiddleLeft)
             var valLabel = new Label
             {
                 Text = initialVal,
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 ForeColor = valColor,
                 BackColor = Theme.Surface,
-                Location = new Point(18, 36),
-                Size = new Size(200, 45),
+                Location = new Point(18, 34),
+                Size = new Size(200, 50),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleLeft
             };
             card.Controls.Add(valLabel);
 
-            // Subtext Label (Subtle, 8.5pt) - Positioned below the 45px value label
+            // Subtext Label (Subtle, 8.5pt) - Positioned cleanly below the 50px value label
             var lblSub = new Label
             {
                 Text = subtext,
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
                 ForeColor = Theme.TextSubtle,
                 BackColor = Theme.Surface,
-                Location = new Point(18, 86),
-                Size = new Size(200, 18),
+                Location = new Point(18, 88),
+                Size = new Size(200, 20),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 AutoSize = false
             };
@@ -465,7 +465,7 @@ namespace App.WinForms.Views
             {
                 MinimumSize = new Size(10, 10),
                 Dock = DockStyle.Top,
-                Height = 48,
+                Height = 56,
                 BackColor = Theme.Surface
             };
 
@@ -484,7 +484,7 @@ namespace App.WinForms.Views
                 Text = subtitle,
                 Font = Theme.CaptionFont, // 8.5pt Regular
                 ForeColor = Theme.TextMuted,
-                Location = new Point(0, 24),
+                Location = new Point(0, 28),
                 AutoSize = true
             };
             pnl.Controls.Add(lblSub);

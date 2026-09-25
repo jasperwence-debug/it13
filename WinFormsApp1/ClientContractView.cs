@@ -132,7 +132,7 @@ namespace App.WinForms.Views
                 return;
             }
 
-            using var modal = new NewBookingModalForm();
+            using var modal = new NewLeadDialog();
             if (modal.ShowDialog(FindForm()) == DialogResult.OK)
             {
                 await LoadRecordsAsync();
@@ -192,7 +192,7 @@ namespace App.WinForms.Views
             pnlTop.Controls.Add(_txtSearch);
 
             _btnSearch = new Button { Text = "Search", Size = new Size(90, 36), Cursor = Cursors.Hand };
-            Theme.ApplyPrimaryButtonStyle(_btnSearch);
+            Theme.ApplySecondaryButtonStyle(_btnSearch);
             _btnSearch.Location = new Point(356, 6);
             _btnSearch.Click += (s, e) => ApplySearchFilter();
             pnlTop.Controls.Add(_btnSearch);
@@ -207,7 +207,7 @@ namespace App.WinForms.Views
             };
             pnlTop.Controls.Add(_btnRefresh);
 
-            _btnNewBookingTop = new Button { Text = "➕  New Booking", Size = new Size(140, 36), Cursor = Cursors.Hand };
+            _btnNewBookingTop = new Button { Text = "➕  New Booking", Size = new Size(150, 36), Cursor = Cursors.Hand };
             Theme.ApplyPrimaryButtonStyle(_btnNewBookingTop);
             _btnNewBookingTop.Location = new Point(568, 6);
             _btnNewBookingTop.Click += async (s, e) => await OpenNewBookingModalAsync();
@@ -239,13 +239,14 @@ namespace App.WinForms.Views
             _btnCollectData.Click += async (s, e) => await OpenNewBookingModalAsync();
             pnlBottom.Controls.Add(_btnCollectData);
 
-            _btnEdit = new Button { Text = "✏️  Edit Selected", Size = new Size(140, 36), Location = new Point(205, 10), Cursor = Cursors.Hand };
-            Theme.ApplyPrimaryButtonStyle(_btnEdit);
+            _btnEdit = new Button { Text = "✏️  Edit Selected", Size = new Size(140, 36), Location = new Point(175, 10), Cursor = Cursors.Hand };
+            Theme.ApplySecondaryButtonStyle(_btnEdit);
+            _btnEdit.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             _btnEdit.Click += async (s, e) => await OnEditSelectedClickAsync();
             pnlBottom.Controls.Add(_btnEdit);
 
-            _btnDelete = new Button { Text = "🗑️  Delete Selected", Size = new Size(150, 36), Location = new Point(355, 10), Cursor = Cursors.Hand };
-            Theme.ApplyDangerButtonStyle(_btnDelete);
+            _btnDelete = new Button { Text = "🗑️  Delete Selected", Size = new Size(150, 36), Location = new Point(325, 10), Cursor = Cursors.Hand };
+            Theme.ApplyDestructiveButtonStyle(_btnDelete);
             _btnDelete.Click += async (s, e) => await OnDeleteSelectedClickAsync();
             pnlBottom.Controls.Add(_btnDelete);
 
