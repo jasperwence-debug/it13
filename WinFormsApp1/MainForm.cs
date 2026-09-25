@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using App.Domain.Entities;
 using App.WinForms.Core;
 
 namespace App.WinForms
@@ -58,6 +59,11 @@ namespace App.WinForms
 
         private readonly List<Button> _sidebarButtons = new();
         private Control[] _sidebarControlsInOrder = null!;
+
+        // Super Admin SaaS Maintenance Mode Controls
+        private Panel _pnlMaintenanceBanner = null!;
+        private Label _lblMaintenanceInfo = null!;
+        private Button _btnExitMaintenance = null!;
 
         public bool IsLoggedOut { get; private set; }
 
@@ -413,6 +419,51 @@ namespace App.WinForms
             _pnlHeader.Controls.Add(pnlHeaderBorder);
 
             // ============================================================
+            // SUPER ADMIN MAINTENANCE MODE BANNER
+            // ============================================================
+            _pnlMaintenanceBanner = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 44,
+                BackColor = Color.FromArgb(254, 243, 199), // Amber-100
+                Padding = new Padding(20, 6, 20, 6),
+                Visible = false
+            };
+            _pnlMaintenanceBanner.Paint += (s, e) =>
+            {
+                using var p = new Pen(Color.FromArgb(245, 158, 11), 1); // Amber-500
+                e.Graphics.DrawLine(p, 0, _pnlMaintenanceBanner.Height - 1, _pnlMaintenanceBanner.Width, _pnlMaintenanceBanner.Height - 1);
+            };
+            Controls.Add(_pnlMaintenanceBanner);
+
+            _lblMaintenanceInfo = new Label
+            {
+                Text = "🛠️ SUPER ADMIN MAINTENANCE MODE: Diagnosing Tenant",
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(146, 64, 14), // Amber-800
+                Dock = DockStyle.Left,
+                AutoSize = true,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            _pnlMaintenanceBanner.Controls.Add(_lblMaintenanceInfo);
+
+            _btnExitMaintenance = new Button
+            {
+                Text = "✕  Exit Maintenance Mode",
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(217, 119, 6), // Amber-600
+                FlatStyle = FlatStyle.Flat,
+                Height = 30,
+                Width = 195,
+                Dock = DockStyle.Right,
+                Cursor = Cursors.Hand
+            };
+            _btnExitMaintenance.FlatAppearance.BorderSize = 0;
+            _btnExitMaintenance.Click += (s, e) => DeactivateTenantMaintenanceMode();
+            _pnlMaintenanceBanner.Controls.Add(_btnExitMaintenance);
+
+            // ============================================================
             // CONTENT
             // ============================================================
             _pnlContent = new Panel
@@ -422,7 +473,11 @@ namespace App.WinForms
                 BackColor = Theme.Background
             };
             Controls.Add(_pnlContent);
+
+            // Ensure proper vertical stacking order: Header -> Maintenance Banner -> Content
             _pnlContent.BringToFront();
+            _pnlMaintenanceBanner.BringToFront();
+            _pnlHeader.BringToFront();
         }
 
         // ============================================================
@@ -462,31 +517,62 @@ namespace App.WinForms
 
             var role = SessionManager.CurrentUser.Role;
 
-            // OVERVIEW: Dashboard visible to Tenant roles (Admin, Manager, Staff).
-            // Super Admin is the platform programmer / SaaS vendor and lands on Master Tier subscription control.
-            btnDashboard.Visible = (role != Roles.SuperAdmin);
-            lblHeaderOverview.Visible = btnDashboard.Visible;
+            if (SessionManager.IsMaintenanceMode && SessionManager.MaintenanceTargetCompany != null)
+            {
+                var company = SessionManager.MaintenanceTargetCompany;
+                _pnlMaintenanceBanner.Visible = true;
+                _lblMaintenanceInfo.Text = $"🛠️ SUPER ADMIN MAINTENANCE MODE: Diagnosing Tenant '{company.CompanyName}' ({company.CompanyCode})";
 
-            // OPERATIONS: Customers, Schedule, Work Orders, Branches.
-            // Super Admin does NOT handle customer operations, bookings, or branches.
-            btnClientContract.Visible = (role != Roles.SuperAdmin);
-            btnSchedulingDispatch.Visible = (role != Roles.SuperAdmin);
-            btnWorkOrder.Visible = (role != Roles.SalesStaff && role != Roles.SuperAdmin);
-            btnBranches.Visible = (role != Roles.SalesStaff && role != Roles.SuperAdmin);
-            lblHeaderOperations.Visible = (btnClientContract.Visible || btnSchedulingDispatch.Visible || btnWorkOrder.Visible || btnBranches.Visible);
+                // In maintenance mode, unlock all operational modules for the Super Admin
+                btnDashboard.Visible = true;
+                lblHeaderOverview.Visible = true;
 
-            // PERFORMANCE: Retention visible to Tenant roles. Financials visible ONLY to Tenant Admin. Reports/Audit visible to SuperAdmin and Management.
-            btnSalesRetention.Visible = (role != Roles.SuperAdmin);
-            btnFinancial.Visible = (role == Roles.Admin);
-            btnReportsAudit.Visible = (role != Roles.SalesStaff);
-            lblHeaderPerformance.Visible = (btnSalesRetention.Visible || btnFinancial.Visible || btnReportsAudit.Visible);
+                btnClientContract.Visible = true;
+                btnSchedulingDispatch.Visible = true;
+                btnWorkOrder.Visible = true;
+                btnBranches.Visible = true;
+                lblHeaderOperations.Visible = true;
 
-            // ADMINISTRATION: Platform Master Tier.
-            // Super Admin handles selling the system to tenant admins, subscription plans, user provisioning, and maintenance.
-            btnUserManagement.Visible = (role == Roles.SuperAdmin);
-            btnManageSubscription.Visible = (role == Roles.SuperAdmin);
-            btnTermsManagement.Visible = true;
-            lblHeaderAdministration.Visible = (btnUserManagement.Visible || btnManageSubscription.Visible || btnTermsManagement.Visible);
+                btnSalesRetention.Visible = true;
+                btnFinancial.Visible = true;
+                btnReportsAudit.Visible = true;
+                lblHeaderPerformance.Visible = true;
+
+                btnUserManagement.Visible = true;
+                btnManageSubscription.Visible = true;
+                btnTermsManagement.Visible = true;
+                lblHeaderAdministration.Visible = true;
+            }
+            else
+            {
+                _pnlMaintenanceBanner.Visible = false;
+
+                // OVERVIEW: Dashboard visible to Tenant roles (Admin, Manager, Staff).
+                // Super Admin is the platform programmer / SaaS vendor and lands on Master Tier subscription control.
+                btnDashboard.Visible = (role != Roles.SuperAdmin);
+                lblHeaderOverview.Visible = btnDashboard.Visible;
+
+                // OPERATIONS: Customers, Schedule, Work Orders, Branches.
+                // Super Admin does NOT handle customer operations, bookings, or branches.
+                btnClientContract.Visible = (role != Roles.SuperAdmin);
+                btnSchedulingDispatch.Visible = (role != Roles.SuperAdmin);
+                btnWorkOrder.Visible = (role != Roles.SalesStaff && role != Roles.SuperAdmin);
+                btnBranches.Visible = (role != Roles.SalesStaff && role != Roles.SuperAdmin);
+                lblHeaderOperations.Visible = (btnClientContract.Visible || btnSchedulingDispatch.Visible || btnWorkOrder.Visible || btnBranches.Visible);
+
+                // PERFORMANCE: Retention visible to Tenant roles. Financials visible ONLY to Tenant Admin. Reports/Audit visible to SuperAdmin and Management.
+                btnSalesRetention.Visible = (role != Roles.SuperAdmin);
+                btnFinancial.Visible = (role == Roles.Admin);
+                btnReportsAudit.Visible = (role != Roles.SalesStaff);
+                lblHeaderPerformance.Visible = (btnSalesRetention.Visible || btnFinancial.Visible || btnReportsAudit.Visible);
+
+                // ADMINISTRATION: Platform Master Tier.
+                // Super Admin handles selling the system to tenant admins, subscription plans, user provisioning, and maintenance.
+                btnUserManagement.Visible = (role == Roles.SuperAdmin);
+                btnManageSubscription.Visible = (role == Roles.SuperAdmin);
+                btnTermsManagement.Visible = true;
+                lblHeaderAdministration.Visible = (btnUserManagement.Visible || btnManageSubscription.Visible || btnTermsManagement.Visible);
+            }
 
             BuildQuickActionMenu();
 
@@ -496,6 +582,8 @@ namespace App.WinForms
 
         private void HideAllModules()
         {
+            _pnlMaintenanceBanner.Visible = false;
+
             btnDashboard.Visible = false;
             btnClientContract.Visible = false;
             btnSchedulingDispatch.Visible = false;
@@ -1009,14 +1097,16 @@ namespace App.WinForms
                 return;
             }
 
-            if (SessionManager.CurrentUser?.Role == Roles.SuperAdmin &&
+            if (!SessionManager.IsMaintenanceMode && SessionManager.CurrentUser?.Role == Roles.SuperAdmin &&
                 (key == "clients" || key == "scheduling" || key == "workorders" || key == "branches" || key == "leads" || key == "retention" || key == "sales" || key == "financial" || key == "dashboard"))
             {
-                MessageBox.Show("Platform Notice: Super Administrators manage tenant subscriptions and system administration only. Operational modules (customers, schedules, work orders) are handled by tenant administrators.", "Access Restricted", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Platform Notice: Super Administrators manage tenant subscriptions and system administration only. Operational modules (customers, schedules, work orders) are handled by tenant administrators.\n\nTo inspect or troubleshoot this company's operations, use 'Maintenance Access' from User Management.", "Access Restricted", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            _lblPageTitle.Text = $"Cleaning CRM  ›  {headerText}";
+            _lblPageTitle.Text = SessionManager.IsMaintenanceMode && SessionManager.MaintenanceTargetCompany != null
+                ? $"Cleaning CRM  ›  [Maintenance: {SessionManager.MaintenanceTargetCompany.CompanyName}]  ›  {headerText}"
+                : $"Cleaning CRM  ›  {headerText}";
 
             _pnlContent.Controls.Clear();
 
@@ -1048,6 +1138,44 @@ namespace App.WinForms
                 view.Dock = DockStyle.Fill;
                 _pnlContent.Controls.Add(view);
             }
+        }
+
+        // ============================================================
+        // SaaS Multi-Tenant Support & Maintenance Mode (Super Admin)
+        // ============================================================
+        public void ActivateTenantMaintenanceMode(Company company)
+        {
+            SessionManager.EnterMaintenanceMode(company);
+            ApplyRolePermissions();
+
+            var btn = _sidebarButtons.FirstOrDefault(b => b.Tag?.ToString() == "dashboard");
+            if (btn != null) SetActiveButton(btn);
+
+            ShowView("dashboard", $"Tenant Dashboard ({company.CompanyName})");
+
+            MessageBox.Show(
+                $"Maintenance Mode Activated for '{company.CompanyName}' ({company.CompanyCode}).\n\nYou now have temporary diagnostic access to inspect this tenant's dashboard, schedules, and work orders.\n\nClick 'Exit Maintenance Mode' at the top banner when you are done.",
+                "Maintenance Mode Active",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
+        public void DeactivateTenantMaintenanceMode()
+        {
+            var compName = SessionManager.MaintenanceTargetCompany?.CompanyName ?? "Tenant";
+            SessionManager.ExitMaintenanceMode();
+            ApplyRolePermissions();
+
+            var btn = _sidebarButtons.FirstOrDefault(b => b.Tag?.ToString() == "users");
+            if (btn != null) SetActiveButton(btn);
+
+            ShowView("users", "User Management & Client Companies");
+
+            MessageBox.Show(
+                $"Exited Maintenance Mode for '{compName}'.\n\nReturned to SaaS Vendor Platform view.",
+                "Maintenance Mode Closed",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
     }
 }

@@ -35,5 +35,26 @@ namespace App.WinForms
         public static bool IsAdmin => IsInRole(Roles.Admin);
         public static bool IsManager => IsInRole(Roles.Manager);
         public static bool IsSalesStaff => IsInRole(Roles.SalesStaff);
+
+        // ============================================================
+        // SaaS Multi-Tenant Support & Maintenance Mode (Super Admin)
+        // ============================================================
+        public static bool IsMaintenanceMode { get; private set; }
+        public static Company? MaintenanceTargetCompany { get; private set; }
+
+        public static void EnterMaintenanceMode(Company company)
+        {
+            if (!IsSuperAdmin)
+                throw new InvalidOperationException("Only Super Administrators can activate tenant maintenance access.");
+
+            IsMaintenanceMode = true;
+            MaintenanceTargetCompany = company ?? throw new ArgumentNullException(nameof(company));
+        }
+
+        public static void ExitMaintenanceMode()
+        {
+            IsMaintenanceMode = false;
+            MaintenanceTargetCompany = null;
+        }
     }
 }
