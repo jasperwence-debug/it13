@@ -144,20 +144,30 @@ namespace App.WinForms.Core
                 }
                 else if (role == Roles.SuperAdmin)
                 {
-                    // Super Admin System Overview
-                    int requestedCount = workOrders.Count(w => string.Equals(w.Status, "Requested", StringComparison.OrdinalIgnoreCase));
-                    if (requestedCount > 0)
+                    // Super Admin Platform & Tenant Governance: Monitor tenant subscriptions and renewals
+                    var subs = await _api.GetSubscriptionsAsync();
+                    if (subs != null)
                     {
-                        list.Add(new NotificationItem
+                        var expiringOrSuspended = subs
+                            .Where(s => s.EndDate <= DateTime.Today.AddDays(7) || string.Equals(s.Status, "Suspended", StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+
+                        foreach (var sub in expiringOrSuspended)
                         {
-                            Type = NotificationType.SystemAlert,
-                            Title = "System Operational Backlog",
-                            Message = $"{requestedCount} booking requests currently pending operations manager review.",
-                            Timestamp = DateTime.Now,
-                            ActionLabel = "Open Scheduling",
-                            TargetType = "scheduling",
-                            Payload = null
-                        });
+                            bool isSuspended = string.Equals(sub.Status, "Suspended", StringComparison.OrdinalIgnoreCase);
+                            list.Add(new NotificationItem
+                            {
+                                Type = NotificationType.SystemAlert,
+                                Title = isSuspended ? $"Suspended Tenant: {sub.CompanyName}" : $"Subscription Expiring: {sub.CompanyName}",
+                                Message = isSuspended 
+                                    ? $"Tenant {sub.CompanyName} ({sub.Tier}) subscription is currently suspended." 
+                                    : $"Tenant {sub.CompanyName} ({sub.Tier}) plan ends on {sub.EndDate:MMM dd, yyyy}. Renewal required.",
+                                Timestamp = DateTime.Now,
+                                ActionLabel = "Manage Subscription",
+                                TargetType = "subscription",
+                                Payload = sub
+                            });
+                        }
                     }
                 }
             }

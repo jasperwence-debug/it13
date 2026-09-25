@@ -462,24 +462,27 @@ namespace App.WinForms
 
             var role = SessionManager.CurrentUser.Role;
 
-            // OVERVIEW: Dashboard visible to ALL.
-            btnDashboard.Visible = true;
-            lblHeaderOverview.Visible = true;
+            // OVERVIEW: Dashboard visible to Tenant roles (Admin, Manager, Staff).
+            // Super Admin is the platform programmer / SaaS vendor and lands on Master Tier subscription control.
+            btnDashboard.Visible = (role != Roles.SuperAdmin);
+            lblHeaderOverview.Visible = btnDashboard.Visible;
 
-            // OPERATIONS: Customers & Schedule visible to ALL. Work Orders & Branches hidden from Roles.SalesStaff.
-            btnClientContract.Visible = true;
-            btnSchedulingDispatch.Visible = true;
-            btnWorkOrder.Visible = (role != Roles.SalesStaff);
-            btnBranches.Visible = (role != Roles.SalesStaff);
+            // OPERATIONS: Customers, Schedule, Work Orders, Branches.
+            // Super Admin does NOT handle customer operations, bookings, or branches.
+            btnClientContract.Visible = (role != Roles.SuperAdmin);
+            btnSchedulingDispatch.Visible = (role != Roles.SuperAdmin);
+            btnWorkOrder.Visible = (role != Roles.SalesStaff && role != Roles.SuperAdmin);
+            btnBranches.Visible = (role != Roles.SalesStaff && role != Roles.SuperAdmin);
             lblHeaderOperations.Visible = (btnClientContract.Visible || btnSchedulingDispatch.Visible || btnWorkOrder.Visible || btnBranches.Visible);
 
-            // PERFORMANCE: Retention visible to ALL. Financials visible ONLY to Roles.Admin. Reports hidden from Roles.SalesStaff.
-            btnSalesRetention.Visible = true;
+            // PERFORMANCE: Retention visible to Tenant roles. Financials visible ONLY to Tenant Admin. Reports/Audit visible to SuperAdmin and Management.
+            btnSalesRetention.Visible = (role != Roles.SuperAdmin);
             btnFinancial.Visible = (role == Roles.Admin);
             btnReportsAudit.Visible = (role != Roles.SalesStaff);
             lblHeaderPerformance.Visible = (btnSalesRetention.Visible || btnFinancial.Visible || btnReportsAudit.Visible);
 
-            // ADMINISTRATION: Users & Subscriptions visible ONLY to Roles.SuperAdmin. Settings visible to ALL.
+            // ADMINISTRATION: Platform Master Tier.
+            // Super Admin handles selling the system to tenant admins, subscription plans, user provisioning, and maintenance.
             btnUserManagement.Visible = (role == Roles.SuperAdmin);
             btnManageSubscription.Visible = (role == Roles.SuperAdmin);
             btnTermsManagement.Visible = true;
@@ -555,6 +558,10 @@ namespace App.WinForms
             {
                 initialButton = btnDashboard;
             }
+            else if (role == Roles.SuperAdmin && btnManageSubscription.Visible)
+            {
+                initialButton = btnManageSubscription;
+            }
             else if (role == Roles.SuperAdmin && btnUserManagement.Visible)
             {
                 initialButton = btnUserManagement;
@@ -562,7 +569,8 @@ namespace App.WinForms
             else
             {
                 // Fallback priority
-                if (btnDashboard.Visible) initialButton = btnDashboard;
+                if (btnManageSubscription.Visible) initialButton = btnManageSubscription;
+                else if (btnDashboard.Visible) initialButton = btnDashboard;
                 else if (btnSchedulingDispatch.Visible) initialButton = btnSchedulingDispatch;
                 else if (btnClientContract.Visible) initialButton = btnClientContract;
                 else if (btnSalesRetention.Visible) initialButton = btnSalesRetention;
@@ -584,20 +592,29 @@ namespace App.WinForms
         {
             Button? initialButton = null;
 
-            if (btnDashboard.Visible)
-                initialButton = btnDashboard;
-            else if (btnClientContract.Visible)
-                initialButton = btnClientContract;
-            else if (btnSchedulingDispatch.Visible)
-                initialButton = btnSchedulingDispatch;
-            else if (btnWorkOrder.Visible)
-                initialButton = btnWorkOrder;
-            else if (btnSalesRetention.Visible)
-                initialButton = btnSalesRetention;
-            else if (btnFinancial.Visible)
-                initialButton = btnFinancial;
-            else if (btnUserManagement.Visible)
-                initialButton = btnUserManagement;
+            if (SessionManager.CurrentUser?.Role == Roles.SuperAdmin)
+            {
+                if (btnManageSubscription.Visible) initialButton = btnManageSubscription;
+                else if (btnUserManagement.Visible) initialButton = btnUserManagement;
+                else if (btnReportsAudit.Visible) initialButton = btnReportsAudit;
+            }
+            else
+            {
+                if (btnDashboard.Visible)
+                    initialButton = btnDashboard;
+                else if (btnClientContract.Visible)
+                    initialButton = btnClientContract;
+                else if (btnSchedulingDispatch.Visible)
+                    initialButton = btnSchedulingDispatch;
+                else if (btnWorkOrder.Visible)
+                    initialButton = btnWorkOrder;
+                else if (btnSalesRetention.Visible)
+                    initialButton = btnSalesRetention;
+                else if (btnFinancial.Visible)
+                    initialButton = btnFinancial;
+                else if (btnUserManagement.Visible)
+                    initialButton = btnUserManagement;
+            }
 
             if (initialButton != null)
             {
@@ -698,10 +715,10 @@ namespace App.WinForms
             }
             else if (role == Roles.SuperAdmin)
             {
-                AddQuickActionItem("👤  + Provision New User Account", () => OpenNewUserDialog());
-                AddQuickActionItem("👥  Open User Management Directory", () => NavigateToKey("users"));
-                AddQuickActionItem("📜  View System Compliance Audit", () => NavigateToKey("reports"));
-                AddQuickActionItem("📊  View System Overview", () => NavigateToKey("dashboard"));
+                AddQuickActionItem("🔁  Tenant Subscriptions & Quotas", () => NavigateToKey("subscription"));
+                AddQuickActionItem("👤  + Provision Tenant Admin Account", () => OpenNewUserDialog());
+                AddQuickActionItem("👥  Open User & Tenant Directory", () => NavigateToKey("users"));
+                AddQuickActionItem("📜  View System Compliance & Audit Trail", () => NavigateToKey("reports"));
             }
         }
 
@@ -833,6 +850,10 @@ namespace App.WinForms
             else if (item.TargetType == "scheduling")
             {
                 NavigateToKey("scheduling");
+            }
+            else if (item.TargetType == "subscription")
+            {
+                NavigateToKey("subscription");
             }
         }
 
@@ -985,6 +1006,13 @@ namespace App.WinForms
             if ((key == "subscription" || key == "users") && SessionManager.CurrentUser?.Role != Roles.SuperAdmin)
             {
                 MessageBox.Show("Access Denied: Only Super Administrators have permission to access this module.", "Restricted Access", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (SessionManager.CurrentUser?.Role == Roles.SuperAdmin &&
+                (key == "clients" || key == "scheduling" || key == "workorders" || key == "branches" || key == "leads" || key == "retention" || key == "sales" || key == "financial" || key == "dashboard"))
+            {
+                MessageBox.Show("Platform Notice: Super Administrators manage tenant subscriptions and system administration only. Operational modules (customers, schedules, work orders) are handled by tenant administrators.", "Access Restricted", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
