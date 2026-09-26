@@ -228,6 +228,7 @@ namespace App.WinForms
 
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
             var rect = btn.ClientRectangle;
             if (rect.Width <= 0 || rect.Height <= 0) return;
@@ -240,14 +241,53 @@ namespace App.WinForms
             var isHover = btn.ClientRectangle.Contains(btn.PointToClient(Cursor.Position));
             var isPressed = isHover && (Control.MouseButtons & MouseButtons.Left) != 0;
 
-            var drawRect = new Rectangle(0, 0, btn.Width, btn.Height);
+            // Inset bounds slightly (2px margin) to provide room for shadow and scale effect
+            int marginX = 2;
+            int marginY = 2;
+            var baseRect = new Rectangle(marginX, marginY, btn.Width - (marginX * 2), btn.Height - (marginY * 2));
 
+            Rectangle drawRect;
+            if (isPressed)
+            {
+                // Scale 0.98 on click
+                int dx = Math.Max(1, (int)Math.Round(baseRect.Width * 0.01f));
+                int dy = Math.Max(1, (int)Math.Round(baseRect.Height * 0.01f));
+                drawRect = new Rectangle(baseRect.X + dx, baseRect.Y + dy, baseRect.Width - (dx * 2), baseRect.Height - (dy * 2));
+            }
+            else if (isHover)
+            {
+                // Scale 1.02 on hover
+                int dx = Math.Max(1, (int)Math.Round(baseRect.Width * 0.01f));
+                int dy = Math.Max(1, (int)Math.Round(baseRect.Height * 0.01f));
+                drawRect = new Rectangle(baseRect.X - dx, baseRect.Y - dy, baseRect.Width + (dx * 2), baseRect.Height + (dy * 2));
+            }
+            else
+            {
+                drawRect = baseRect;
+            }
+
+            // Shadow grows from large (2 layers, alpha 12) at rest to extra-large (4 layers, alpha 20) on hover
+            if (btn.Enabled)
+            {
+                int shadowLayers = isHover ? 4 : 2;
+                int shadowAlpha = isHover ? 20 : 12;
+                for (int i = shadowLayers; i >= 1; i--)
+                {
+                    var shadowRect = new Rectangle(drawRect.X - i, drawRect.Y + (i * 2) - 1, drawRect.Width + (i * 2), drawRect.Height + (i * 2));
+                    using var shadowPath = CreateRoundedRectanglePath(shadowRect, 8);
+                    using var shadowBrush = new SolidBrush(Color.FromArgb(shadowAlpha, 37, 99, 235));
+                    g.FillPath(shadowBrush, shadowPath);
+                }
+            }
+
+            // Gradient: Left-to-right from blue-600 (#2563EB) to indigo-600 (#4F46E5)
+            // Hover/Pressed: blue-700 (#1D4ED8) to indigo-700 (#4338CA)
             Color startColor = (isHover || isPressed) ? Color.FromArgb(29, 78, 216) : Color.FromArgb(37, 99, 235);
             Color endColor = (isHover || isPressed) ? Color.FromArgb(67, 56, 202) : Color.FromArgb(79, 70, 229);
 
             if (!btn.Enabled)
             {
-                startColor = Color.FromArgb(148, 163, 184);
+                startColor = Color.FromArgb(148, 163, 184); // Slate-400
                 endColor = Color.FromArgb(148, 163, 184);
             }
 
@@ -283,8 +323,9 @@ namespace App.WinForms
         }
 
         /// <summary>
-        /// Secondary / neutral button: light slate background, subtle border, dark label.
-        /// Use for Cancel, Back, Refresh, and secondary operational actions without visual noise.
+        /// Secondary / neutral button: light slate background (#F1F5F9), subtle border (#CBD5E1),
+        /// darker gray on hover (#E2E8F0), no gradient.
+        /// Use for Cancel, Back, Close, Refresh, and secondary operational actions.
         /// </summary>
         public static void ApplySecondaryButtonStyle(Button btn)
         {
@@ -300,34 +341,36 @@ namespace App.WinForms
         }
 
         /// <summary>
-        /// Destructive / cancellation button: subtle muted red border & tint, dark crimson label.
-        /// Avoids screaming loud colors while maintaining clear intent.
+        /// Destructive button: flat red background (#DC2626), darker red on hover (#B91C1C), white text.
+        /// Use for Delete, Remove, Cancel Record, and irreversible actions.
         /// </summary>
         public static void ApplyDestructiveButtonStyle(Button btn)
         {
             btn.FlatStyle = FlatStyle.Flat;
-            btn.FlatAppearance.BorderSize = 1;
-            btn.FlatAppearance.BorderColor = Color.FromArgb(254, 202, 202); // #FECDD3
-            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(254, 226, 226); // #FEE2E2
-            btn.BackColor = Color.FromArgb(254, 242, 242); // #FEF2F2
-            btn.ForeColor = Color.FromArgb(185, 28, 28);    // #B91C1C
+            btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(185, 28, 28); // #B91C1C
+            btn.BackColor = Color.FromArgb(220, 38, 38); // #DC2626
+            btn.ForeColor = Color.White;
             btn.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             btn.Cursor = Cursors.Hand;
             btn.UseVisualStyleBackColor = false;
         }
 
         /// <summary>
-        /// Danger button: solid red background, white label, flat.
-        /// Use for Delete, Remove, and irreversible destructive actions.
+        /// Danger button alias pointing to the standardized destructive button style.
         /// </summary>
-        public static void ApplyDangerButtonStyle(Button btn)
+        public static void ApplyDangerButtonStyle(Button btn) => ApplyDestructiveButtonStyle(btn);
+
+        /// <summary>
+        /// Icon-only button: transparent background by default, light gray background (#F1F5F9) on hover.
+        /// </summary>
+        public static void ApplyIconButtonStyle(Button btn)
         {
             btn.FlatStyle = FlatStyle.Flat;
             btn.FlatAppearance.BorderSize = 0;
-            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(185, 28, 28); // #B91C1C
-            btn.BackColor = Danger;
-            btn.ForeColor = Color.White;
-            btn.Font = BodyBoldFont;
+            btn.BackColor = Color.Transparent;
+            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(241, 245, 249); // #F1F5F9
+            btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(226, 232, 240); // #E2E8F0
             btn.Cursor = Cursors.Hand;
             btn.UseVisualStyleBackColor = false;
         }

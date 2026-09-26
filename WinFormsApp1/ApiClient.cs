@@ -134,6 +134,7 @@ namespace App.WinForms
     {
         public bool ForceCreate { get; set; } = false;
         public int? UseExistingCustomerId { get; set; }
+        public string? ServiceAddress { get; set; }
     }
 
     /// <summary>Potential duplicate customer details from 409 Conflict.</summary>
@@ -608,7 +609,7 @@ namespace App.WinForms
         /// Handles role-based access, duplicate resolution, and returns rich result info.
         /// NEVER creates ServiceRequests.
         /// </summary>
-        public async Task<LeadConvertApiResponse> ConvertLeadAsync(int leadId, bool forceCreate = false, int? useExistingCustomerId = null)
+        public async Task<LeadConvertApiResponse> ConvertLeadAsync(int leadId, bool forceCreate = false, int? useExistingCustomerId = null, string? serviceAddress = null)
         {
             try
             {
@@ -620,7 +621,8 @@ namespace App.WinForms
                 request.Content = JsonContent.Create(new LeadConvertRequestDto
                 {
                     ForceCreate = forceCreate,
-                    UseExistingCustomerId = useExistingCustomerId
+                    UseExistingCustomerId = useExistingCustomerId,
+                    ServiceAddress = serviceAddress
                 });
 
                 var response = await _http.SendAsync(request);

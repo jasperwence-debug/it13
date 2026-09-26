@@ -36,7 +36,7 @@ namespace App.WinForms.Views
 
         // Pagination State
         private int _currentPage = 1;
-        private int _pageSize = 20;
+        private int _pageSize = 25;
         private int _totalPages = 1;
 
         // Header Controls
@@ -514,8 +514,8 @@ namespace App.WinForms.Views
                 Font = Theme.CaptionFont,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            _cmbPageSize.Items.AddRange(new object[] { "10", "20", "50", "100" });
-            _cmbPageSize.SelectedIndex = 1; // 20 per page default
+            _cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100" });
+            _cmbPageSize.SelectedIndex = 1; // 25 per page default
             _cmbPageSize.SelectedIndexChanged += (s, e) =>
             {
                 if (int.TryParse(_cmbPageSize.SelectedItem?.ToString(), out int sz))
@@ -975,7 +975,7 @@ namespace App.WinForms.Views
 
             int startRow = skip + 1;
             int endRow = skip + pageItems.Count;
-            _lblPageInfo.Text = $"Showing {startRow}–{endRow} of {_filteredOrders.Count} bookings (Page {_currentPage} of {_totalPages})";
+            _lblPageInfo.Text = $"Showing {startRow} to {endRow} of {_filteredOrders.Count} records.";
 
             // Update Nav Buttons
             _btnFirstPage.Enabled = _currentPage > 1;

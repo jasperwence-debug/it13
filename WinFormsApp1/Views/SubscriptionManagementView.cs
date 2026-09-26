@@ -200,7 +200,7 @@ namespace App.WinForms.Views
             _lblTierDistribution = v3;
             pnlKpis.Controls.Add(k3, 2, 0);
 
-            var (k4, _, v4, _) = CreateKpiCard("RENEWALS DUE (<30D)", "0", "Awaiting billing cycle renewal", Color.FromArgb(234, 88, 12));
+            var (k4, _, v4, _) = CreateKpiCard("GRACE PERIOD / SUSP.", "0", "Dunning lifecycle tracking", Color.FromArgb(234, 88, 12));
             _lblExpiringCount = v4;
             pnlKpis.Controls.Add(k4, 3, 0);
 
@@ -326,6 +326,7 @@ namespace App.WinForms.Views
             {
                 "All Statuses",
                 "Active",
+                "Grace Period",
                 "Trial",
                 "Suspended",
                 "Cancelled"
@@ -624,20 +625,26 @@ namespace App.WinForms.Views
 
         private void UpdateKpis()
         {
-            decimal mrr = _allSubscriptions.Where(s => s.Status == "Active").Sum(s => s.MonthlyPrice);
-            int activeTenants = _allSubscriptions.Count(s => s.Status == "Active");
+            DateTime today = DateTime.Today;
+            decimal mrr = _allSubscriptions.Where(s => s.Status == "Active" && s.EndDate.Date >= today).Sum(s => s.MonthlyPrice);
+            int activeTenants = _allSubscriptions.Count(s => s.Status == "Active" && s.EndDate.Date >= today);
 
             int microCount = _allSubscriptions.Count(s => s.TierValue == 1 || s.Tier.Equals("Micro", StringComparison.OrdinalIgnoreCase));
             int smallCount = _allSubscriptions.Count(s => s.TierValue == 2 || s.Tier.Equals("Small", StringComparison.OrdinalIgnoreCase));
             int medCount = _allSubscriptions.Count(s => s.TierValue == 3 || s.Tier.Equals("Medium", StringComparison.OrdinalIgnoreCase));
 
-            DateTime cutoff = DateTime.UtcNow.AddDays(30);
-            int expiring = _allSubscriptions.Count(s => s.Status == "Active" && s.EndDate <= cutoff);
+            int graceCount = _allSubscriptions.Count(s =>
+                s.Status.Equals("Grace Period", StringComparison.OrdinalIgnoreCase) ||
+                (s.Status.Equals("Active", StringComparison.OrdinalIgnoreCase) && s.EndDate.Date < today && s.EndDate.Date >= today.AddDays(-7)));
+
+            int suspendedCount = _allSubscriptions.Count(s =>
+                s.Status.Equals("Suspended", StringComparison.OrdinalIgnoreCase) ||
+                (s.Status.Equals("Active", StringComparison.OrdinalIgnoreCase) && s.EndDate.Date < today.AddDays(-7)));
 
             _lblMrr.Text = $"₱{mrr:N2}";
             _lblActiveTenants.Text = $"{activeTenants} Tenant{(activeTenants == 1 ? "" : "s")}";
             _lblTierDistribution.Text = $"{microCount} Micro / {smallCount} Small / {medCount} Enterprise";
-            _lblExpiringCount.Text = $"{expiring} Plan{(expiring == 1 ? "" : "s")}";
+            _lblExpiringCount.Text = $"{graceCount} Grace  •  {suspendedCount} Susp.";
 
             _lblCount.Text = $"Total Registered Tenant Subscriptions: {_allSubscriptions.Count} account{(_allSubscriptions.Count == 1 ? "" : "s")}";
         }
@@ -666,8 +673,22 @@ namespace App.WinForms.Views
                 if (statusIdx > 0)
                 {
                     string selectedStatus = _cmbStatusFilter.SelectedItem?.ToString() ?? "";
-                    if (!string.Equals(s.Status, selectedStatus, StringComparison.OrdinalIgnoreCase))
+                    if (selectedStatus.Equals("Grace Period", StringComparison.OrdinalIgnoreCase))
+                    {
+                        bool isGrace = s.Status.Equals("Grace Period", StringComparison.OrdinalIgnoreCase) ||
+                                       (s.Status.Equals("Active", StringComparison.OrdinalIgnoreCase) && s.EndDate.Date < DateTime.Today && s.EndDate.Date >= DateTime.Today.AddDays(-7));
+                        if (!isGrace) return false;
+                    }
+                    else if (selectedStatus.Equals("Suspended", StringComparison.OrdinalIgnoreCase))
+                    {
+                        bool isSuspended = s.Status.Equals("Suspended", StringComparison.OrdinalIgnoreCase) ||
+                                           (s.Status.Equals("Active", StringComparison.OrdinalIgnoreCase) && s.EndDate.Date < DateTime.Today.AddDays(-7));
+                        if (!isSuspended) return false;
+                    }
+                    else if (!string.Equals(s.Status, selectedStatus, StringComparison.OrdinalIgnoreCase))
+                    {
                         return false;
+                    }
                 }
 
                 return true;
@@ -701,11 +722,41 @@ namespace App.WinForms.Views
                     _ => sub.Tier
                 };
 
+                string displayStatus = sub.Status;
+                DateTime today = DateTime.Today;
+                DateTime due = sub.EndDate.Date;
+
+                if (sub.Status.Equals("Suspended", StringComparison.OrdinalIgnoreCase))
+                {
+                    displayStatus = "🛑 Suspended";
+                }
+                else if (sub.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+                {
+                    displayStatus = "Cancelled";
+                }
+                else if (sub.Status.Equals("Grace Period", StringComparison.OrdinalIgnoreCase) || (sub.Status.Equals("Active", StringComparison.OrdinalIgnoreCase) && due < today))
+                {
+                    int overdueDays = Math.Max(0, (today - due).Days);
+                    int remaining = Math.Max(0, 7 - overdueDays);
+                    if (remaining > 0)
+                    {
+                        displayStatus = $"⚠️ Grace ({remaining}d left)";
+                    }
+                    else
+                    {
+                        displayStatus = "🛑 Suspended (Overdue)";
+                    }
+                }
+                else
+                {
+                    displayStatus = "✔ Active";
+                }
+
                 int rowIdx = _grid.Rows.Add(
                     sub.CompanyCode,
                     sub.CompanyName,
                     tierDisplay,
-                    sub.Status,
+                    displayStatus,
                     sub.BillingCycle,
                     $"₱{sub.MonthlyPrice:N2}",
                     sub.MaxUsers.ToString(),
@@ -745,20 +796,28 @@ namespace App.WinForms.Views
             }
             else if (colName == "colStatus")
             {
-                if (val.Equals("Active", StringComparison.OrdinalIgnoreCase))
+                if (val.Contains("Active"))
                 {
                     e.CellStyle!.ForeColor = Color.FromArgb(22, 163, 74);
-                    e.CellStyle.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+                    e.CellStyle!.BackColor = Color.FromArgb(240, 253, 244);
+                    e.CellStyle!.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
                 }
-                else if (val.Equals("Suspended", StringComparison.OrdinalIgnoreCase) || val.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+                else if (val.Contains("Grace") || val.Contains("left"))
+                {
+                    e.CellStyle!.ForeColor = Color.FromArgb(180, 83, 9);
+                    e.CellStyle!.BackColor = Color.FromArgb(254, 243, 199);
+                    e.CellStyle!.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+                }
+                else if (val.Contains("Suspended") || val.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
                 {
                     e.CellStyle!.ForeColor = Color.FromArgb(220, 38, 38);
-                    e.CellStyle.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+                    e.CellStyle!.BackColor = Color.FromArgb(254, 226, 226);
+                    e.CellStyle!.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
                 }
                 else
                 {
                     e.CellStyle!.ForeColor = Color.FromArgb(234, 88, 12);
-                    e.CellStyle.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+                    e.CellStyle!.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
                 }
             }
         }

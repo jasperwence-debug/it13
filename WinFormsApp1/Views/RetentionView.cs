@@ -1084,7 +1084,7 @@ namespace App.WinForms.Views
             int startRow = skip + 1;
             int endRow = Math.Min(skip + pageRecords.Count, totalCount);
             _lblCount.Text = $"{totalCount:N0} account{(totalCount == 1 ? "" : "s")} found";
-            _lblPageInfo.Text = $"Showing {startRow}–{endRow} of {totalCount:N0} accounts";
+            _lblPageInfo.Text = $"Showing {startRow} to {endRow} of {totalCount:N0} records.";
 
             UpdatePaginationControls();
             UpdateHeaderCheckboxState();

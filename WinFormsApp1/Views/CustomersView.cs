@@ -32,13 +32,13 @@ namespace App.WinForms.Views
         private readonly HashSet<int> _selectedCustomerIds = new();
 
         // Pagination state
-        private int _pageSize = 20;
+        private int _pageSize = 25;
         private int _currentPage = 1;
         private int _totalPages = 1;
 
-        // Sorting state
-        private string _sortColumn = "CustomerName";
-        private bool _sortAscending = true;
+        // Sorting state (default: newest first)
+        private string _sortColumn = "CustomerId";
+        private bool _sortAscending = false;
 
         // Header controls
         private Label _lblTitle = null!;
@@ -482,8 +482,8 @@ namespace App.WinForms.Views
                 Font = Theme.CaptionFont,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            _cmbPageSize.Items.AddRange(new object[] { "10", "20", "50", "100" });
-            _cmbPageSize.SelectedIndex = 1; // 20 default
+            _cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100" });
+            _cmbPageSize.SelectedIndex = 1; // 25 default
             _cmbPageSize.SelectedIndexChanged += (s, e) =>
             {
                 if (int.TryParse(_cmbPageSize.SelectedItem?.ToString(), out int sz))
@@ -943,6 +943,9 @@ namespace App.WinForms.Views
         {
             _filteredCustomers = _sortColumn switch
             {
+                "CustomerId" => _sortAscending
+                    ? _filteredCustomers.OrderBy(c => c.CustomerId).ToList()
+                    : _filteredCustomers.OrderByDescending(c => c.CustomerId).ToList(),
                 "CustomerName" => _sortAscending
                     ? _filteredCustomers.OrderBy(c => c.CustomerName).ToList()
                     : _filteredCustomers.OrderByDescending(c => c.CustomerName).ToList(),
@@ -1015,7 +1018,7 @@ namespace App.WinForms.Views
             int endIndex = startIndex + pageRecords.Count;
 
             _lblCount.Text = $"Showing {total} of {_customers.Count} customer account{(total == 1 ? "" : "s")}";
-            _lblPageInfo.Text = $"Showing {startIndex + 1}–{endIndex} of {total} accounts (Page {_currentPage} of {_totalPages})";
+            _lblPageInfo.Text = $"Showing {startIndex + 1} to {endIndex} of {total} records.";
 
             // Update page buttons
             _btnFirstPage.Enabled = _btnPrevPage.Enabled = (_currentPage > 1);
@@ -1314,8 +1317,8 @@ namespace App.WinForms.Views
         private void ResetFilters()
         {
             _txtSearch.Text = string.Empty;
-            _sortColumn = "CustomerName";
-            _sortAscending = true;
+            _sortColumn = "CustomerId";
+            _sortAscending = false;
             SelectSegment("All");
         }
 

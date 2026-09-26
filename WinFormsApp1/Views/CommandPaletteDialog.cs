@@ -278,19 +278,6 @@ namespace App.WinForms.Views
                 Tag = "scheduling"
             });
 
-            if (role != Roles.SalesStaff)
-            {
-                _staticItems.Add(new PaletteItem
-                {
-                    Type = PaletteItemType.Navigate,
-                    Category = "NAVIGATION",
-                    Title = "Work Orders Ledger",
-                    Subtitle = "Operations master register and service tickets",
-                    Icon = "🔧",
-                    Tag = "workorders"
-                });
-            }
-
             _staticItems.Add(new PaletteItem
             {
                 Type = PaletteItemType.Navigate,

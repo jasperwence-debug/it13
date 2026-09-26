@@ -38,8 +38,8 @@ namespace App.WinForms
         private readonly Dictionary<Button, (string Icon, string Label, string Key)> _buttonMeta = new();
         private readonly ToolTip _toolTip = new() { ShowAlways = true };
 
-        // 4 Non-clickable Category Headers (Font: 8pt, Bold, Color: #64748B)
-        private Label lblHeaderOverview = null!;
+        // Standalone Top-Level Divider & 3 Category Headers (Font: 8pt, Bold, Color: #64748B)
+        private Panel pnlDashboardDivider = null!;
         private Label lblHeaderOperations = null!;
         private Label lblHeaderPerformance = null!;
         private Label lblHeaderAdministration = null!;
@@ -49,7 +49,6 @@ namespace App.WinForms
         private Button btnLeads = null!;
         private Button btnClientContract = null!;
         private Button btnSchedulingDispatch = null!;
-        private Button btnWorkOrder = null!;
         private Button btnBranches = null!;
         private Button btnSalesRetention = null!;
         private Button btnFinancial = null!;
@@ -206,18 +205,35 @@ namespace App.WinForms
             _pnlSidebar.Controls.Add(_pnlMenu);
             _pnlMenu.BringToFront();
 
-            // Create 4 Category Headers (Font: 8pt Bold, Color: #64748B)
-            lblHeaderOverview = CreateGroupLabel("OVERVIEW");
+            // Standalone Topmost Action: Dashboard Button
+            btnDashboard = CreateSidebarButton("dashboard", "📊", "Dashboard");
+
+            // Subtle divider separating standalone Dashboard from categorized sections
+            pnlDashboardDivider = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 12,
+                BackColor = Color.Transparent,
+                Margin = Padding.Empty,
+                Padding = new Padding(14, 5, 14, 6)
+            };
+            var pnlDividerLine = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 1,
+                BackColor = Color.FromArgb(40, 53, 72)
+            };
+            pnlDashboardDivider.Controls.Add(pnlDividerLine);
+
+            // Create 3 Category Headers (Font: 8pt Bold, Color: #64748B)
             lblHeaderOperations = CreateGroupLabel("OPERATIONS");
             lblHeaderPerformance = CreateGroupLabel("PERFORMANCE");
             lblHeaderAdministration = CreateGroupLabel("ADMINISTRATION");
 
             // Create Sidebar Buttons with display names matching official Use Cases
-            btnDashboard = CreateSidebarButton("dashboard", "📊", "BI Dashboard");
             btnLeads = CreateSidebarButton("leads", "🎯", "Leads & Inquiries");
             btnClientContract = CreateSidebarButton("clients", "📋", "Client & Contract");
             btnSchedulingDispatch = CreateSidebarButton("scheduling", "📅", "Scheduling & Dispatch");
-            btnWorkOrder = CreateSidebarButton("workorders", "🔧", "Work Orders");
             btnBranches = CreateSidebarButton("branches", "🏢", "Operating Branches");
             btnSalesRetention = CreateSidebarButton("sales", "💼", "Sales & Retention");
             btnFinancial = CreateSidebarButton("financial", "💰", "Financial Management");
@@ -233,7 +249,6 @@ namespace App.WinForms
                 btnLeads,
                 btnClientContract,
                 btnSchedulingDispatch,
-                btnWorkOrder,
                 btnBranches,
                 btnSalesRetention,
                 btnFinancial,
@@ -243,17 +258,16 @@ namespace App.WinForms
                 btnTermsManagement
             });
 
-            // Master controls ordering: OVERVIEW (Index 0, 1) at the absolute top
+            // Master controls ordering: Standalone Dashboard at the absolute top (Index 0), followed by categories
             _sidebarControlsInOrder = new Control[]
             {
-                lblHeaderOverview,
                 btnDashboard,
+                pnlDashboardDivider,
 
                 lblHeaderOperations,
                 btnLeads,
                 btnClientContract,
                 btnSchedulingDispatch,
-                btnWorkOrder,
                 btnBranches,
 
                 lblHeaderPerformance,
@@ -510,7 +524,7 @@ namespace App.WinForms
 
         // ============================================================
         // Sidebar Z-Order Hierarchy Enforcement
-        // Strictly sets child indices so lblHeaderOverview and btnDashboard render at the top (Top=0, Top=34)
+        // Strictly sets child indices so btnDashboard renders at the absolute top (Top=0)
         // ============================================================
         private void EnforceSidebarOrder()
         {
@@ -519,8 +533,8 @@ namespace App.WinForms
             _pnlMenu.SuspendLayout();
 
             // In WinForms Dock.Top layout, the control with the highest child index is docked to Top=0 first.
-            // Assigning SetChildIndex in reverse ensures _sidebarControlsInOrder[0] (OVERVIEW) gets index Count-1 (Top=0),
-            // _sidebarControlsInOrder[1] (Dashboard) gets index Count-2 (Top=34), guaranteeing perfect top-to-bottom Z-order.
+            // Assigning SetChildIndex in reverse ensures _sidebarControlsInOrder[0] (Dashboard) gets index Count-1 (Top=0),
+            // guaranteeing perfect top-to-bottom Z-order with Dashboard as the standalone top-most item.
             int count = _sidebarControlsInOrder.Length;
             for (int i = 0; i < count; i++)
             {
@@ -553,12 +567,11 @@ namespace App.WinForms
 
                 // In maintenance mode, unlock all operational modules for the Super Admin
                 btnDashboard.Visible = true;
-                lblHeaderOverview.Visible = true;
+                pnlDashboardDivider.Visible = true;
 
                 btnLeads.Visible = true;
                 btnClientContract.Visible = true;
                 btnSchedulingDispatch.Visible = true;
-                btnWorkOrder.Visible = true;
                 btnBranches.Visible = true;
                 lblHeaderOperations.Visible = true;
 
@@ -576,19 +589,17 @@ namespace App.WinForms
             {
                 _pnlMaintenanceBanner.Visible = false;
 
-                // OVERVIEW: Dashboard visible to Tenant roles (Admin, Manager, Staff).
-                // Super Admin is the platform programmer / SaaS vendor and lands on Master Tier subscription control.
-                btnDashboard.Visible = (role != Roles.SuperAdmin);
-                lblHeaderOverview.Visible = btnDashboard.Visible;
+                // DASHBOARD: Standalone top-level button visible to all authenticated roles.
+                // Super Admin views SaaS Platform Executive metrics; Tenant roles view Cleaning Operations BI.
+                btnDashboard.Visible = true;
+                pnlDashboardDivider.Visible = true;
 
-                // OPERATIONS: Leads, Customers, Schedule, Work Orders, Branches.
-                // Super Admin does NOT handle customer operations, bookings, or branches.
+                // OPERATIONS: Leads, Customers, Schedule (Tenant roles). Operating Branches (Super Admin platform control).
                 btnLeads.Visible = (role != Roles.SuperAdmin);
                 btnClientContract.Visible = (role != Roles.SuperAdmin);
                 btnSchedulingDispatch.Visible = (role != Roles.SuperAdmin);
-                btnWorkOrder.Visible = (role != Roles.SalesStaff && role != Roles.SuperAdmin);
-                btnBranches.Visible = (role != Roles.SalesStaff && role != Roles.SuperAdmin);
-                lblHeaderOperations.Visible = (btnLeads.Visible || btnClientContract.Visible || btnSchedulingDispatch.Visible || btnWorkOrder.Visible || btnBranches.Visible);
+                btnBranches.Visible = (role == Roles.SuperAdmin);
+                lblHeaderOperations.Visible = (btnLeads.Visible || btnClientContract.Visible || btnSchedulingDispatch.Visible || btnBranches.Visible);
 
                 // PERFORMANCE: Retention visible to Tenant roles. Financials visible ONLY to Tenant Admin. Reports/Audit visible to SuperAdmin and Management.
                 btnSalesRetention.Visible = (role != Roles.SuperAdmin);
@@ -615,10 +626,10 @@ namespace App.WinForms
             _pnlMaintenanceBanner.Visible = false;
 
             btnDashboard.Visible = false;
+            pnlDashboardDivider.Visible = false;
             btnLeads.Visible = false;
             btnClientContract.Visible = false;
             btnSchedulingDispatch.Visible = false;
-            btnWorkOrder.Visible = false;
             btnBranches.Visible = false;
             btnSalesRetention.Visible = false;
             btnFinancial.Visible = false;
@@ -627,7 +638,6 @@ namespace App.WinForms
             btnManageSubscription.Visible = false;
             btnTermsManagement.Visible = false;
 
-            lblHeaderOverview.Visible = false;
             lblHeaderOperations.Visible = false;
             lblHeaderPerformance.Visible = false;
             lblHeaderAdministration.Visible = false;
@@ -677,6 +687,10 @@ namespace App.WinForms
             {
                 initialButton = btnDashboard;
             }
+            else if (role == Roles.SuperAdmin && btnDashboard.Visible)
+            {
+                initialButton = btnDashboard;
+            }
             else if (role == Roles.SuperAdmin && btnManageSubscription.Visible)
             {
                 initialButton = btnManageSubscription;
@@ -688,8 +702,8 @@ namespace App.WinForms
             else
             {
                 // Fallback priority
-                if (btnManageSubscription.Visible) initialButton = btnManageSubscription;
-                else if (btnDashboard.Visible) initialButton = btnDashboard;
+                if (btnDashboard.Visible) initialButton = btnDashboard;
+                else if (btnManageSubscription.Visible) initialButton = btnManageSubscription;
                 else if (btnSchedulingDispatch.Visible) initialButton = btnSchedulingDispatch;
                 else if (btnClientContract.Visible) initialButton = btnClientContract;
                 else if (btnSalesRetention.Visible) initialButton = btnSalesRetention;
@@ -713,7 +727,8 @@ namespace App.WinForms
 
             if (SessionManager.CurrentUser?.Role == Roles.SuperAdmin)
             {
-                if (btnManageSubscription.Visible) initialButton = btnManageSubscription;
+                if (btnDashboard.Visible) initialButton = btnDashboard;
+                else if (btnManageSubscription.Visible) initialButton = btnManageSubscription;
                 else if (btnUserManagement.Visible) initialButton = btnUserManagement;
                 else if (btnReportsAudit.Visible) initialButton = btnReportsAudit;
             }
@@ -725,8 +740,6 @@ namespace App.WinForms
                     initialButton = btnClientContract;
                 else if (btnSchedulingDispatch.Visible)
                     initialButton = btnSchedulingDispatch;
-                else if (btnWorkOrder.Visible)
-                    initialButton = btnWorkOrder;
                 else if (btnSalesRetention.Visible)
                     initialButton = btnSalesRetention;
                 else if (btnFinancial.Visible)
@@ -768,8 +781,8 @@ namespace App.WinForms
             _lblBrand.Text = _isSidebarCollapsed ? "🧹" : "🧹  CLEANING CRM";
             _lblBrand.Font = _isSidebarCollapsed ? new Font("Segoe UI", 16F, FontStyle.Bold) : new Font("Segoe UI", 12F, FontStyle.Bold);
 
-            lblHeaderOverview.Visible = !_isSidebarCollapsed && btnDashboard.Visible;
-            lblHeaderOperations.Visible = !_isSidebarCollapsed && (btnLeads.Visible || btnClientContract.Visible || btnSchedulingDispatch.Visible || btnWorkOrder.Visible || btnBranches.Visible);
+            pnlDashboardDivider.Visible = !_isSidebarCollapsed && btnDashboard.Visible;
+            lblHeaderOperations.Visible = !_isSidebarCollapsed && (btnLeads.Visible || btnClientContract.Visible || btnSchedulingDispatch.Visible || btnBranches.Visible);
             lblHeaderPerformance.Visible = !_isSidebarCollapsed && (btnSalesRetention.Visible || btnFinancial.Visible || btnReportsAudit.Visible);
             lblHeaderAdministration.Visible = !_isSidebarCollapsed && (btnUserManagement.Visible || btnManageSubscription.Visible || btnTermsManagement.Visible);
 
@@ -822,7 +835,6 @@ namespace App.WinForms
             {
                 AddQuickActionItem("⚡  Dispatch Operations Center", () => NavigateToKey("scheduling"));
                 AddQuickActionItem("⚡  + New Booking Request (Assist Staff)", () => OpenNewBookingRequestDialog());
-                AddQuickActionItem("🔧  + Create Work Order", () => OpenNewWorkOrderDialog());
                 AddQuickActionItem("👤  Search Customer Directory", () => NavigateToKey("clients"));
             }
             else if (role == Roles.Admin)
@@ -1124,14 +1136,14 @@ namespace App.WinForms
         // ============================================================
         private void ShowView(string key, string headerText)
         {
-            if ((key == "subscription" || key == "users") && SessionManager.CurrentUser?.Role != Roles.SuperAdmin)
+            if ((key == "subscription" || key == "users" || key == "branches") && SessionManager.CurrentUser?.Role != Roles.SuperAdmin)
             {
                 MessageBox.Show("Access Denied: Only Super Administrators have permission to access this module.", "Restricted Access", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             if (!SessionManager.IsMaintenanceMode && SessionManager.CurrentUser?.Role == Roles.SuperAdmin &&
-                (key == "clients" || key == "scheduling" || key == "workorders" || key == "branches" || key == "leads" || key == "retention" || key == "sales" || key == "financial" || key == "dashboard"))
+                (key == "clients" || key == "scheduling" || key == "workorders" || key == "leads" || key == "retention" || key == "sales" || key == "financial" || key == "dashboard"))
             {
                 MessageBox.Show("Platform Notice: Super Administrators manage tenant subscriptions and system administration only. Operational modules (customers, schedules, work orders) are handled by tenant administrators.\n\nTo inspect or troubleshoot this company's operations, use 'Maintenance Access' from User Management.", "Access Restricted", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;

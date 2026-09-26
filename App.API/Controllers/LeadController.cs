@@ -219,10 +219,9 @@ namespace App.API.Controllers
             if (string.Equals(lead.Status, "Converted", StringComparison.OrdinalIgnoreCase))
                 return BadRequest($"Lead {id} is already converted.");
 
-            if (!string.Equals(lead.Status, "Won", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(lead.Status, "Quoted", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(request?.ServiceAddress))
             {
-                return BadRequest($"Only leads with status 'Quoted' or 'Won' can be converted to Customers. Current status is '{lead.Status}'.");
+                lead.ServiceAddress = request.ServiceAddress.Trim();
             }
 
             // Parse phone and email from "Phone | Email" format

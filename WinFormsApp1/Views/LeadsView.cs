@@ -28,9 +28,8 @@ namespace App.WinForms.Views
         private Label _lblCount = null!;
         private Button _btnRefresh = null!;
         private Button _btnNewLead = null!;
-        private Button _btnConvert = null!;
-        private Button _btnQuote = null!;
-        private Button _btnMarkWon = null!;
+        private Button _btnAvailService = null!;
+        private Button _btnMarkLost = null!;
         private ContextMenuStrip _gridContextMenu = null!;
 
         // Filter & Search controls
@@ -39,6 +38,22 @@ namespace App.WinForms.Views
 
         // Grid
         private DataGridView _grid = null!;
+
+        // Pagination state (default: 25 per page, newest first)
+        private int _pageSize = 25;
+        private int _currentPage = 1;
+        private int _totalPages = 1;
+        private List<LeadDto> _filteredLeads = new();
+
+        // Pagination controls
+        private Panel _pnlPagination = null!;
+        private Label _lblPageInfo = null!;
+        private ComboBox _cmbPageSize = null!;
+        private Button _btnFirstPage = null!;
+        private Button _btnPrevPage = null!;
+        private Button _btnNextPage = null!;
+        private Button _btnLastPage = null!;
+        private FlowLayoutPanel _pnlPageNumbers = null!;
 
         public LeadsView()
         {
@@ -104,7 +119,7 @@ namespace App.WinForms.Views
             };
             pnlHeader.Controls.Add(_lblCount);
 
-            // Right-aligned header buttons (order: Refresh, Mark Won, Quote Price, Convert, New Lead)
+            // Right-aligned header buttons (order: Refresh, Lost/Not Interested, Avail Service, New Lead)
             _btnNewLead = new Button
             {
                 Text = "+ New Lead",
@@ -119,51 +134,35 @@ namespace App.WinForms.Views
             var pnlSpacerH1 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
             pnlHeader.Controls.Add(pnlSpacerH1);
 
-            _btnConvert = new Button
+            _btnAvailService = new Button
             {
-                Text = "★  Convert",
+                Text = "⚡  Avail Service / Book",
                 Dock = DockStyle.Right,
-                Width = 120,
+                Width = 185,
                 Height = 36,
                 Enabled = false
             };
-            Theme.ApplySecondaryButtonStyle(_btnConvert);
-            _btnConvert.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            _btnConvert.Click += async (s, e) => await OnConvertClickAsync();
-            pnlHeader.Controls.Add(_btnConvert);
+            Theme.ApplyPrimaryButtonStyle(_btnAvailService);
+            _btnAvailService.Click += async (s, e) => await OnAvailServiceClickAsync();
+            pnlHeader.Controls.Add(_btnAvailService);
 
             var pnlSpacerH2 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
             pnlHeader.Controls.Add(pnlSpacerH2);
 
-            _btnQuote = new Button
+            _btnMarkLost = new Button
             {
-                Text = "💲 Quote",
+                Text = "❌  Not Interested",
                 Dock = DockStyle.Right,
-                Width = 100,
+                Width = 140,
                 Height = 36,
                 Enabled = false
             };
-            Theme.ApplySecondaryButtonStyle(_btnQuote);
-            _btnQuote.Click += async (s, e) => await OnQuoteClickAsync();
-            pnlHeader.Controls.Add(_btnQuote);
+            Theme.ApplySecondaryButtonStyle(_btnMarkLost);
+            _btnMarkLost.Click += async (s, e) => await OnMarkLostClickAsync();
+            pnlHeader.Controls.Add(_btnMarkLost);
 
             var pnlSpacerH3 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
             pnlHeader.Controls.Add(pnlSpacerH3);
-
-            _btnMarkWon = new Button
-            {
-                Text = "🏆 Won",
-                Dock = DockStyle.Right,
-                Width = 95,
-                Height = 36,
-                Enabled = false
-            };
-            Theme.ApplySecondaryButtonStyle(_btnMarkWon);
-            _btnMarkWon.Click += async (s, e) => await OnMarkWonClickAsync();
-            pnlHeader.Controls.Add(_btnMarkWon);
-
-            var pnlSpacerH4 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
-            pnlHeader.Controls.Add(pnlSpacerH4);
 
             _btnRefresh = new Button
             {
@@ -303,7 +302,7 @@ namespace App.WinForms.Views
                 {
                     if (e.Value is decimal price)
                     {
-                        e.Value = $"${price:N2}";
+                        e.Value = $"₱{price:N2}";
                     }
                     else
                     {
@@ -327,21 +326,17 @@ namespace App.WinForms.Views
             // Context menu for row actions
             _gridContextMenu = new ContextMenuStrip { Font = new Font("Segoe UI", 9F) };
 
-            var mnuQuote = new ToolStripMenuItem("💲  Set Quoted Price...", null, async (s, e) => await OnQuoteClickAsync());
-            var mnuWon = new ToolStripMenuItem("🏆  Mark as Won (Ready to Convert)", null, async (s, e) => await OnMarkWonClickAsync());
+            var mnuAvail = new ToolStripMenuItem("⚡  Avail Service & Book...", null, async (s, e) => await OnAvailServiceClickAsync());
             var mnuContacted = new ToolStripMenuItem("📞  Mark as Contacted", null, async (s, e) => await OnMarkContactedClickAsync());
-            var mnuLost = new ToolStripMenuItem("❌  Mark as Lost...", null, async (s, e) => await OnMarkLostClickAsync());
-            var mnuConvert = new ToolStripMenuItem("★  Convert to Customer", null, async (s, e) => await OnConvertClickAsync());
+            var mnuLost = new ToolStripMenuItem("❌  Mark as Lost / Not Interested...", null, async (s, e) => await OnMarkLostClickAsync());
             var mnuRefresh = new ToolStripMenuItem("↻  Refresh", null, async (s, e) => await LoadAsync());
 
             _gridContextMenu.Items.AddRange(new ToolStripItem[]
             {
-                mnuQuote,
-                mnuWon,
+                mnuAvail,
+                new ToolStripSeparator(),
                 mnuContacted,
                 mnuLost,
-                new ToolStripSeparator(),
-                mnuConvert,
                 new ToolStripSeparator(),
                 mnuRefresh
             });
@@ -351,37 +346,119 @@ namespace App.WinForms.Views
                 var sel = GetSelectedLead();
                 if (sel == null || SessionManager.IsManager)
                 {
-                    mnuQuote.Enabled = false;
-                    mnuWon.Enabled = false;
+                    mnuAvail.Enabled = false;
                     mnuContacted.Enabled = false;
                     mnuLost.Enabled = false;
-                    mnuConvert.Enabled = false;
                     return;
                 }
 
                 bool isConverted = string.Equals(sel.Status, "Converted", StringComparison.OrdinalIgnoreCase);
-                bool isWon = string.Equals(sel.Status, "Won", StringComparison.OrdinalIgnoreCase);
-                bool isQuoted = string.Equals(sel.Status, "Quoted", StringComparison.OrdinalIgnoreCase);
+                bool isLost = string.Equals(sel.Status, "Lost", StringComparison.OrdinalIgnoreCase);
 
-                mnuQuote.Enabled = !isConverted;
-                mnuWon.Enabled = !isConverted && !isWon;
-                mnuContacted.Enabled = !isConverted && sel.Status == "New";
-                mnuLost.Enabled = !isConverted && sel.Status != "Lost";
-                mnuConvert.Enabled = !isConverted && (isWon || isQuoted);
+                mnuAvail.Enabled = !isConverted;
+                mnuContacted.Enabled = !isConverted && !isLost && sel.Status == "New";
+                mnuLost.Enabled = !isConverted && !isLost;
             };
 
             _grid.ContextMenuStrip = _gridContextMenu;
+            _grid.CellDoubleClick += async (s, e) =>
+            {
+                if (e.RowIndex >= 0)
+                {
+                    await OnAvailServiceClickAsync();
+                }
+            };
             _grid.CellMouseDown += (s, e) =>
             {
                 if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
                 {
                     _grid.ClearSelection();
                     _grid.Rows[e.RowIndex].Selected = true;
-                    UpdateConvertButtonState();
+                    UpdateActionButtonState();
                 }
             };
 
-            _grid.SelectionChanged += (s, e) => UpdateConvertButtonState();
+            _grid.SelectionChanged += (s, e) => UpdateActionButtonState();
+
+            // ── Bottom Pagination Bar ──────────────────────────────
+            _pnlPagination = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 44,
+                BackColor = Color.FromArgb(248, 250, 252),
+                Padding = new Padding(20, 6, 20, 6)
+            };
+            _pnlPagination.Paint += (s, e) =>
+            {
+                using var pen = new Pen(Theme.Border, 1);
+                e.Graphics.DrawLine(pen, 0, 0, _pnlPagination.Width, 0);
+            };
+            card.Controls.Add(_pnlPagination);
+
+            _lblPageInfo = new Label
+            {
+                Dock = DockStyle.Left,
+                Font = Theme.CaptionFont,
+                ForeColor = Theme.TextMuted,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Width = 320
+            };
+            _pnlPagination.Controls.Add(_lblPageInfo);
+
+            var pnlPageControls = new Panel
+            {
+                Dock = DockStyle.Right,
+                Width = 460,
+                BackColor = Color.Transparent
+            };
+            _pnlPagination.Controls.Add(pnlPageControls);
+
+            var lblRows = new Label
+            {
+                Text = "Rows:",
+                Location = new Point(0, 8),
+                Width = 40,
+                Font = Theme.CaptionFont,
+                ForeColor = Theme.TextMuted,
+                TextAlign = ContentAlignment.MiddleRight
+            };
+            pnlPageControls.Controls.Add(lblRows);
+
+            _cmbPageSize = new ComboBox
+            {
+                Location = new Point(44, 6),
+                Width = 70,
+                Font = Theme.CaptionFont,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            _cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100" });
+            _cmbPageSize.SelectedIndex = 1; // 25 default
+            _cmbPageSize.SelectedIndexChanged += (s, e) =>
+            {
+                if (int.TryParse(_cmbPageSize.SelectedItem?.ToString(), out int sz))
+                {
+                    _pageSize = sz;
+                    _currentPage = 1;
+                    RenderPage();
+                }
+            };
+            pnlPageControls.Controls.Add(_cmbPageSize);
+
+            _btnLastPage = CreatePageNavButton("»", 32, pnlPageControls, () => GoToPage(_totalPages));
+            _btnNextPage = CreatePageNavButton("Next >", 65, pnlPageControls, () => GoToPage(_currentPage + 1));
+
+            _pnlPageNumbers = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                Width = 190,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                BackColor = Color.Transparent
+            };
+            pnlPageControls.Controls.Add(_pnlPageNumbers);
+
+            _btnPrevPage = CreatePageNavButton("< Prev", 65, pnlPageControls, () => GoToPage(_currentPage - 1));
+            _btnFirstPage = CreatePageNavButton("«", 32, pnlPageControls, () => GoToPage(1));
 
             card.Controls.Add(_grid);
             _grid.BringToFront();
@@ -402,47 +479,41 @@ namespace App.WinForms.Views
             {
                 // Manager is view-only on Leads
                 _btnNewLead.Visible = false;
-                _btnConvert.Visible = false;
-                _btnQuote.Visible = false;
-                _btnMarkWon.Visible = false;
+                _btnAvailService.Visible = false;
+                _btnMarkLost.Visible = false;
             }
             else
             {
                 _btnNewLead.Visible = true;
-                _btnConvert.Visible = true;
-                _btnQuote.Visible = true;
-                _btnMarkWon.Visible = true;
-                UpdateConvertButtonState();
+                _btnAvailService.Visible = true;
+                _btnMarkLost.Visible = true;
+                UpdateActionButtonState();
             }
         }
 
-        private void UpdateConvertButtonState()
+        private void UpdateActionButtonState()
         {
             if (SessionManager.IsManager)
             {
-                _btnConvert.Enabled = false;
-                _btnQuote.Enabled = false;
-                _btnMarkWon.Enabled = false;
+                _btnAvailService.Enabled = false;
+                _btnMarkLost.Enabled = false;
                 return;
             }
 
             var selectedLead = GetSelectedLead();
             if (selectedLead == null)
             {
-                _btnConvert.Enabled = false;
-                _btnQuote.Enabled = false;
-                _btnMarkWon.Enabled = false;
+                _btnAvailService.Enabled = false;
+                _btnMarkLost.Enabled = false;
                 return;
             }
 
             bool isConverted = string.Equals(selectedLead.Status, "Converted", StringComparison.OrdinalIgnoreCase);
-            bool isWon = string.Equals(selectedLead.Status, "Won", StringComparison.OrdinalIgnoreCase);
-            bool isQuoted = string.Equals(selectedLead.Status, "Quoted", StringComparison.OrdinalIgnoreCase);
+            bool isLost = string.Equals(selectedLead.Status, "Lost", StringComparison.OrdinalIgnoreCase);
 
-            // Only Quoted or Won leads can be converted to Customers
-            _btnConvert.Enabled = !isConverted && (isWon || isQuoted);
-            _btnQuote.Enabled = !isConverted;
-            _btnMarkWon.Enabled = !isConverted && !isWon;
+            // A lead can avail a service as long as they are not already converted!
+            _btnAvailService.Enabled = !isConverted;
+            _btnMarkLost.Enabled = !isConverted && !isLost;
         }
 
         private LeadDto? GetSelectedLead()
@@ -483,152 +554,168 @@ namespace App.WinForms.Views
             var search = _txtSearch.Text.Trim();
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lower = search.ToLower();
+                var lower = search.ToLowerInvariant();
                 query = query.Where(l =>
-                    l.LeadName.ToLower().Contains(lower) ||
-                    l.ContactInfo.ToLower().Contains(lower) ||
-                    l.LeadSource.ToLower().Contains(lower) ||
-                    l.ServiceOfInterest.ToLower().Contains(lower) ||
-                    (l.ServiceAddress != null && l.ServiceAddress.ToLower().Contains(lower)) ||
+                    (!string.IsNullOrEmpty(l.LeadName) && l.LeadName.ToLowerInvariant().Contains(lower)) ||
+                    (!string.IsNullOrEmpty(l.ContactInfo) && l.ContactInfo.ToLowerInvariant().Contains(lower)) ||
+                    (!string.IsNullOrEmpty(l.LeadSource) && l.LeadSource.ToLowerInvariant().Contains(lower)) ||
+                    (!string.IsNullOrEmpty(l.ServiceOfInterest) && l.ServiceOfInterest.ToLowerInvariant().Contains(lower)) ||
+                    (!string.IsNullOrEmpty(l.ServiceAddress) && l.ServiceAddress.ToLowerInvariant().Contains(lower)) ||
                     $"ld-{l.LeadId:d4}".Contains(lower));
             }
 
-            var filtered = query.ToList();
-            _grid.DataSource = filtered;
-            _lblCount.Text = $"{filtered.Count} of {_allLeads.Count} leads";
-            UpdateConvertButtonState();
+            // Client-side sorting: newest first (CreatedAt DESC, then LeadId DESC)
+            query = query.OrderByDescending(l => l.CreatedAt).ThenByDescending(l => l.LeadId);
+
+            _filteredLeads = query.ToList();
+            CalculatePagination();
+            RenderPage();
+        }
+
+        private void CalculatePagination()
+        {
+            int total = _filteredLeads.Count;
+            _totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)_pageSize));
+
+            if (_currentPage > _totalPages) _currentPage = _totalPages;
+            if (_currentPage < 1) _currentPage = 1;
+        }
+
+        private void GoToPage(int page)
+        {
+            if (page < 1 || page > _totalPages || page == _currentPage) return;
+            _currentPage = page;
+            RenderPage();
+        }
+
+        private void RenderPage()
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(RenderPage));
+                return;
+            }
+
+            int total = _filteredLeads.Count;
+            if (total == 0)
+            {
+                _grid.DataSource = null;
+                _lblCount.Text = "0 leads matching";
+                _lblPageInfo.Text = "No leads to display";
+                _pnlPageNumbers.Controls.Clear();
+                _btnFirstPage.Enabled = _btnPrevPage.Enabled = _btnNextPage.Enabled = _btnLastPage.Enabled = false;
+                UpdateActionButtonState();
+                return;
+            }
+
+            int startIndex = (_currentPage - 1) * _pageSize;
+            var pageRecords = _filteredLeads.Skip(startIndex).Take(_pageSize).ToList();
+            int endIndex = startIndex + pageRecords.Count;
+
+            _grid.DataSource = pageRecords;
+            _lblCount.Text = $"{total} of {_allLeads.Count} leads";
+            _lblPageInfo.Text = $"Showing {startIndex + 1} to {endIndex} of {total} records.";
+
+            _btnFirstPage.Enabled = _btnPrevPage.Enabled = (_currentPage > 1);
+            _btnNextPage.Enabled = _btnLastPage.Enabled = (_currentPage < _totalPages);
+            UpdatePageNumberButtons();
+            UpdateActionButtonState();
+        }
+
+        private void UpdatePageNumberButtons()
+        {
+            _pnlPageNumbers.SuspendLayout();
+            _pnlPageNumbers.Controls.Clear();
+
+            int start = Math.Max(1, _currentPage - 2);
+            int end = Math.Min(_totalPages, start + 4);
+            if (end - start < 4)
+            {
+                start = Math.Max(1, end - 4);
+            }
+
+            for (int p = start; p <= end; p++)
+            {
+                int pageNum = p;
+                bool isCurrent = (pageNum == _currentPage);
+
+                var btn = new Button
+                {
+                    Text = pageNum.ToString(),
+                    Width = 32,
+                    Height = 30,
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = isCurrent ? Theme.Primary : Color.FromArgb(241, 245, 249),
+                    ForeColor = isCurrent ? Color.White : Color.FromArgb(71, 85, 105),
+                    Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                    Margin = new Padding(2, 0, 2, 0),
+                    Cursor = Cursors.Hand
+                };
+                btn.FlatAppearance.BorderSize = 0;
+                btn.Click += (s, e) => GoToPage(pageNum);
+                _pnlPageNumbers.Controls.Add(btn);
+            }
+
+            _pnlPageNumbers.ResumeLayout();
+        }
+
+        private static Button CreatePageNavButton(string text, int width, Control parent, Action onClick)
+        {
+            var btn = new Button
+            {
+                Text = text,
+                Dock = DockStyle.Right,
+                Width = width,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(2, 0, 2, 0)
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Click += (s, e) => onClick();
+            parent.Controls.Add(btn);
+            return btn;
         }
 
         // ============================================================
         // Actions: New Lead
         // ============================================================
-        private void OnNewLeadClick(object? sender, EventArgs e)
+        private async void OnNewLeadClick(object? sender, EventArgs e)
         {
             using var dialog = new NewLeadDialog();
             if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
             {
                 ShowToast("New lead captured successfully!", true);
-                _ = LoadAsync();
+                _currentPage = 1;
+                await LoadAsync();
             }
         }
 
         // ============================================================
-        // Actions: Convert to Customer
+        // Actions: Avail Service / Book
         // ============================================================
-        private async Task OnConvertClickAsync()
+        private async Task OnAvailServiceClickAsync()
         {
             var lead = GetSelectedLead();
-            if (lead == null) return;
-
-            if (!string.Equals(lead.Status, "Won", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(lead.Status, "Quoted", StringComparison.OrdinalIgnoreCase))
+            if (lead == null)
             {
-                ShowToast("Only leads with status 'Quoted' or 'Won' can be converted.", false);
+                ShowToast("Please select a lead to book service.", false);
                 return;
             }
 
-            // Attempt conversion
-            _btnConvert.Enabled = false;
-            var response = await _api.ConvertLeadAsync(lead.LeadId);
-
-            if (response.Success)
+            if (string.Equals(lead.Status, "Converted", StringComparison.OrdinalIgnoreCase))
             {
-                ShowToast(response.Message, true);
-                await LoadAsync();
+                ShowToast($"Lead LD-{lead.LeadId:D4} has already availed a service and is an active Customer.", false);
                 return;
             }
 
-            // Handle potential duplicate conflict (409)
-            if (response.DuplicateConflict && response.DuplicateInfo != null)
+            using var dialog = new AvailServiceDialog(lead);
+            if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
             {
-                using var resDialog = new LeadDuplicateResolutionDialog(lead, response.DuplicateInfo);
-                var dialogResult = resDialog.ShowDialog(FindForm());
-
-                if (dialogResult == DialogResult.OK)
-                {
-                    if (resDialog.UserChoice == DuplicateResolutionChoice.UseExisting)
-                    {
-                        var linkResponse = await _api.ConvertLeadAsync(lead.LeadId, useExistingCustomerId: response.DuplicateInfo.ExistingCustomerId);
-                        if (linkResponse.Success)
-                        {
-                            ShowToast(linkResponse.Message, true);
-                            await LoadAsync();
-                        }
-                        else
-                        {
-                            ShowToast(linkResponse.Message, false);
-                        }
-                    }
-                    else if (resDialog.UserChoice == DuplicateResolutionChoice.CreateAnyway)
-                    {
-                        var createResponse = await _api.ConvertLeadAsync(lead.LeadId, forceCreate: true);
-                        if (createResponse.Success)
-                        {
-                            ShowToast(createResponse.Message, true);
-                            await LoadAsync();
-                        }
-                        else
-                        {
-                            ShowToast(createResponse.Message, false);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                ShowToast(response.Message, false);
-            }
-
-            UpdateConvertButtonState();
-        }
-
-        // ============================================================
-        // Actions: Lead Lifecycle Progression
-        // ============================================================
-        private async Task OnQuoteClickAsync()
-        {
-            var lead = GetSelectedLead();
-            if (lead == null) return;
-
-            using var dlg = new LeadQuoteDialog(lead);
-            if (dlg.ShowDialog(FindForm()) == DialogResult.OK)
-            {
-                var (success, message, _) = await _api.UpdateLeadStatusAsync(lead.LeadId, new LeadStatusUpdateDto
-                {
-                    Status = "Quoted",
-                    QuotedPrice = dlg.QuotedPrice
-                });
-
-                if (success)
-                {
-                    ShowToast($"Lead LD-{lead.LeadId:D4} quoted at ${dlg.QuotedPrice:N2}. Ready to convert!", true);
-                    await LoadAsync();
-                }
-                else
-                {
-                    ShowToast(message, false);
-                }
-            }
-        }
-
-        private async Task OnMarkWonClickAsync()
-        {
-            var lead = GetSelectedLead();
-            if (lead == null) return;
-
-            var (success, message, _) = await _api.UpdateLeadStatusAsync(lead.LeadId, new LeadStatusUpdateDto
-            {
-                Status = "Won"
-            });
-
-            if (success)
-            {
-                ShowToast($"Lead LD-{lead.LeadId:D4} marked as Won! Click 'Convert to Customer' to create account.", true);
+                ShowToast($"Lead LD-{lead.LeadId:D4} successfully availed service and converted to Customer!", true);
                 await LoadAsync();
-            }
-            else
-            {
-                ShowToast(message, false);
             }
         }
 

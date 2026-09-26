@@ -35,6 +35,22 @@ namespace App.WinForms.Views
         // Grid
         private DataGridView _grid = null!;
 
+        // Pagination state (default: 25 per page, newest first)
+        private int _pageSize = 25;
+        private int _currentPage = 1;
+        private int _totalPages = 1;
+        private List<WorkOrderDto> _filteredWorkOrders = new();
+
+        // Pagination controls
+        private Panel _pnlPagination = null!;
+        private Label _lblPageInfo = null!;
+        private ComboBox _cmbPageSize = null!;
+        private Button _btnFirstPage = null!;
+        private Button _btnPrevPage = null!;
+        private Button _btnNextPage = null!;
+        private Button _btnLastPage = null!;
+        private FlowLayoutPanel _pnlPageNumbers = null!;
+
         public WorkOrdersView()
         {
             BuildUI();
@@ -350,13 +366,94 @@ namespace App.WinForms.Views
             _grid.SelectionChanged += (s, e) => UpdateDispatchButtonState();
             _grid.CellDoubleClick += OnGridCellDoubleClick;
 
+            // ── Bottom Pagination Bar ──────────────────────────────
+            _pnlPagination = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 44,
+                BackColor = Color.FromArgb(248, 250, 252),
+                Padding = new Padding(20, 6, 20, 6)
+            };
+            _pnlPagination.Paint += (s, e) =>
+            {
+                using var pen = new Pen(Theme.Border, 1);
+                e.Graphics.DrawLine(pen, 0, 0, _pnlPagination.Width, 0);
+            };
+            card.Controls.Add(_pnlPagination);
+
+            _lblPageInfo = new Label
+            {
+                Dock = DockStyle.Left,
+                Font = Theme.CaptionFont,
+                ForeColor = Theme.TextMuted,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Width = 320
+            };
+            _pnlPagination.Controls.Add(_lblPageInfo);
+
+            var pnlPageControls = new Panel
+            {
+                Dock = DockStyle.Right,
+                Width = 460,
+                BackColor = Color.Transparent
+            };
+            _pnlPagination.Controls.Add(pnlPageControls);
+
+            var lblRows = new Label
+            {
+                Text = "Rows:",
+                Location = new Point(0, 8),
+                Width = 40,
+                Font = Theme.CaptionFont,
+                ForeColor = Theme.TextMuted,
+                TextAlign = ContentAlignment.MiddleRight
+            };
+            pnlPageControls.Controls.Add(lblRows);
+
+            _cmbPageSize = new ComboBox
+            {
+                Location = new Point(44, 6),
+                Width = 70,
+                Font = Theme.CaptionFont,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            _cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100" });
+            _cmbPageSize.SelectedIndex = 1; // 25 default
+            _cmbPageSize.SelectedIndexChanged += (s, e) =>
+            {
+                if (int.TryParse(_cmbPageSize.SelectedItem?.ToString(), out int sz))
+                {
+                    _pageSize = sz;
+                    _currentPage = 1;
+                    RenderPage();
+                }
+            };
+            pnlPageControls.Controls.Add(_cmbPageSize);
+
+            _btnLastPage = CreatePageNavButton("»", 32, pnlPageControls, () => GoToPage(_totalPages));
+            _btnNextPage = CreatePageNavButton("Next >", 65, pnlPageControls, () => GoToPage(_currentPage + 1));
+
+            _pnlPageNumbers = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                Width = 190,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                BackColor = Color.Transparent
+            };
+            pnlPageControls.Controls.Add(_pnlPageNumbers);
+
+            _btnPrevPage = CreatePageNavButton("< Prev", 65, pnlPageControls, () => GoToPage(_currentPage - 1));
+            _btnFirstPage = CreatePageNavButton("«", 32, pnlPageControls, () => GoToPage(1));
+
             card.Controls.Add(_grid);
 
             // Enforce correct z-order (fill panel must be index 0)
             card.Controls.SetChildIndex(_grid, 0);
-            card.Controls.SetChildIndex(pnlDivider, 1);
-            card.Controls.SetChildIndex(pnlFilter, 2);
-            card.Controls.SetChildIndex(pnlHeader, 3);
+            card.Controls.SetChildIndex(_pnlPagination, 1);
+            card.Controls.SetChildIndex(pnlDivider, 2);
+            card.Controls.SetChildIndex(pnlFilter, 3);
+            card.Controls.SetChildIndex(pnlHeader, 4);
 
             ResumeLayout(false);
         }
@@ -400,7 +497,8 @@ namespace App.WinForms.Views
                     bool matchSearch = string.IsNullOrEmpty(search) ||
                         (wo.CustomerName != null && wo.CustomerName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                         (wo.ServiceType != null && wo.ServiceType.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                        (wo.AssignedStaff != null && wo.AssignedStaff.Contains(search, StringComparison.OrdinalIgnoreCase));
+                        (wo.AssignedStaff != null && wo.AssignedStaff.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                        $"wo-{wo.ServiceRequestId:d4}".Contains(search, StringComparison.OrdinalIgnoreCase);
 
                     bool matchStatus = string.IsNullOrEmpty(statusFilter) ||
                         (wo.Status != null && wo.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase));
@@ -408,9 +506,10 @@ namespace App.WinForms.Views
                     return matchSearch && matchStatus;
                 });
 
-                RebuildGrid(filtered);
-                _lblCount.Text = $"{filtered.Count} work order{(filtered.Count == 1 ? "" : "s")}";
-                UpdateDispatchButtonState();
+                // Newest first
+                _filteredWorkOrders = filtered.OrderByDescending(w => w.PreferredDate).ThenByDescending(w => w.ServiceRequestId).ToList();
+                CalculatePagination();
+                RenderPage();
             }
             catch (Exception ex)
             {
@@ -418,17 +517,113 @@ namespace App.WinForms.Views
             }
         }
 
-        private void RebuildGrid(List<WorkOrderDto> data)
+        private void CalculatePagination()
         {
-            try
+            int total = _filteredWorkOrders.Count;
+            _totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)_pageSize));
+
+            if (_currentPage > _totalPages) _currentPage = _totalPages;
+            if (_currentPage < 1) _currentPage = 1;
+        }
+
+        private void GoToPage(int page)
+        {
+            if (page < 1 || page > _totalPages || page == _currentPage) return;
+            _currentPage = page;
+            RenderPage();
+        }
+
+        private void RenderPage()
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(RenderPage));
+                return;
+            }
+
+            int total = _filteredWorkOrders.Count;
+            if (total == 0)
             {
                 _grid.DataSource = null;
-                _grid.DataSource = data;
+                _lblCount.Text = "0 work orders";
+                _lblPageInfo.Text = "No work orders to display";
+                _pnlPageNumbers.Controls.Clear();
+                _btnFirstPage.Enabled = _btnPrevPage.Enabled = _btnNextPage.Enabled = _btnLastPage.Enabled = false;
+                UpdateDispatchButtonState();
+                return;
             }
-            catch (Exception ex)
+
+            int startIndex = (_currentPage - 1) * _pageSize;
+            var pageRecords = _filteredWorkOrders.Skip(startIndex).Take(_pageSize).ToList();
+            int endIndex = startIndex + pageRecords.Count;
+
+            _grid.DataSource = null;
+            _grid.DataSource = pageRecords;
+
+            _lblCount.Text = $"{total} work order{(total == 1 ? "" : "s")}";
+            _lblPageInfo.Text = $"Showing {startIndex + 1} to {endIndex} of {total} records.";
+
+            _btnFirstPage.Enabled = _btnPrevPage.Enabled = (_currentPage > 1);
+            _btnNextPage.Enabled = _btnLastPage.Enabled = (_currentPage < _totalPages);
+            UpdatePageNumberButtons();
+            UpdateDispatchButtonState();
+        }
+
+        private void UpdatePageNumberButtons()
+        {
+            _pnlPageNumbers.SuspendLayout();
+            _pnlPageNumbers.Controls.Clear();
+
+            int start = Math.Max(1, _currentPage - 2);
+            int end = Math.Min(_totalPages, start + 4);
+            if (end - start < 4)
             {
-                ShowToast($"Failed to bind work orders: {ex.Message}", false);
+                start = Math.Max(1, end - 4);
             }
+
+            for (int p = start; p <= end; p++)
+            {
+                int pageNum = p;
+                bool isCurrent = (pageNum == _currentPage);
+
+                var btn = new Button
+                {
+                    Text = pageNum.ToString(),
+                    Width = 32,
+                    Height = 30,
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = isCurrent ? Theme.Primary : Color.FromArgb(241, 245, 249),
+                    ForeColor = isCurrent ? Color.White : Color.FromArgb(71, 85, 105),
+                    Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                    Margin = new Padding(2, 0, 2, 0),
+                    Cursor = Cursors.Hand
+                };
+                btn.FlatAppearance.BorderSize = 0;
+                btn.Click += (s, e) => GoToPage(pageNum);
+                _pnlPageNumbers.Controls.Add(btn);
+            }
+
+            _pnlPageNumbers.ResumeLayout();
+        }
+
+        private static Button CreatePageNavButton(string text, int width, Control parent, Action onClick)
+        {
+            var btn = new Button
+            {
+                Text = text,
+                Dock = DockStyle.Right,
+                Width = width,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(2, 0, 2, 0)
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Click += (s, e) => onClick();
+            parent.Controls.Add(btn);
+            return btn;
         }
 
         private void UpdateDispatchButtonState()

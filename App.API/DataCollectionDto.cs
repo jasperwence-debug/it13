@@ -96,6 +96,7 @@ namespace App.API
     {
         public bool ForceCreate { get; set; } = false;
         public int? UseExistingCustomerId { get; set; }
+        public string? ServiceAddress { get; set; }
     }
 
     /// <summary>

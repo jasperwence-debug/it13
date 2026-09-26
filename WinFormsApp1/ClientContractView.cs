@@ -39,6 +39,20 @@ namespace App.WinForms.Views
         private Button _btnEdit = null!;
         private Button _btnDelete = null!;
         private List<DataCollectionDto> _allRecords = new();
+        private List<DataCollectionDto> _filteredRecords = new();
+
+        // Pagination state for Saved Records
+        private int _pageSizeRecords = 25;
+        private int _currentPageRecords = 1;
+        private int _totalPagesRecords = 1;
+        private Panel _pnlPaginationRecords = null!;
+        private Label _lblPageInfoRecords = null!;
+        private ComboBox _cmbPageSizeRecords = null!;
+        private Button _btnFirstPageRecords = null!;
+        private Button _btnPrevPageRecords = null!;
+        private Button _btnNextPageRecords = null!;
+        private Button _btnLastPageRecords = null!;
+        private FlowLayoutPanel _pnlPageNumbersRecords = null!;
 
         public Button btnCollectData => _btnCollectData;
         public Button btnNewBookingTop => _btnNewBookingTop;
@@ -250,6 +264,86 @@ namespace App.WinForms.Views
             _btnDelete.Click += async (s, e) => await OnDeleteSelectedClickAsync();
             pnlBottom.Controls.Add(_btnDelete);
 
+            // ── Bottom Pagination Bar ──────────────────────────────
+            _pnlPaginationRecords = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 44,
+                BackColor = Color.FromArgb(248, 250, 252),
+                Padding = new Padding(12, 6, 12, 6)
+            };
+            _pnlPaginationRecords.Paint += (s, e) =>
+            {
+                using var pen = new Pen(Theme.Border, 1);
+                e.Graphics.DrawLine(pen, 0, 0, _pnlPaginationRecords.Width, 0);
+            };
+            pnlContainer.Controls.Add(_pnlPaginationRecords);
+
+            _lblPageInfoRecords = new Label
+            {
+                Dock = DockStyle.Left,
+                Font = Theme.CaptionFont,
+                ForeColor = Theme.TextMuted,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Width = 320
+            };
+            _pnlPaginationRecords.Controls.Add(_lblPageInfoRecords);
+
+            var pnlPageControls = new Panel
+            {
+                Dock = DockStyle.Right,
+                Width = 460,
+                BackColor = Color.Transparent
+            };
+            _pnlPaginationRecords.Controls.Add(pnlPageControls);
+
+            var lblRows = new Label
+            {
+                Text = "Rows:",
+                Location = new Point(0, 8),
+                Width = 40,
+                Font = Theme.CaptionFont,
+                ForeColor = Theme.TextMuted,
+                TextAlign = ContentAlignment.MiddleRight
+            };
+            pnlPageControls.Controls.Add(lblRows);
+
+            _cmbPageSizeRecords = new ComboBox
+            {
+                Location = new Point(44, 6),
+                Width = 70,
+                Font = Theme.CaptionFont,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            _cmbPageSizeRecords.Items.AddRange(new object[] { "10", "25", "50", "100" });
+            _cmbPageSizeRecords.SelectedIndex = 1; // 25 default
+            _cmbPageSizeRecords.SelectedIndexChanged += (s, e) =>
+            {
+                if (int.TryParse(_cmbPageSizeRecords.SelectedItem?.ToString(), out int sz))
+                {
+                    _pageSizeRecords = sz;
+                    _currentPageRecords = 1;
+                    RenderRecordsPage();
+                }
+            };
+            pnlPageControls.Controls.Add(_cmbPageSizeRecords);
+
+            _btnLastPageRecords = CreatePageNavButton("»", 32, pnlPageControls, () => GoToRecordsPage(_totalPagesRecords));
+            _btnNextPageRecords = CreatePageNavButton("Next >", 65, pnlPageControls, () => GoToRecordsPage(_currentPageRecords + 1));
+
+            _pnlPageNumbersRecords = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                Width = 190,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                BackColor = Color.Transparent
+            };
+            pnlPageControls.Controls.Add(_pnlPageNumbersRecords);
+
+            _btnPrevPageRecords = CreatePageNavButton("< Prev", 65, pnlPageControls, () => GoToRecordsPage(_currentPageRecords - 1));
+            _btnFirstPageRecords = CreatePageNavButton("«", 32, pnlPageControls, () => GoToRecordsPage(1));
+
             // Middle: DataGridView
             _dgvRecords = CreateStyledGrid();
             ConfigureRecordsGridColumns(_dgvRecords);
@@ -419,7 +513,46 @@ namespace App.WinForms.Views
                     r.CustomerType.ToLowerInvariant().Contains(term)
                 ).ToList();
 
-            var displayList = filtered.Select(r => new
+            // Client-side sorting: newest first (PreferredDate DESC, ServiceRequestId DESC)
+            _filteredRecords = filtered.OrderByDescending(r => r.PreferredDate).ThenByDescending(r => r.ServiceRequestId).ToList();
+            CalculateRecordsPagination();
+            RenderRecordsPage();
+        }
+
+        private void CalculateRecordsPagination()
+        {
+            int total = _filteredRecords.Count;
+            _totalPagesRecords = Math.Max(1, (int)Math.Ceiling(total / (double)_pageSizeRecords));
+
+            if (_currentPageRecords > _totalPagesRecords) _currentPageRecords = _totalPagesRecords;
+            if (_currentPageRecords < 1) _currentPageRecords = 1;
+        }
+
+        private void GoToRecordsPage(int page)
+        {
+            if (page < 1 || page > _totalPagesRecords || page == _currentPageRecords) return;
+            _currentPageRecords = page;
+            RenderRecordsPage();
+        }
+
+        private void RenderRecordsPage()
+        {
+            int total = _filteredRecords.Count;
+            if (total == 0)
+            {
+                _dgvRecords.DataSource = null;
+                _lblRecordCount.Text = "Total: 0 records";
+                _lblPageInfoRecords.Text = "No records to display";
+                _pnlPageNumbersRecords.Controls.Clear();
+                _btnFirstPageRecords.Enabled = _btnPrevPageRecords.Enabled = _btnNextPageRecords.Enabled = _btnLastPageRecords.Enabled = false;
+                return;
+            }
+
+            int startIndex = (_currentPageRecords - 1) * _pageSizeRecords;
+            var pageRecords = _filteredRecords.Skip(startIndex).Take(_pageSizeRecords).ToList();
+            int endIndex = startIndex + pageRecords.Count;
+
+            var displayList = pageRecords.Select(r => new
             {
                 r.ServiceRequestId,
                 r.CustomerName,
@@ -443,7 +576,66 @@ namespace App.WinForms.Views
             if (_dgvRecords.Columns["CustomerId"] is { } colCustId)
                 colCustId.Visible = false;
 
-            _lblRecordCount.Text = $"Total: {filtered.Count} records";
+            _lblRecordCount.Text = $"Total: {total} records";
+            _lblPageInfoRecords.Text = $"Showing {startIndex + 1} to {endIndex} of {total} records.";
+
+            _btnFirstPageRecords.Enabled = _btnPrevPageRecords.Enabled = (_currentPageRecords > 1);
+            _btnNextPageRecords.Enabled = _btnLastPageRecords.Enabled = (_currentPageRecords < _totalPagesRecords);
+            UpdateRecordsPageNumberButtons();
+        }
+
+        private void UpdateRecordsPageNumberButtons()
+        {
+            _pnlPageNumbersRecords.SuspendLayout();
+            _pnlPageNumbersRecords.Controls.Clear();
+
+            int start = Math.Max(1, _currentPageRecords - 2);
+            int end = Math.Min(_totalPagesRecords, start + 4);
+            if (end - start < 4) start = Math.Max(1, end - 4);
+
+            for (int p = start; p <= end; p++)
+            {
+                int pageNum = p;
+                bool isCurrent = (pageNum == _currentPageRecords);
+
+                var btn = new Button
+                {
+                    Text = pageNum.ToString(),
+                    Width = 32,
+                    Height = 30,
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = isCurrent ? Theme.Primary : Color.FromArgb(241, 245, 249),
+                    ForeColor = isCurrent ? Color.White : Color.FromArgb(71, 85, 105),
+                    Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                    Margin = new Padding(2, 0, 2, 0),
+                    Cursor = Cursors.Hand
+                };
+                btn.FlatAppearance.BorderSize = 0;
+                btn.Click += (s, e) => GoToRecordsPage(pageNum);
+                _pnlPageNumbersRecords.Controls.Add(btn);
+            }
+
+            _pnlPageNumbersRecords.ResumeLayout();
+        }
+
+        private static Button CreatePageNavButton(string text, int width, Control parent, Action onClick)
+        {
+            var btn = new Button
+            {
+                Text = text,
+                Dock = DockStyle.Right,
+                Width = width,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(2, 0, 2, 0)
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Click += (s, e) => onClick();
+            parent.Controls.Add(btn);
+            return btn;
         }
 
         public async Task LoadRetentionAsync()
