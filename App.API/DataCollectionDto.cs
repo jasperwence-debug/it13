@@ -1,3 +1,5 @@
+using App.Domain.Common;
+
 namespace App.API
 {
     // ----------------------------------------------------------------
@@ -5,8 +7,32 @@ namespace App.API
     // ----------------------------------------------------------------
     public class DataCollectionDto
     {
+        // Normalized Name Fields (max length 50 each)
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
         // Lead
-        public string LeadName { get; set; } = string.Empty;
+        public string LeadName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _leadName;
+            set
+            {
+                _leadName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _leadName = string.Empty;
+
         public string ContactInfo { get; set; } = string.Empty;
         public string LeadSource { get; set; } = string.Empty;
         public string ServiceOfInterest { get; set; } = string.Empty;
@@ -14,7 +40,23 @@ namespace App.API
 
         // Customer
         public string CustomerType { get; set; } = string.Empty;
-        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _customerName;
+            set
+            {
+                _customerName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _customerName = string.Empty;
+
         public string ContactDetails { get; set; } = string.Empty;
         public string ServiceLocation { get; set; } = string.Empty;
 
@@ -34,7 +76,32 @@ namespace App.API
     {
         public int CustomerId { get; set; }
         public string CustomerType { get; set; } = string.Empty;
-        public string CustomerName { get; set; } = string.Empty;
+
+        // Normalized Name Fields
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
+        public string CustomerName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _customerName;
+            set
+            {
+                _customerName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _customerName = string.Empty;
+
         public string ContactDetails { get; set; } = string.Empty;
         public string ServiceLocation { get; set; } = string.Empty;
     }
@@ -49,13 +116,39 @@ namespace App.API
     /// </summary>
     public class LeadCreateDto
     {
-        public string LeadName { get; set; } = string.Empty;
+        // Normalized Name Fields (max length 50 each)
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
+        public string LeadName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _leadName;
+            set
+            {
+                _leadName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _leadName = string.Empty;
+
         public string Phone { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string LeadSource { get; set; } = string.Empty;
         public string? InquiryDetails { get; set; }
         public decimal? QuotedPrice { get; set; }
         public string? ServiceAddress { get; set; }
+        public int? AssignedUserId { get; set; }
+        public string? AssignedSalesStaff { get; set; }
     }
 
     /// <summary>
@@ -74,7 +167,32 @@ namespace App.API
     public class LeadDto
     {
         public int LeadId { get; set; }
-        public string LeadName { get; set; } = string.Empty;
+
+        // Normalized Name Fields
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
+        public string LeadName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _leadName;
+            set
+            {
+                _leadName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _leadName = string.Empty;
+
         public string ContactInfo { get; set; } = string.Empty;
         public string LeadSource { get; set; } = string.Empty;
         public string ServiceOfInterest { get; set; } = string.Empty;
@@ -86,6 +204,8 @@ namespace App.API
         public int? ConvertedCustomerId { get; set; }
         public DateTime? ConvertedAt { get; set; }
         public DateTime CreatedAt { get; set; }
+        public int? AssignedUserId { get; set; }
+        public string? AssignedSalesStaff { get; set; }
     }
 
     /// <summary>
@@ -136,9 +256,35 @@ namespace App.API
     {
         public int CustomerId { get; set; }
         public int? LeadId { get; set; }
-        public string CustomerName { get; set; } = string.Empty;
+
+        // Normalized Name Fields
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
+        public string CustomerName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _customerName;
+            set
+            {
+                _customerName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _customerName = string.Empty;
+
         public string CustomerType { get; set; } = string.Empty;
         public string ContactDetails { get; set; } = string.Empty;
+        public string? Email { get; set; }
         public string ServiceLocation { get; set; } = string.Empty;
         public int TotalBookings { get; set; }
         public int CompletedBookings { get; set; }
@@ -148,6 +294,20 @@ namespace App.API
         public string RetentionStatus { get; set; } = "Active";
         public string? LatestService { get; set; }
         public DateTime? LatestDate { get; set; }
+        public DateTime? CreatedAt { get; set; }
+        public int? AssignedUserId { get; set; }
+        public string? AssignedSalesStaff { get; set; }
+        public bool HasNegativeFeedback { get; set; }
+        public int? LatestRating { get; set; }
+    }
+
+    /// <summary>
+    /// Input DTO for reassigning record ownership.
+    /// </summary>
+    public class AssignOwnerDto
+    {
+        public int AssignedUserId { get; set; }
+        public string? AssignedSalesStaff { get; set; }
     }
 
     /// <summary>
@@ -157,7 +317,32 @@ namespace App.API
     public class AtRiskCustomerDto
     {
         public int CustomerId { get; set; }
-        public string CustomerName { get; set; } = string.Empty;
+
+        // Normalized Name Fields
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
+        public string CustomerName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _customerName;
+            set
+            {
+                _customerName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _customerName = string.Empty;
+
         public string CustomerType { get; set; } = string.Empty;
         public string ContactDetails { get; set; } = string.Empty;
         public string ServiceLocation { get; set; } = string.Empty;

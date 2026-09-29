@@ -95,6 +95,10 @@ namespace App.WinForms.Views
 
         public UserManagementView()
         {
+            if (!SessionManager.IsSuperAdmin)
+            {
+                _currentMode = ViewMode.StaffUsers;
+            }
             BuildUI();
         }
 
@@ -155,9 +159,11 @@ namespace App.WinForms.Views
             };
             pnlHeader.Controls.Add(pnlHeaderLeft);
 
+            bool isSuper = SessionManager.IsSuperAdmin;
+
             _lblTitle = new Label
             {
-                Text = "Client Companies (SaaS Tenants)",
+                Text = isSuper ? "Client Companies (SaaS Tenants)" : "Company Staff & User Management",
                 Font = new Font("Segoe UI", 13.5F, FontStyle.Bold),
                 ForeColor = Theme.TextDark,
                 BackColor = Theme.Surface,
@@ -170,7 +176,7 @@ namespace App.WinForms.Views
 
             _lblCount = new Label
             {
-                Text = "Loading tenant portfolio...",
+                Text = isSuper ? "Loading tenant portfolio..." : "Loading company staff list...",
                 Font = Theme.CaptionFont,
                 ForeColor = Theme.TextMuted,
                 BackColor = Theme.Surface,
@@ -191,7 +197,7 @@ namespace App.WinForms.Views
             };
             pnlHeader.Controls.Add(pnlHeaderRight);
 
-            // Segment Tabs
+            // Segment Tabs (Visible ONLY for Super Admin)
             _btnTabCompanies = new Button
             {
                 Text = "🏢  Client Companies (Tenants)",
@@ -202,7 +208,8 @@ namespace App.WinForms.Views
                 BackColor = Color.FromArgb(37, 99, 235), // Active primary blue
                 ForeColor = Color.White,
                 Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 4, 0)
+                Margin = new Padding(0, 0, 4, 0),
+                Visible = isSuper
             };
             _btnTabCompanies.FlatAppearance.BorderSize = 0;
             _btnTabCompanies.Click += (s, e) => SwitchTab(ViewMode.ClientCompanies);
@@ -218,7 +225,8 @@ namespace App.WinForms.Views
                 BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 12, 0)
+                Margin = new Padding(0, 0, 12, 0),
+                Visible = isSuper
             };
             _btnTabUsers.FlatAppearance.BorderSize = 0;
             _btnTabUsers.Click += (s, e) => SwitchTab(ViewMode.StaffUsers);
@@ -237,9 +245,13 @@ namespace App.WinForms.Views
 
             _btnNewUser = new Button
             {
-                Text = "+  Provision User",
+                Text = isSuper
+                    ? (_currentMode == ViewMode.ClientCompanies ? "🏢  Onboard New Tenant" : "➕  Provision User")
+                    : "➕  Add Staff Member",
                 Height = 34,
-                Width = 145,
+                Width = isSuper
+                    ? (_currentMode == ViewMode.ClientCompanies ? 185 : 150)
+                    : 160,
                 Margin = new Padding(0)
             };
             Theme.ApplyPrimaryButtonStyle(_btnNewUser);
@@ -262,19 +274,60 @@ namespace App.WinForms.Views
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             card.Controls.Add(pnlKpis);
 
-            var (k1, t1, v1, s1) = CreateKpiCard("TOTAL CLIENT COMPANIES", "0", "Businesses running your CRM", Color.FromArgb(30, 41, 59));
+            var (k1, t1, v1, s1) = CreateKpiCard("TOTAL CLIENT COMPANIES", "0", "Businesses running your CRM", Color.FromArgb(30, 41, 59), () =>
+            {
+                _txtSearch.Text = string.Empty;
+                if (_cmbRoleFilter.Items.Count > 0) _cmbRoleFilter.SelectedIndex = 0;
+                ApplyFilter();
+            });
             _lblKpi1Title = t1; _lblKpi1Val = v1; _lblKpi1Sub = s1;
             pnlKpis.Controls.Add(k1, 0, 0);
 
-            var (k2, t2, v2, s2) = CreateKpiCard("MICRO TIERS (TENANT A)", "0", "Main Transaction + Collection", Color.FromArgb(37, 99, 235));
+            var (k2, t2, v2, s2) = CreateKpiCard("MICRO TIERS (TENANT A)", "0", "Main Transaction + Collection", Color.FromArgb(37, 99, 235), () =>
+            {
+                if (SessionManager.IsSuperAdmin && _currentMode == ViewMode.ClientCompanies)
+                {
+                    _txtSearch.Text = "Tenant A";
+                }
+                else
+                {
+                    int idx = _cmbRoleFilter.Items.IndexOf(Roles.Admin);
+                    if (idx >= 0) _cmbRoleFilter.SelectedIndex = idx;
+                }
+                ApplyFilter();
+            });
             _lblKpi2Title = t2; _lblKpi2Val = v2; _lblKpi2Sub = s2;
             pnlKpis.Controls.Add(k2, 1, 0);
 
-            var (k3, t3, v3, s3) = CreateKpiCard("SMALL TIERS (TENANT B)", "0", "BI Dashboard + Retention", Color.FromArgb(22, 163, 74));
+            var (k3, t3, v3, s3) = CreateKpiCard("SMALL TIERS (TENANT B)", "0", "BI Dashboard + Retention", Color.FromArgb(22, 163, 74), () =>
+            {
+                if (SessionManager.IsSuperAdmin && _currentMode == ViewMode.ClientCompanies)
+                {
+                    _txtSearch.Text = "Tenant B";
+                }
+                else
+                {
+                    int idx = _cmbRoleFilter.Items.IndexOf(Roles.Manager);
+                    if (idx >= 0) _cmbRoleFilter.SelectedIndex = idx;
+                }
+                ApplyFilter();
+            });
             _lblKpi3Title = t3; _lblKpi3Val = v3; _lblKpi3Sub = s3;
             pnlKpis.Controls.Add(k3, 2, 0);
 
-            var (k4, t4, v4, s4) = CreateKpiCard("ENTERPRISE TIERS (TENANT C)", "0", "Multi-Branch Operations", Color.FromArgb(147, 51, 234));
+            var (k4, t4, v4, s4) = CreateKpiCard("ENTERPRISE TIERS (TENANT C)", "0", "Multi-Branch Operations", Color.FromArgb(147, 51, 234), () =>
+            {
+                if (SessionManager.IsSuperAdmin && _currentMode == ViewMode.ClientCompanies)
+                {
+                    _txtSearch.Text = "Tenant C";
+                }
+                else
+                {
+                    int idx = _cmbRoleFilter.Items.IndexOf(Roles.SalesStaff);
+                    if (idx >= 0) _cmbRoleFilter.SelectedIndex = idx;
+                }
+                ApplyFilter();
+            });
             _lblKpi4Title = t4; _lblKpi4Val = v4; _lblKpi4Sub = s4;
             pnlKpis.Controls.Add(k4, 3, 0);
 
@@ -323,7 +376,9 @@ namespace App.WinForms.Views
                 Dock = DockStyle.Fill,
                 Font = Theme.BodyFont,
                 BorderStyle = BorderStyle.None,
-                PlaceholderText = "🔍  Search by company code, name, or plan..."
+                PlaceholderText = isSuper
+                    ? "🔍  Search by company code, name, or plan..."
+                    : "🔍  Search by username or role..."
             };
             _txtSearch.Location = new Point(6, 6);
             _txtSearch.TextChanged += (s, e) =>
@@ -344,7 +399,7 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 TextAlign = ContentAlignment.MiddleRight,
-                Visible = false
+                Visible = !isSuper
             };
             pnlSearch.Controls.Add(_lblRoleFilter);
 
@@ -354,16 +409,29 @@ namespace App.WinForms.Views
                 Width = 180,
                 Font = Theme.BodyFont,
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Visible = false
+                Visible = !isSuper
             };
-            _cmbRoleFilter.Items.AddRange(new object[]
+            if (isSuper)
             {
-                "All Roles",
-                Roles.SuperAdmin,
-                Roles.Admin,
-                Roles.Manager,
-                Roles.SalesStaff
-            });
+                _cmbRoleFilter.Items.AddRange(new object[]
+                {
+                    "All Roles",
+                    Roles.SuperAdmin,
+                    Roles.Admin,
+                    Roles.Manager,
+                    Roles.SalesStaff
+                });
+            }
+            else
+            {
+                _cmbRoleFilter.Items.AddRange(new object[]
+                {
+                    "All Roles",
+                    Roles.Admin,
+                    Roles.Manager,
+                    Roles.SalesStaff
+                });
+            }
             _cmbRoleFilter.SelectedIndex = 0;
             _cmbRoleFilter.SelectedIndexChanged += (s, e) => ApplyFilter();
             pnlSearch.Controls.Add(_cmbRoleFilter);
@@ -449,6 +517,7 @@ namespace App.WinForms.Views
         // ============================================================
         private void SwitchTab(ViewMode mode)
         {
+            if (!SessionManager.IsSuperAdmin && mode == ViewMode.ClientCompanies) return;
             if (_currentMode == mode) return;
             _currentMode = mode;
 
@@ -464,6 +533,12 @@ namespace App.WinForms.Views
                 _txtSearch.PlaceholderText = "🔍  Search by company code, name, or plan...";
                 _lblRoleFilter.Visible = false;
                 _cmbRoleFilter.Visible = false;
+
+                if (SessionManager.IsSuperAdmin)
+                {
+                    _btnNewUser.Text = "🏢  Onboard New Tenant";
+                    _btnNewUser.Width = 185;
+                }
             }
             else
             {
@@ -473,10 +548,13 @@ namespace App.WinForms.Views
                 _btnTabCompanies.BackColor = Color.FromArgb(241, 245, 249);
                 _btnTabCompanies.ForeColor = Color.FromArgb(71, 85, 105);
 
-                _lblTitle.Text = "User Management & Role Permissions";
+                _lblTitle.Text = SessionManager.IsSuperAdmin ? "User Management & Role Permissions" : "Company Staff & User Management";
                 _txtSearch.PlaceholderText = "🔍  Search by username or role...";
                 _lblRoleFilter.Visible = true;
                 _cmbRoleFilter.Visible = true;
+
+                _btnNewUser.Text = SessionManager.IsSuperAdmin ? "➕  Provision User" : "➕  Add Staff Member";
+                _btnNewUser.Width = SessionManager.IsSuperAdmin ? 150 : 160;
             }
 
             ConfigureGridColumns();
@@ -536,37 +614,49 @@ namespace App.WinForms.Views
                 using var db = new AppDbContext();
                 AppDbContext.EnsureSeedData(db);
 
-                // 1. Load Companies & Subscriptions
-                var comps = db.Companies.OrderBy(c => c.CompanyId).ToList();
-                var subs = db.Subscriptions.ToList();
-                var branches = db.Branches.ToList();
-
-                _companies = comps.Select(c =>
+                if (SessionManager.IsSuperAdmin)
                 {
-                    var sub = subs.FirstOrDefault(s => s.CompanyId == c.CompanyId);
-                    var branchCount = branches.Count(b => b.CompanyId == c.CompanyId);
+                    // 1. Load Companies & Subscriptions
+                    var comps = db.Companies.OrderBy(c => c.CompanyId).ToList();
+                    var subs = db.Subscriptions.ToList();
+                    var branches = db.Branches.ToList();
 
-                    string tierLabel = sub != null ? sub.Tier.ToString() : "Micro";
-                    if (tierLabel == "Micro") tierLabel = "Tenant A (Micro)";
-                    else if (tierLabel == "Small") tierLabel = "Tenant B (Small)";
-                    else if (tierLabel == "Medium") tierLabel = "Tenant C (Enterprise)";
-
-                    return new TenantCompanyItem
+                    _companies = comps.Select(c =>
                     {
-                        CompanyId = c.CompanyId,
-                        CompanyCode = c.CompanyCode,
-                        CompanyName = c.CompanyName,
-                        Tier = tierLabel,
-                        Status = sub?.Status ?? (c.IsActive ? "Active" : "Inactive"),
-                        AdminUser = "admin",
-                        BranchesCount = branchCount,
-                        EndDate = sub?.EndDate ?? DateTime.Today.AddMonths(1),
-                        CompanyEntity = c
-                    };
-                }).ToList();
+                        var sub = subs.FirstOrDefault(s => s.CompanyId == c.CompanyId);
+                        var branchCount = branches.Count(b => b.CompanyId == c.CompanyId);
 
-                // 2. Load System Users
-                _users = db.Users.OrderBy(u => u.Id).ToList();
+                        string tierLabel = sub != null ? sub.Tier.ToString() : "Micro";
+                        if (tierLabel == "Micro") tierLabel = "Tenant A (Micro)";
+                        else if (tierLabel == "Small") tierLabel = "Tenant B (Small)";
+                        else if (tierLabel == "Medium") tierLabel = "Tenant C (Enterprise)";
+
+                        return new TenantCompanyItem
+                        {
+                            CompanyId = c.CompanyId,
+                            CompanyCode = c.CompanyCode,
+                            CompanyName = c.CompanyName,
+                            Tier = tierLabel,
+                            Status = sub?.Status ?? (c.IsActive ? "Active" : "Inactive"),
+                            AdminUser = "admin",
+                            BranchesCount = branchCount,
+                            EndDate = sub?.EndDate ?? DateTime.Today.AddMonths(1),
+                            CompanyEntity = c
+                        };
+                    }).ToList();
+
+                    // 2. Load System Users
+                    _users = db.Users.OrderBy(u => u.Id).ToList();
+                }
+                else
+                {
+                    // Tenant Admin: internal company staff only (exclude SuperAdmin)
+                    _companies.Clear();
+                    _users = db.Users
+                        .Where(u => u.Role != Roles.SuperAdmin)
+                        .OrderBy(u => u.Id)
+                        .ToList();
+                }
 
                 UpdateKpis();
                 ApplyFilter();
@@ -579,6 +669,26 @@ namespace App.WinForms.Views
 
         private void UpdateKpis()
         {
+            if (!SessionManager.IsSuperAdmin)
+            {
+                _lblKpi1Title.Text = "TOTAL COMPANY STAFF";
+                _lblKpi1Val.Text = _users.Count.ToString();
+                _lblKpi1Sub.Text = "Internal company team";
+
+                _lblKpi2Title.Text = "COMPANY ADMINISTRATORS";
+                _lblKpi2Val.Text = _users.Count(u => u.Role == Roles.Admin).ToString();
+                _lblKpi2Sub.Text = "Business system admins";
+
+                _lblKpi3Title.Text = "OPERATIONS MANAGERS";
+                _lblKpi3Val.Text = _users.Count(u => u.Role == Roles.Manager).ToString();
+                _lblKpi3Sub.Text = "Dispatch & crew supervisors";
+
+                _lblKpi4Title.Text = "SALES REPRESENTATIVES";
+                _lblKpi4Val.Text = _users.Count(u => u.Role == Roles.SalesStaff).ToString();
+                _lblKpi4Sub.Text = "Client & contract outreach";
+                return;
+            }
+
             if (_currentMode == ViewMode.ClientCompanies)
             {
                 _lblKpi1Title.Text = "TOTAL CLIENT COMPANIES";
@@ -771,7 +881,9 @@ namespace App.WinForms.Views
                         _grid.Rows.Add(row);
                     }
 
-                    _lblCount.Text = $"{_filteredUsers.Count} active user profile{(_filteredUsers.Count == 1 ? "" : "s")}";
+                    _lblCount.Text = !SessionManager.IsSuperAdmin
+                        ? $"{_filteredUsers.Count} company staff member{(_filteredUsers.Count == 1 ? "" : "s")}"
+                        : $"{_filteredUsers.Count} active user profile{(_filteredUsers.Count == 1 ? "" : "s")}";
                 }
             }
             finally
@@ -819,6 +931,12 @@ namespace App.WinForms.Views
                         return;
                     }
 
+                    if (!SessionManager.IsSuperAdmin && user.Role == Roles.Admin)
+                    {
+                        MessageBox.Show("Company Administrators cannot suspend administrator accounts.", "Access Guard", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
                     bool isSuspended = _suspendedUserIds.Contains(userId);
                     string actionWord = isSuspended ? "reactivate" : "suspend";
 
@@ -842,34 +960,53 @@ namespace App.WinForms.Views
 
         private void OnNewUserClick(object? sender, EventArgs e)
         {
-            using var dlg = new NewUserDialog();
-            dlg.UserCreated += () =>
+            if (SessionManager.IsSuperAdmin && _currentMode == ViewMode.ClientCompanies)
             {
-                ShowToast("New user account provisioned successfully!", true);
-                LoadAllData();
-            };
-            dlg.ShowDialog(FindForm());
+                using var dlg = new OnboardTenantDialog();
+                dlg.TenantOnboarded += (comp) =>
+                {
+                    ShowToast($"Tenant '{comp.CompanyName}' ({comp.CompanyCode}) onboarded successfully!", true);
+                    LoadAllData();
+                };
+                dlg.ShowDialog(FindForm());
+            }
+            else
+            {
+                using var dlg = new NewUserDialog();
+                dlg.UserCreated += () =>
+                {
+                    ShowToast("New user account provisioned successfully!", true);
+                    LoadAllData();
+                };
+                dlg.ShowDialog(FindForm());
+            }
         }
 
         private static (Panel card, Label titleLabel, Label valLabel, Label subLabel) CreateKpiCard(
             string title,
             string initialVal,
             string subtext,
-            Color valColor)
+            Color valColor,
+            Action? onClick = null)
         {
             var card = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = Theme.Surface,
                 Margin = new Padding(4),
-                Padding = new Padding(14, 8, 14, 8)
+                Padding = new Padding(14, 8, 14, 8),
+                Cursor = Cursors.Hand
             };
+
+            bool isHovered = false;
 
             card.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using var pen = new Pen(Theme.Border, 1);
+                using var brush = new SolidBrush(card.BackColor);
+                using var pen = isHovered ? new Pen(Color.FromArgb(99, 102, 241), 1.5f) : new Pen(Theme.Border, 1);
                 var rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
+                e.Graphics.FillRectangle(brush, rect);
                 e.Graphics.DrawRectangle(pen, rect);
             };
 
@@ -879,7 +1016,8 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
                 ForeColor = Theme.TextMuted,
                 Dock = DockStyle.Top,
-                Height = 16
+                Height = 16,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(lblTitle);
 
@@ -890,7 +1028,8 @@ namespace App.WinForms.Views
                 ForeColor = valColor,
                 Dock = DockStyle.Top,
                 Height = 34,
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(valLabel);
 
@@ -900,23 +1039,75 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 7.5F, FontStyle.Regular),
                 ForeColor = Theme.TextSubtle,
                 Dock = DockStyle.Bottom,
-                Height = 16
+                Height = 16,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(lblSub);
+
+            void SetHover(bool hover)
+            {
+                isHovered = hover;
+                card.BackColor = hover ? Color.FromArgb(248, 250, 252) : Theme.Surface;
+                lblTitle.BackColor = card.BackColor;
+                valLabel.BackColor = card.BackColor;
+                lblSub.BackColor = card.BackColor;
+                card.Invalidate();
+            }
+
+            card.MouseEnter += (s, e) => SetHover(true);
+            lblTitle.MouseEnter += (s, e) => SetHover(true);
+            valLabel.MouseEnter += (s, e) => SetHover(true);
+            lblSub.MouseEnter += (s, e) => SetHover(true);
+
+            card.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            lblTitle.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            valLabel.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            lblSub.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+
+            if (onClick != null)
+            {
+                card.Click += (s, e) => onClick();
+                lblTitle.Click += (s, e) => onClick();
+                valLabel.Click += (s, e) => onClick();
+                lblSub.Click += (s, e) => onClick();
+            }
 
             return (card, lblTitle, valLabel, lblSub);
         }
 
         public override void ApplyViewPermissions(string userRole)
         {
+            bool canManage = (userRole == Roles.SuperAdmin || userRole == Roles.Admin);
             if (_btnNewUser != null)
             {
-                _btnNewUser.Visible = (userRole == Roles.SuperAdmin);
+                _btnNewUser.Visible = canManage;
+                if (userRole == Roles.SuperAdmin)
+                {
+                    _btnNewUser.Text = _currentMode == ViewMode.ClientCompanies ? "🏢  Onboard New Tenant" : "➕  Provision User";
+                    _btnNewUser.Width = _currentMode == ViewMode.ClientCompanies ? 185 : 150;
+                }
+                else
+                {
+                    _btnNewUser.Text = "➕  Add Staff Member";
+                    _btnNewUser.Width = 160;
+                }
             }
             if (_grid != null)
             {
                 var col = _grid.Columns["colAction"];
-                if (col != null) col.Visible = (userRole == Roles.SuperAdmin);
+                if (col != null) col.Visible = canManage;
             }
         }
     }

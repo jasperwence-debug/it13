@@ -1,3 +1,4 @@
+using App.Domain.Common;
 using App.Domain.Entities;
 using App.Domain.Enums;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -94,6 +95,189 @@ namespace App.Infrastructure
                     BEGIN
                         ALTER TABLE [Leads] ADD [ConvertedAt] datetime2 NULL;
                     END
+
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'AssignedUserId')
+                    BEGIN
+                        ALTER TABLE [Leads] ADD [AssignedUserId] int NULL;
+                    END
+
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'AssignedSalesStaff')
+                    BEGIN
+                        ALTER TABLE [Leads] ADD [AssignedSalesStaff] nvarchar(100) NULL;
+                    END
+
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Customers') AND name = 'AssignedUserId')
+                    BEGIN
+                        ALTER TABLE [Customers] ADD [AssignedUserId] int NULL;
+                    END
+
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Customers') AND name = 'AssignedSalesStaff')
+                    BEGIN
+                        ALTER TABLE [Customers] ADD [AssignedSalesStaff] nvarchar(100) NULL;
+                    END
+
+                    -- Backfill unassigned leads & customers with the staff user if available
+                    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'AssignedSalesStaff')
+                    BEGIN
+                        EXEC('UPDATE [Leads] SET [AssignedSalesStaff] = ''staff'', [AssignedUserId] = (SELECT TOP 1 [Id] FROM [Users] WHERE [Username] = ''staff'') WHERE [AssignedSalesStaff] IS NULL AND EXISTS (SELECT 1 FROM [Users] WHERE [Username] = ''staff'');');
+                    END
+
+                    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Customers') AND name = 'AssignedSalesStaff')
+                    BEGIN
+                        EXEC('UPDATE [Customers] SET [AssignedSalesStaff] = ''staff'', [AssignedUserId] = (SELECT TOP 1 [Id] FROM [Users] WHERE [Username] = ''staff'') WHERE [AssignedSalesStaff] IS NULL AND EXISTS (SELECT 1 FROM [Users] WHERE [Username] = ''staff'');');
+                    END
+
+                    -- Normalized Customer Name Columns
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Customers') AND name = 'FirstName')
+                    BEGIN
+                        ALTER TABLE [Customers] ADD [FirstName] nvarchar(50) NOT NULL DEFAULT '';
+                    END
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Customers') AND name = 'MiddleName')
+                    BEGIN
+                        ALTER TABLE [Customers] ADD [MiddleName] nvarchar(50) NULL;
+                    END
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Customers') AND name = 'LastName')
+                    BEGIN
+                        ALTER TABLE [Customers] ADD [LastName] nvarchar(50) NOT NULL DEFAULT '';
+                    END
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Customers') AND name = 'Suffix')
+                    BEGIN
+                        ALTER TABLE [Customers] ADD [Suffix] nvarchar(50) NULL;
+                    END
+
+                    -- Normalized Lead Name Columns
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'FirstName')
+                    BEGIN
+                        ALTER TABLE [Leads] ADD [FirstName] nvarchar(50) NOT NULL DEFAULT '';
+                    END
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'MiddleName')
+                    BEGIN
+                        ALTER TABLE [Leads] ADD [MiddleName] nvarchar(50) NULL;
+                    END
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'LastName')
+                    BEGIN
+                        ALTER TABLE [Leads] ADD [LastName] nvarchar(50) NOT NULL DEFAULT '';
+                    END
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'Suffix')
+                    BEGIN
+                        ALTER TABLE [Leads] ADD [Suffix] nvarchar(50) NULL;
+                    END
+
+                    -- Data Migration for Customers: split single CustomerName string into FirstName, MiddleName, LastName
+                    EXEC('
+                    DECLARE @tokC TABLE (idx int, val nvarchar(100));
+                    DECLARE @cId int, @cName nvarchar(200);
+                    DECLARE curC CURSOR LOCAL FAST_FORWARD FOR
+                        SELECT CustomerId, CustomerName FROM Customers WHERE CustomerName IS NOT NULL AND LTRIM(RTRIM(CustomerName)) <> '''' AND (FirstName IS NULL OR FirstName = '''');
+                    OPEN curC;
+                    FETCH NEXT FROM curC INTO @cId, @cName;
+                    WHILE @@FETCH_STATUS = 0
+                    BEGIN
+                        DELETE FROM @tokC;
+                        DECLARE @stepIdxC int = 0;
+                        SET @cName = LTRIM(RTRIM(@cName));
+                        WHILE LEN(@cName) > 0
+                        BEGIN
+                            DECLARE @pC int = CHARINDEX('' '', @cName);
+                            IF @pC = 0
+                            BEGIN
+                                SET @stepIdxC = @stepIdxC + 1;
+                                INSERT INTO @tokC (idx, val) VALUES (@stepIdxC, LEFT(@cName, 50));
+                                BREAK;
+                            END
+                            ELSE
+                            BEGIN
+                                DECLARE @wC nvarchar(100) = LTRIM(RTRIM(SUBSTRING(@cName, 1, @pC - 1)));
+                                IF LEN(@wC) > 0
+                                BEGIN
+                                    SET @stepIdxC = @stepIdxC + 1;
+                                    INSERT INTO @tokC (idx, val) VALUES (@stepIdxC, LEFT(@wC, 50));
+                                END
+                                SET @cName = LTRIM(SUBSTRING(@cName, @pC + 1, LEN(@cName)));
+                            END
+                        END
+                        DECLARE @cntC int = (SELECT COUNT(*) FROM @tokC);
+                        DECLARE @fnC nvarchar(50) = '''', @mnC nvarchar(50) = NULL, @lnC nvarchar(50) = '''';
+                        IF @cntC = 1
+                        BEGIN
+                            SELECT @fnC = val, @lnC = val FROM @tokC WHERE idx = 1;
+                        END
+                        ELSE IF @cntC = 2
+                        BEGIN
+                            SELECT @fnC = val FROM @tokC WHERE idx = 1;
+                            SELECT @lnC = val FROM @tokC WHERE idx = 2;
+                        END
+                        ELSE IF @cntC >= 3
+                        BEGIN
+                            SELECT @fnC = val FROM @tokC WHERE idx = 1;
+                            SELECT @lnC = val FROM @tokC WHERE idx = @cntC;
+                            SELECT @mnC = STRING_AGG(val, '' '') FROM @tokC WHERE idx > 1 AND idx < @cntC;
+                            IF LEN(@mnC) > 50 SET @mnC = LEFT(@mnC, 50);
+                        END
+                        UPDATE Customers SET FirstName = @fnC, MiddleName = @mnC, LastName = @lnC WHERE CustomerId = @cId;
+                        FETCH NEXT FROM curC INTO @cId, @cName;
+                    END
+                    CLOSE curC;
+                    DEALLOCATE curC;
+                    ');
+
+                    -- Data Migration for Leads: split single LeadName string into FirstName, MiddleName, LastName
+                    EXEC('
+                    DECLARE @tokL TABLE (idx int, val nvarchar(100));
+                    DECLARE @lId int, @lName nvarchar(200);
+                    DECLARE curL CURSOR LOCAL FAST_FORWARD FOR
+                        SELECT LeadId, LeadName FROM Leads WHERE LeadName IS NOT NULL AND LTRIM(RTRIM(LeadName)) <> '''' AND (FirstName IS NULL OR FirstName = '''');
+                    OPEN curL;
+                    FETCH NEXT FROM curL INTO @lId, @lName;
+                    WHILE @@FETCH_STATUS = 0
+                    BEGIN
+                        DELETE FROM @tokL;
+                        DECLARE @stepIdxL int = 0;
+                        SET @lName = LTRIM(RTRIM(@lName));
+                        WHILE LEN(@lName) > 0
+                        BEGIN
+                            DECLARE @pL int = CHARINDEX('' '', @lName);
+                            IF @pL = 0
+                            BEGIN
+                                SET @stepIdxL = @stepIdxL + 1;
+                                INSERT INTO @tokL (idx, val) VALUES (@stepIdxL, LEFT(@lName, 50));
+                                BREAK;
+                            END
+                            ELSE
+                            BEGIN
+                                DECLARE @wL nvarchar(100) = LTRIM(RTRIM(SUBSTRING(@lName, 1, @pL - 1)));
+                                IF LEN(@wL) > 0
+                                BEGIN
+                                    SET @stepIdxL = @stepIdxL + 1;
+                                    INSERT INTO @tokL (idx, val) VALUES (@stepIdxL, LEFT(@wL, 50));
+                                END
+                                SET @lName = LTRIM(SUBSTRING(@lName, @pL + 1, LEN(@lName)));
+                            END
+                        END
+                        DECLARE @cntL int = (SELECT COUNT(*) FROM @tokL);
+                        DECLARE @fnL nvarchar(50) = '''', @mnL nvarchar(50) = NULL, @lnL nvarchar(50) = '''';
+                        IF @cntL = 1
+                        BEGIN
+                            SELECT @fnL = val, @lnL = val FROM @tokL WHERE idx = 1;
+                        END
+                        ELSE IF @cntL = 2
+                        BEGIN
+                            SELECT @fnL = val FROM @tokL WHERE idx = 1;
+                            SELECT @lnL = val FROM @tokL WHERE idx = 2;
+                        END
+                        ELSE IF @cntL >= 3
+                        BEGIN
+                            SELECT @fnL = val FROM @tokL WHERE idx = 1;
+                            SELECT @lnL = val FROM @tokL WHERE idx = @cntL;
+                            SELECT @mnL = STRING_AGG(val, '' '') FROM @tokL WHERE idx > 1 AND idx < @cntL;
+                            IF LEN(@mnL) > 50 SET @mnL = LEFT(@mnL, 50);
+                        END
+                        UPDATE Leads SET FirstName = @fnL, MiddleName = @mnL, LastName = @lnL WHERE LeadId = @lId;
+                        FETCH NEXT FROM curL INTO @lId, @lName;
+                    END
+                    CLOSE curL;
+                    DEALLOCATE curL;
+                    ');
 
                     -- Migrate legacy Pending status to Scheduled
                     UPDATE [ServiceRequests] SET [Status] = 'Scheduled' WHERE [Status] = 'Pending';
@@ -286,9 +470,24 @@ namespace App.Infrastructure
             {
                 entity.HasKey(x => x.LeadId);
 
-                entity.Property(x => x.LeadName)
-                    .HasMaxLength(100)
+                entity.Property(x => x.FirstName)
+                    .HasMaxLength(50)
                     .IsRequired();
+
+                entity.Property(x => x.MiddleName)
+                    .HasMaxLength(50);
+
+                entity.Property(x => x.LastName)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.Property(x => x.Suffix)
+                    .HasMaxLength(50);
+
+                entity.Property(x => x.LeadName)
+                    .HasMaxLength(200);
+
+                entity.Ignore(x => x.FullName);
 
                 entity.Property(x => x.ContactInfo)
                     .HasMaxLength(150)
@@ -337,9 +536,22 @@ namespace App.Infrastructure
                     .HasMaxLength(20)
                     .IsRequired();
 
-                entity.Property(x => x.CustomerName)
-                    .HasMaxLength(200)
+                entity.Property(x => x.FirstName)
+                    .HasMaxLength(50)
                     .IsRequired();
+
+                entity.Property(x => x.MiddleName)
+                    .HasMaxLength(50);
+
+                entity.Property(x => x.LastName)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.Property(x => x.Suffix)
+                    .HasMaxLength(50);
+
+                entity.Property(x => x.CustomerName)
+                    .HasMaxLength(200);
 
                 entity.Property(x => x.ContactInfo)
                     .HasColumnName("ContactDetails")
@@ -507,6 +719,61 @@ namespace App.Infrastructure
                     .HasForeignKey(x => x.CompanyId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+        }
+
+        public override int SaveChanges()
+        {
+            NormalizeNames();
+            return base.SaveChanges();
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            NormalizeNames();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void NormalizeNames()
+        {
+            foreach (var entry in ChangeTracker.Entries<Customer>())
+            {
+                if (entry.State is EntityState.Added or EntityState.Modified)
+                {
+                    var c = entry.Entity;
+                    if (string.IsNullOrWhiteSpace(c.FirstName) && string.IsNullOrWhiteSpace(c.LastName) && !string.IsNullOrWhiteSpace(c.CustomerName))
+                    {
+                        var (f, m, l) = NameNormalizer.SplitSingleString(c.CustomerName);
+                        c.FirstName = f;
+                        c.MiddleName = m;
+                        c.LastName = l;
+                    }
+                    c.FirstName = NameNormalizer.Normalize(c.FirstName);
+                    c.MiddleName = string.IsNullOrWhiteSpace(c.MiddleName) ? null : NameNormalizer.Normalize(c.MiddleName);
+                    c.LastName = NameNormalizer.Normalize(c.LastName);
+                    c.Suffix = string.IsNullOrWhiteSpace(c.Suffix) ? null : NameNormalizer.NormalizeSuffix(c.Suffix);
+                    c.CustomerName = c.FullName;
+                }
+            }
+
+            foreach (var entry in ChangeTracker.Entries<Lead>())
+            {
+                if (entry.State is EntityState.Added or EntityState.Modified)
+                {
+                    var l = entry.Entity;
+                    if (string.IsNullOrWhiteSpace(l.FirstName) && string.IsNullOrWhiteSpace(l.LastName) && !string.IsNullOrWhiteSpace(l.LeadName))
+                    {
+                        var (f, m, last) = NameNormalizer.SplitSingleString(l.LeadName);
+                        l.FirstName = f;
+                        l.MiddleName = m;
+                        l.LastName = last;
+                    }
+                    l.FirstName = NameNormalizer.Normalize(l.FirstName);
+                    l.MiddleName = string.IsNullOrWhiteSpace(l.MiddleName) ? null : NameNormalizer.Normalize(l.MiddleName);
+                    l.LastName = NameNormalizer.Normalize(l.LastName);
+                    l.Suffix = string.IsNullOrWhiteSpace(l.Suffix) ? null : NameNormalizer.NormalizeSuffix(l.Suffix);
+                    l.LeadName = l.FullName;
+                }
+            }
         }
     }
 }

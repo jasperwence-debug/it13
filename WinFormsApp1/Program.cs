@@ -28,6 +28,116 @@ namespace App.WinForms
                 return;
             }
 
+            if (args.Length > 0 && args[0] == "--test-roles")
+            {
+                Console.WriteLine("ROLE_TEST: Verifying role use-case visibility and views...");
+                try
+                {
+                    // 1. Super Admin
+                    SessionManager.Login(new App.Domain.Entities.User { Id = 1, Username = "superadmin", Role = Core.Roles.SuperAdmin });
+                    using (var main = new MainForm())
+                    {
+                        main.Show();
+                        var keys = main.GetVisibleNavigationKeys();
+                        main.Hide();
+                        Console.WriteLine($"SuperAdmin visible: {string.Join(", ", keys)}");
+                        if (!keys.Contains("users") || !keys.Contains("subscription") || !keys.Contains("terms"))
+                            throw new Exception("SuperAdmin missing required modules (users, subscription, terms).");
+                        if (keys.Contains("clients") || keys.Contains("scheduling") || keys.Contains("workorders") || keys.Contains("sales") || keys.Contains("financial"))
+                            throw new Exception("SuperAdmin has unauthorized operational modules visible.");
+                    }
+
+                    // 2. Admin
+                    SessionManager.Login(new App.Domain.Entities.User { Id = 2, Username = "admin", Role = Core.Roles.Admin });
+                    using (var main = new MainForm())
+                    {
+                        main.Show();
+                        var keys = main.GetVisibleNavigationKeys();
+                        main.Hide();
+                        Console.WriteLine($"Admin visible: {string.Join(", ", keys)}");
+                        if (!keys.Contains("users") || !keys.Contains("clients") || !keys.Contains("financial") || !keys.Contains("reports") || !keys.Contains("terms"))
+                            throw new Exception("Admin missing required modules (users, clients, financial, reports, terms).");
+                        if (keys.Contains("scheduling") || keys.Contains("workorders") || keys.Contains("sales") || keys.Contains("subscription"))
+                            throw new Exception("Admin has unauthorized operational modules visible.");
+                    }
+
+                    // 3. Manager
+                    SessionManager.Login(new App.Domain.Entities.User { Id = 3, Username = "manager", Role = Core.Roles.Manager });
+                    using (var main = new MainForm())
+                    {
+                        main.Show();
+                        var keys = main.GetVisibleNavigationKeys();
+                        main.Hide();
+                        Console.WriteLine($"Manager visible: {string.Join(", ", keys)}");
+                        if (!keys.Contains("sales") || !keys.Contains("clients") || !keys.Contains("scheduling") || !keys.Contains("financial") || !keys.Contains("reports"))
+                            throw new Exception("Manager missing required modules (sales, clients, scheduling, financial, reports).");
+                        if (keys.Contains("users") || keys.Contains("subscription") || keys.Contains("terms"))
+                            throw new Exception("Manager has unauthorized admin modules visible.");
+                    }
+
+                    // 4. Sales Staff
+                    SessionManager.Login(new App.Domain.Entities.User { Id = 4, Username = "staff", Role = Core.Roles.SalesStaff });
+                    using (var main = new MainForm())
+                    {
+                        main.Show();
+                        var keys = main.GetVisibleNavigationKeys();
+                        main.Hide();
+                        Console.WriteLine($"SalesStaff visible: {string.Join(", ", keys)}");
+                        if (!keys.Contains("sales") || !keys.Contains("clients") || !keys.Contains("scheduling") || !keys.Contains("financial") || !keys.Contains("reports"))
+                            throw new Exception("SalesStaff missing required modules (sales, clients, scheduling, financial, reports).");
+                        if (keys.Contains("users") || keys.Contains("subscription") || keys.Contains("terms"))
+                            throw new Exception("SalesStaff has unauthorized admin modules visible.");
+                    }
+
+                    // 5. TermsManagementView instantiation & permissions
+                    using (var terms = new Views.TermsManagementView())
+                    {
+                        terms.ApplyViewPermissions(Core.Roles.SuperAdmin);
+                        terms.ApplyViewPermissions(Core.Roles.Admin);
+                        terms.ApplyViewPermissions(Core.Roles.Manager);
+                        terms.ApplyViewPermissions(Core.Roles.SalesStaff);
+                    }
+
+                    // 6. WorkOrdersView instantiation & permissions
+                    using (var wo = new Views.WorkOrdersView())
+                    {
+                        wo.ApplyViewPermissions(Core.Roles.Manager);
+                        wo.ApplyViewPermissions(Core.Roles.SalesStaff);
+                    }
+
+                    // 7. ReportsAuditView instantiation & permissions
+                    using (var rep = new Views.ReportsAuditView())
+                    {
+                        rep.ApplyViewPermissions(Core.Roles.SuperAdmin);
+                        rep.ApplyViewPermissions(Core.Roles.Admin);
+                        rep.ApplyViewPermissions(Core.Roles.Manager);
+                        rep.ApplyViewPermissions(Core.Roles.SalesStaff);
+                    }
+
+                    // 8. SubscriptionManagementView and OnboardTenantDialog instantiation & permissions
+                    using (var subView = new Views.SubscriptionManagementView())
+                    {
+                        subView.ApplyViewPermissions(Core.Roles.SuperAdmin);
+                        subView.ApplyViewPermissions(Core.Roles.Admin);
+                    }
+
+                    using (var onboardDlg = new Views.OnboardTenantDialog())
+                    {
+                        if (onboardDlg == null)
+                            throw new Exception("Failed to instantiate OnboardTenantDialog.");
+                    }
+
+                    Console.WriteLine("ROLE_TEST_SUCCESS: All 4 roles and views verified successfully!");
+                    Environment.Exit(0);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"ROLE_TEST_FAILURE: {ex.Message}");
+                    Environment.Exit(1);
+                }
+                return;
+            }
+
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
             Application.ThreadException += (s, e) =>
             {

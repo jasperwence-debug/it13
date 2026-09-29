@@ -46,6 +46,42 @@ namespace App.WinForms.Core
             return true;
         }
 
+        public static bool IsValidNamePart(string? namePart, string fieldLabel, bool isRequired, int maxLen, out string errorMessage)
+        {
+            if (string.IsNullOrWhiteSpace(namePart))
+            {
+                if (isRequired)
+                {
+                    errorMessage = $"⚠ {fieldLabel} is required.";
+                    return false;
+                }
+                errorMessage = string.Empty;
+                return true;
+            }
+
+            var trimmed = namePart.Trim();
+            if (trimmed.Length < 1 && isRequired)
+            {
+                errorMessage = $"⚠ {fieldLabel} is required.";
+                return false;
+            }
+
+            if (trimmed.Length > maxLen)
+            {
+                errorMessage = $"⚠ {fieldLabel} cannot exceed {maxLen} characters.";
+                return false;
+            }
+
+            if (!Regex.IsMatch(trimmed, @"^[\p{L}\p{M}'\.\-\s]+$"))
+            {
+                errorMessage = $"⚠ {fieldLabel} should contain letters only (spaces, hyphens, and periods allowed).";
+                return false;
+            }
+
+            errorMessage = string.Empty;
+            return true;
+        }
+
         public static bool IsValidPhoneNumber(string? phone, bool isRequired, out string errorMessage)
         {
             if (string.IsNullOrWhiteSpace(phone))
@@ -68,18 +104,17 @@ namespace App.WinForms.Core
                 return false;
             }
 
-            // Extract digits only
+            // Extract digits only - must be exactly 11 numbers
             var digitsOnly = Regex.Replace(trimmed, @"\D", "");
-            if (digitsOnly.Length < 7 || digitsOnly.Length > 15)
+            if (digitsOnly.Length != 11)
             {
-                errorMessage = "⚠ Phone number must be between 7 and 15 digits.";
+                errorMessage = "⚠ Phone number must contain exactly 11 digits (e.g. 09171234567).";
                 return false;
             }
 
-            // Check permitted structure: optional leading +, digits, spaces, hyphens, parentheses
-            if (!Regex.IsMatch(trimmed, @"^\+?[\d\s\-\(\)\.]+$"))
+            if (!digitsOnly.StartsWith("09"))
             {
-                errorMessage = "⚠ Phone number contains invalid characters. Digits, +, -, and spaces only.";
+                errorMessage = "⚠ Phone number must be an 11-digit mobile number starting with 09 (e.g. 09171234567).";
                 return false;
             }
 

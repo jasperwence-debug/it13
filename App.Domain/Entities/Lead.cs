@@ -1,9 +1,45 @@
+using System;
+using System.Linq;
+using App.Domain.Common;
+
 namespace App.Domain.Entities
 {
     public class Lead
     {
         public int LeadId { get; set; }
-        public string LeadName { get; set; } = string.Empty;
+
+        // Normalized Name Fields (max length 50 each)
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        /// <summary>
+        /// Computed read-only property concatenating FirstName MiddleName LastName Suffix.
+        /// Used for display, never for direct input.
+        /// </summary>
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
+        /// <summary>
+        /// Legacy LeadName property preserved for backward compatibility in display, queries, and filters.
+        /// </summary>
+        public string LeadName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _legacyLeadName;
+            set
+            {
+                _legacyLeadName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _legacyLeadName = string.Empty;
+
         public string ContactInfo { get; set; } = string.Empty;
         public string LeadSource { get; set; } = string.Empty;
         public string ServiceOfInterest { get; set; } = string.Empty;
@@ -30,5 +66,11 @@ namespace App.Domain.Entities
 
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Staff member assigned to nurture and close this lead.
+        /// </summary>
+        public int? AssignedUserId { get; set; }
+        public string? AssignedSalesStaff { get; set; }
     }
 }

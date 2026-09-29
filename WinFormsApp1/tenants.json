@@ -1,0 +1,45 @@
+{
+  // ─────────────────────────────────────────────────────────────
+  // LOCAL DEVELOPMENT TENANT REGISTRY
+  //
+  // WARNING: This file contains PLAINTEXT connection strings.
+  //   - Add tenants.json to .gitignore if you use real credentials.
+  //   - For shared repos, commit a tenants.sample.json and gitignore the real one.
+  //   - Production uses the Master DB (SqlTenantRegistry) — never this file.
+  // ─────────────────────────────────────────────────────────────
+
+  "tenants": [
+    {
+      "tenantId": "tenantA",
+      "displayName": "Acme Field Services",
+      "connectionString": "Server=(localdb)\\MSSQLLocalDB;Database=AppDB_TenantA;Trusted_Connection=True;TrustServerCertificate=True;",
+      "expectedSchemaVersion": "1.0.0",
+      "isActive": true,
+      "notes": "Primary dev tenant — used for happy-path testing."
+    },
+    {
+      "tenantId": "tenantB",
+      "displayName": "Brightline HVAC",
+      "connectionString": "Server=(localdb)\\MSSQLLocalDB;Database=AppDB_TenantB;Trusted_Connection=True;TrustServerCertificate=True;",
+      "expectedSchemaVersion": "1.0.0",
+      "isActive": true,
+      "notes": "Second dev tenant — used for isolation testing."
+    },
+    {
+      "tenantId": "tenantC",
+      "displayName": "Cascade Plumbing Co.",
+      "connectionString": "Server=(localdb)\\MSSQLLocalDB;Database=AppDB_TenantC;Trusted_Connection=True;TrustServerCertificate=True;",
+      "expectedSchemaVersion": "1.0.0",
+      "isActive": true,
+      "notes": "Third dev tenant."
+    },
+    {
+      "tenantId": "tenantDisabled",
+      "displayName": "Suspended Corp (disabled test fixture)",
+      "connectionString": "Server=(localdb)\\MSSQLLocalDB;Database=AppDB_TenantDisabled;Trusted_Connection=True;TrustServerCertificate=True;",
+      "expectedSchemaVersion": "1.0.0",
+      "isActive": false,
+      "notes": "Fixture: verify login is refused for inactive tenants."
+    }
+  ]
+}

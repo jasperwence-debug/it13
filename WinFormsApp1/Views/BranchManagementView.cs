@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using App.WinForms.Core;
+using App.WinForms.Reporting;
 
 namespace App.WinForms.Views
 {
@@ -28,6 +29,7 @@ namespace App.WinForms.Views
         // Header controls
         private Label _lblTitle = null!;
         private Label _lblCount = null!;
+        private Button _btnPrintReport = null!;
         private Button _btnRefresh = null!;
         private Button _btnExportCsv = null!;
         private Button _btnNewBranch = null!;
@@ -167,6 +169,22 @@ namespace App.WinForms.Views
             _btnExportCsv.Click += (s, e) => ExportBranchesToCsv();
             pnlHeaderRight.Controls.Add(_btnExportCsv);
 
+            _btnPrintReport = new Button
+            {
+                Text = "🖨️  Print Branch Report",
+                Height = 36,
+                Width = 175,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(37, 99, 235),
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 8, 0)
+            };
+            _btnPrintReport.FlatAppearance.BorderSize = 0;
+            _btnPrintReport.Click += (s, e) => ReportDocumentEngine.ShowBranchOperationsReportPrintPreview(_allBranches, FindForm());
+            pnlHeaderRight.Controls.Add(_btnPrintReport);
+
             _btnRefresh = new Button
             {
                 Text = "↻  Refresh",
@@ -194,19 +212,37 @@ namespace App.WinForms.Views
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             card.Controls.Add(pnlKpis);
 
-            var (k1, _, v1, _) = CreateKpiCard("OPERATING BRANCHES", "0 Hubs", "Active regional centers", Color.FromArgb(79, 70, 229));
+            var (k1, _, v1, _) = CreateKpiCard("OPERATING BRANCHES", "0 Hubs", "Active regional centers", Color.FromArgb(79, 70, 229), () =>
+            {
+                _txtSearch.Text = string.Empty;
+                _cmbCityFilter.SelectedIndex = 0;
+                ApplyFilter();
+            });
             _lblTotalBranches = v1;
             pnlKpis.Controls.Add(k1, 0, 0);
 
-            var (k2, _, v2, _) = CreateKpiCard("REGIONAL COVERAGE", "0 Cities", "Geographic service footprint", Color.FromArgb(37, 99, 235));
+            var (k2, _, v2, _) = CreateKpiCard("REGIONAL COVERAGE", "0 Cities", "Geographic service footprint", Color.FromArgb(37, 99, 235), () =>
+            {
+                if (_cmbCityFilter.Items.Count > 1)
+                {
+                    _cmbCityFilter.SelectedIndex = (_cmbCityFilter.SelectedIndex + 1) % _cmbCityFilter.Items.Count;
+                    ApplyFilter();
+                }
+            });
             _lblCitiesCovered = v2;
             pnlKpis.Controls.Add(k2, 1, 0);
 
-            var (k3, _, v3, _) = CreateKpiCard("ENTERPRISE TIER CAP", "10 Hubs", "Tenant C entitlement limit", Color.FromArgb(22, 163, 74));
+            var (k3, _, v3, _) = CreateKpiCard("ENTERPRISE TIER CAP", "10 Hubs", "Tenant C entitlement limit", Color.FromArgb(22, 163, 74), () =>
+            {
+                MessageBox.Show("Enterprise Tier (Tenant C) licenses include multi-branch operations supporting up to 10 active regional hubs.", "Branch Licensing Quota", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            });
             _lblAssignedCrews = v3;
             pnlKpis.Controls.Add(k3, 2, 0);
 
-            var (k4, _, v4, _) = CreateKpiCard("ACTIVE WORK ORDERS", "0 Orders", "In-progress branch services", Color.FromArgb(234, 88, 12));
+            var (k4, _, v4, _) = CreateKpiCard("ACTIVE WORK ORDERS", "0 Orders", "In-progress branch services", Color.FromArgb(234, 88, 12), () =>
+            {
+                (FindForm() as MainForm)?.NavigateToKey("scheduling");
+            });
             _lblActiveOrders = v4;
             pnlKpis.Controls.Add(k4, 3, 0);
 
@@ -730,21 +766,27 @@ namespace App.WinForms.Views
             string title,
             string initialVal,
             string subtext,
-            Color valColor)
+            Color valColor,
+            Action? onClick = null)
         {
             var card = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = Theme.Surface,
                 Margin = new Padding(4),
-                Padding = new Padding(14, 8, 14, 8)
+                Padding = new Padding(14, 8, 14, 8),
+                Cursor = Cursors.Hand
             };
+
+            bool isHovered = false;
 
             card.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using var pen = new Pen(Theme.Border, 1);
+                using var brush = new SolidBrush(card.BackColor);
+                using var pen = isHovered ? new Pen(Color.FromArgb(99, 102, 241), 1.5f) : new Pen(Theme.Border, 1);
                 var rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
+                e.Graphics.FillRectangle(brush, rect);
                 e.Graphics.DrawRectangle(pen, rect);
             };
 
@@ -754,7 +796,8 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
                 ForeColor = Theme.TextMuted,
                 Dock = DockStyle.Top,
-                Height = 16
+                Height = 16,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(lblTitle);
 
@@ -765,7 +808,8 @@ namespace App.WinForms.Views
                 ForeColor = valColor,
                 Dock = DockStyle.Top,
                 Height = 34,
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(valLabel);
 
@@ -775,9 +819,50 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 7.5F, FontStyle.Regular),
                 ForeColor = Theme.TextSubtle,
                 Dock = DockStyle.Bottom,
-                Height = 16
+                Height = 16,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(lblSub);
+
+            void SetHover(bool hover)
+            {
+                isHovered = hover;
+                card.BackColor = hover ? Color.FromArgb(248, 250, 252) : Theme.Surface;
+                lblTitle.BackColor = card.BackColor;
+                valLabel.BackColor = card.BackColor;
+                lblSub.BackColor = card.BackColor;
+                card.Invalidate();
+            }
+
+            card.MouseEnter += (s, e) => SetHover(true);
+            lblTitle.MouseEnter += (s, e) => SetHover(true);
+            valLabel.MouseEnter += (s, e) => SetHover(true);
+            lblSub.MouseEnter += (s, e) => SetHover(true);
+
+            card.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            lblTitle.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            valLabel.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            lblSub.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+
+            if (onClick != null)
+            {
+                card.Click += (s, e) => onClick();
+                lblTitle.Click += (s, e) => onClick();
+                valLabel.Click += (s, e) => onClick();
+                lblSub.Click += (s, e) => onClick();
+            }
 
             return (card, lblTitle, valLabel, lblSub);
         }

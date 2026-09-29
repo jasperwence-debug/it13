@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using App.Domain.Common;
 using App.Domain.Entities;
 using App.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -28,21 +29,47 @@ namespace App.API.Controllers
         // Read-only: AsNoTracking() throughout.
         // ============================================================
         [HttpGet]
-        public async Task<IActionResult> GetCustomers()
+        public async Task<IActionResult> GetCustomers([FromQuery] int? assignedUserId = null, [FromQuery] string? assignedStaff = null)
         {
             var now = DateTime.UtcNow;
 
-            var rawCustomers = await _context.Customers
+            var query = _context.Customers
                 .AsNoTracking()
-                .Where(c => c.IsActive)
+                .Where(c => c.IsActive);
+
+            var staffTrimmed = assignedStaff?.Trim() ?? string.Empty;
+            var uid = assignedUserId ?? 0;
+
+            if (uid > 0 && !string.IsNullOrEmpty(staffTrimmed))
+            {
+                query = query.Where(c => c.AssignedUserId == uid || c.AssignedSalesStaff == staffTrimmed);
+            }
+            else if (uid > 0)
+            {
+                query = query.Where(c => c.AssignedUserId == uid);
+            }
+            else if (!string.IsNullOrEmpty(staffTrimmed))
+            {
+                query = query.Where(c => c.AssignedSalesStaff == staffTrimmed);
+            }
+
+            var rawCustomers = await query
                 .Select(c => new
                 {
                     c.CustomerId,
                     c.LeadId,
+                    c.FirstName,
+                    c.MiddleName,
+                    c.LastName,
+                    c.Suffix,
                     c.CustomerName,
                     c.CustomerType,
+                    c.Email,
                     ContactDetails = c.ContactInfo,
                     c.ServiceLocation,
+                    c.CreatedAt,
+                    c.AssignedUserId,
+                    c.AssignedSalesStaff,
                     TotalBookings = _context.ServiceRequests.Count(sr => sr.CustomerId == c.CustomerId && sr.IsActive),
                     CompletedBookings = _context.ServiceRequests.Count(sr => sr.CustomerId == c.CustomerId && sr.IsActive && sr.Status == "Completed"),
                     TotalSpent = _context.ServiceRequests
@@ -62,6 +89,13 @@ namespace App.API.Controllers
                         .Where(sr => sr.CustomerId == c.CustomerId && sr.IsActive && sr.Status == "Completed")
                         .OrderByDescending(sr => sr.PreferredDate)
                         .Select(sr => (DateTime?)sr.PreferredDate)
+                        .FirstOrDefault(),
+                    HasNegativeFeedback = _context.ServiceRequests
+                        .Any(sr => sr.CustomerId == c.CustomerId && sr.IsActive && sr.Rating != null && sr.Rating <= 2),
+                    LatestRating = _context.ServiceRequests
+                        .Where(sr => sr.CustomerId == c.CustomerId && sr.IsActive && sr.Rating != null)
+                        .OrderByDescending(sr => sr.PreferredDate)
+                        .Select(sr => sr.Rating)
                         .FirstOrDefault()
                 })
                 .OrderBy(c => c.CustomerName)
@@ -78,13 +112,20 @@ namespace App.API.Controllers
                     ? "At-Risk"
                     : (c.CompletedBookings > 1 ? "Repeat" : (c.CompletedBookings == 1 ? "Active" : "New"));
 
+                var resolvedEmail = ExtractEmail(c.Email, c.ContactDetails);
+
                 return new CustomerSummaryDto
                 {
                     CustomerId           = c.CustomerId,
                     LeadId               = c.LeadId,
+                    FirstName            = c.FirstName,
+                    MiddleName           = c.MiddleName,
+                    LastName             = c.LastName,
+                    Suffix               = c.Suffix,
                     CustomerName         = c.CustomerName,
                     CustomerType         = c.CustomerType,
                     ContactDetails       = c.ContactDetails,
+                    Email                = resolvedEmail,
                     ServiceLocation      = c.ServiceLocation,
                     TotalBookings        = c.TotalBookings,
                     CompletedBookings    = c.CompletedBookings,
@@ -93,11 +134,32 @@ namespace App.API.Controllers
                     IsAtRisk             = isAtRisk,
                     RetentionStatus      = retentionStatus,
                     LatestService        = c.LatestService,
-                    LatestDate           = c.LatestDate
+                    LatestDate           = c.LatestDate,
+                    CreatedAt            = c.CreatedAt,
+                    AssignedUserId       = c.AssignedUserId,
+                    AssignedSalesStaff   = c.AssignedSalesStaff,
+                    HasNegativeFeedback  = c.HasNegativeFeedback,
+                    LatestRating         = c.LatestRating
                 };
             }).ToList();
 
             return Ok(result);
+        }
+
+        public static string ExtractEmail(string? email, string? contactDetails)
+        {
+            if (!string.IsNullOrWhiteSpace(email) && email.Contains('@'))
+                return email.Trim();
+            if (!string.IsNullOrWhiteSpace(contactDetails))
+            {
+                var parts = contactDetails.Split('|', StringSplitOptions.TrimEntries);
+                foreach (var p in parts)
+                {
+                    if (p.Contains('@') && p.Contains('.'))
+                        return p.Trim();
+                }
+            }
+            return string.Empty;
         }
 
         // ============================================================
@@ -143,7 +205,11 @@ namespace App.API.Controllers
             return Ok(new CustomerDto
             {
                 CustomerId = customer.CustomerId,
-                CustomerName = customer.CustomerName,
+                CustomerName = customer.FullName,
+                FirstName = customer.FirstName,
+                MiddleName = customer.MiddleName,
+                LastName = customer.LastName,
+                Suffix = customer.Suffix,
                 CustomerType = customer.CustomerType,
                 ContactDetails = customer.ContactInfo,
                 ServiceLocation = customer.ServiceLocation
@@ -191,6 +257,23 @@ namespace App.API.Controllers
                 phone = contact;
             }
 
+            // Resolve Normalized Names
+            string firstName = !string.IsNullOrWhiteSpace(dto.FirstName) ? NameNormalizer.Normalize(dto.FirstName) : "";
+            string? middleName = !string.IsNullOrWhiteSpace(dto.MiddleName) ? NameNormalizer.Normalize(dto.MiddleName) : null;
+            string lastName = !string.IsNullOrWhiteSpace(dto.LastName) ? NameNormalizer.Normalize(dto.LastName) : "";
+            string? suffix = !string.IsNullOrWhiteSpace(dto.Suffix) ? NameNormalizer.NormalizeSuffix(dto.Suffix) : null;
+
+            if (string.IsNullOrWhiteSpace(firstName) && string.IsNullOrWhiteSpace(lastName))
+            {
+                var rawName = !string.IsNullOrWhiteSpace(dto.CustomerName)
+                    ? dto.CustomerName
+                    : (!string.IsNullOrWhiteSpace(dto.LeadName) ? dto.LeadName : "Valued Customer");
+                var (f, m, l) = NameNormalizer.SplitSingleString(rawName);
+                firstName = f;
+                middleName = m;
+                lastName = l;
+            }
+
             using IDbContextTransaction tx = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -236,7 +319,15 @@ namespace App.API.Controllers
                         existingCustomer.CustomerType = dto.CustomerType.Trim();
                     }
 
-                    if (!string.IsNullOrWhiteSpace(dto.CustomerName) && existingCustomer.CustomerName != dto.CustomerName.Trim())
+                    if (!string.IsNullOrWhiteSpace(firstName) && !string.IsNullOrWhiteSpace(lastName))
+                    {
+                        existingCustomer.FirstName = firstName;
+                        existingCustomer.MiddleName = middleName;
+                        existingCustomer.LastName = lastName;
+                        existingCustomer.Suffix = suffix;
+                        existingCustomer.CustomerName = existingCustomer.FullName;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(dto.CustomerName) && existingCustomer.CustomerName != dto.CustomerName.Trim())
                     {
                         existingCustomer.CustomerName = dto.CustomerName.Trim();
                     }
@@ -251,13 +342,27 @@ namespace App.API.Controllers
                 else
                 {
                     // If NOT EXISTS: Insert the new Customer model
+                    int? assignedUid = null;
+                    var assignedStaffTrimmed = dto.AssignedSalesStaff?.Trim();
+                    if (!string.IsNullOrWhiteSpace(assignedStaffTrimmed))
+                    {
+                        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == assignedStaffTrimmed.ToLower());
+                        if (user != null) assignedUid = user.Id;
+                    }
+
                     targetCustomer = new Customer
                     {
                         CustomerType = dto.CustomerType?.Trim() ?? "Individual",
-                        CustomerName = dto.CustomerName?.Trim() ?? "Valued Customer",
+                        FirstName = firstName,
+                        MiddleName = middleName,
+                        LastName = lastName,
+                        Suffix = suffix,
+                        CustomerName = NameNormalizer.FormatFullName(firstName, middleName, lastName, suffix),
                         ContactInfo = contact,
                         Email = email,
                         ServiceLocation = dto.ServiceLocation?.Trim() ?? string.Empty,
+                        AssignedSalesStaff = !string.IsNullOrWhiteSpace(assignedStaffTrimmed) ? assignedStaffTrimmed : null,
+                        AssignedUserId = assignedUid,
                         IsActive = true,
                         CreatedAt = DateTime.UtcNow
                     };
@@ -265,13 +370,28 @@ namespace App.API.Controllers
                 }
 
                 // Insert new Lead entry for tracking
+                int? leadAssignedUid = targetCustomer.AssignedUserId;
+                string? leadAssignedStaff = targetCustomer.AssignedSalesStaff;
+                if (string.IsNullOrWhiteSpace(leadAssignedStaff) && !string.IsNullOrWhiteSpace(dto.AssignedSalesStaff))
+                {
+                    leadAssignedStaff = dto.AssignedSalesStaff.Trim();
+                    var user = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == leadAssignedStaff.ToLower());
+                    if (user != null) leadAssignedUid = user.Id;
+                }
+
                 var lead = new Lead
                 {
-                    LeadName = !string.IsNullOrWhiteSpace(dto.LeadName) ? dto.LeadName.Trim() : targetCustomer.CustomerName,
+                    FirstName = firstName,
+                    MiddleName = middleName,
+                    LastName = lastName,
+                    Suffix = suffix,
+                    LeadName = NameNormalizer.FormatFullName(firstName, middleName, lastName, suffix),
                     ContactInfo = contact,
                     LeadSource = !string.IsNullOrWhiteSpace(dto.LeadSource) ? dto.LeadSource.Trim() : "Direct",
                     ServiceOfInterest = dto.ServiceOfInterest?.Trim() ?? dto.RequestedService?.Trim() ?? "General",
                     InquiryDetails = dto.InquiryDetails?.Trim(),
+                    AssignedSalesStaff = leadAssignedStaff,
+                    AssignedUserId = leadAssignedUid,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -317,5 +437,34 @@ namespace App.API.Controllers
                 return StatusCode(500, $"Transaction failed: {innerMsg}");
             }
         }
+
+        // ============================================================
+        // PATCH /api/customers/{id}/assign
+        // Reassigns customer ownership to a sales staff member.
+        // ============================================================
+        [HttpPatch("{id:int}/assign")]
+        public async Task<IActionResult> AssignOwner(int id, [FromBody] AssignOwnerDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Payload is required.");
+
+            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.CustomerId == id && c.IsActive);
+            if (customer == null)
+                return NotFound($"No active customer found with ID {id}.");
+
+            customer.AssignedUserId = dto.AssignedUserId;
+            customer.AssignedSalesStaff = dto.AssignedSalesStaff;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                customer.CustomerId,
+                customer.AssignedUserId,
+                customer.AssignedSalesStaff,
+                Message = $"Customer #{customer.CustomerId} reassigned to {customer.AssignedSalesStaff ?? "unassigned"}."
+            });
+        }
     }
 }
+

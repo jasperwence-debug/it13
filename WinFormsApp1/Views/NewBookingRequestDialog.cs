@@ -65,7 +65,15 @@ namespace App.WinForms.Views
             _preselectedCustomerId = customerId;
             _preselectedCustomerName = customerName;
             _preselectedLocation = location;
+            _currentCustomerId = customerId;
+            _currentCustomerName = customerName;
+            _currentLocation = location;
             BuildUI();
+
+            if (!string.IsNullOrWhiteSpace(location) && string.IsNullOrWhiteSpace(_txtSpecialRequests?.Text))
+            {
+                _txtSpecialRequests!.Text = $"Location: {location}";
+            }
         }
 
         protected override void OnLoad(EventArgs e)
@@ -219,7 +227,7 @@ namespace App.WinForms.Views
             {
                 Text = "✓  Submit Booking Request",
                 Dock = DockStyle.Right,
-                Width = 200
+                Width = 235
             };
             Theme.ApplyPrimaryButtonStyle(_btnSubmit);
             _btnSubmit.Click += async (s, e) => await OnSubmitAsync();
@@ -428,6 +436,13 @@ namespace App.WinForms.Views
                     Visible = false
                 };
                 pnlCustField.Controls.Add(_lblErrCustomer);
+
+                pnlCustField.Resize += (s, e) =>
+                {
+                    pnlSearchInput.Width = pnlCustField.Width;
+                    _lblCustomerDetails.Width = pnlCustField.Width;
+                    _lblErrCustomer.Width = pnlCustField.Width;
+                };
 
                 tlp.Controls.Add(pnlCustField, 0, row);
                 tlp.SetColumnSpan(pnlCustField, 2);
@@ -695,6 +710,14 @@ namespace App.WinForms.Views
                 _lblErrCustomer.Visible = true;
                 if (_txtCustomerDisplay != null) _txtCustomerDisplay.BackColor = Color.FromArgb(254, 226, 226);
                 ok = false;
+            }
+            else
+            {
+                if (_lblErrCustomer != null)
+                {
+                    _lblErrCustomer.Text = string.Empty;
+                    _lblErrCustomer.Visible = false;
+                }
             }
 
             // Service Type

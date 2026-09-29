@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using App.WinForms.Core;
+using App.WinForms.Reporting;
 
 namespace App.WinForms.Views
 {
@@ -43,10 +44,14 @@ namespace App.WinForms.Views
         // Header controls
         private Label _lblTitle = null!;
         private Label _lblCount = null!;
+        private Button _btnPrintReport = null!;
         private Button _btnRefresh = null!;
         private Button _btnExportCsv = null!;
         private Button _btnViewLeads = null!;
         private Button _btnNew = null!;
+        private Button _btnBookService = null!;
+        private Button? _btnAssignOwner;
+        private ContextMenuStrip _gridContextMenu = null!;
 
         public Button btnNew => _btnNew;
 
@@ -89,6 +94,18 @@ namespace App.WinForms.Views
         private bool _hasLoaded;
         private static readonly Font _fontBold = new("Segoe UI", 8.5F, FontStyle.Bold);
         private static readonly Font _fontSpentBold = new("Segoe UI", 9F, FontStyle.Bold);
+
+        private const int ColIdxSelect = 0;
+        private const int ColIdxName = 1;
+        private const int ColIdxType = 2;
+        private const int ColIdxContact = 3;
+        private const int ColIdxLocation = 4;
+        private const int ColIdxAssigned = 5;
+        private const int ColIdxBookings = 6;
+        private const int ColIdxSpent = 7;
+        private const int ColIdxDate = 8;
+        private const int ColIdxRetention = 9;
+        private const int ColIdxAction = 10;
 
         public CustomersView()
         {
@@ -173,6 +190,37 @@ namespace App.WinForms.Views
             pnlTitleBox.Controls.Add(_lblCount);
 
             // Right header actions
+            _btnBookService = new Button
+            {
+                Text = "📅  Book Service",
+                Dock = DockStyle.Right,
+                Width = 145,
+                Height = 36,
+                Enabled = false
+            };
+            Theme.ApplyPrimaryButtonStyle(_btnBookService);
+            _btnBookService.Click += (s, e) =>
+            {
+                var c = GetSelectedCustomer();
+                if (c != null)
+                {
+                    using var dialog = new NewBookingRequestDialog(c.CustomerId, c.CustomerName, c.ServiceLocation);
+                    if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
+                    {
+                        ShowToast($"Booking request submitted for {c.CustomerName}!", true);
+                        _ = LoadAsync();
+                    }
+                }
+                else
+                {
+                    ShowToast("Please select a customer from the table first.", false);
+                }
+            };
+            pnlHeader.Controls.Add(_btnBookService);
+
+            var pnlSpBook = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+            pnlHeader.Controls.Add(pnlSpBook);
+
             _btnNew = new Button
             {
                 Text = "+ Inquire (New Lead)",
@@ -180,7 +228,7 @@ namespace App.WinForms.Views
                 Width = 160,
                 Height = 36
             };
-            Theme.ApplyPrimaryButtonStyle(_btnNew);
+            Theme.ApplySecondaryButtonStyle(_btnNew);
             _btnNew.Click += async (s, e) =>
             {
                 using var dialog = new NewLeadDialog();
@@ -232,8 +280,45 @@ namespace App.WinForms.Views
             _btnExportCsv.Click += (s, e) => ExportCustomersToCsv(_customers, "All_Customers");
             pnlHeader.Controls.Add(_btnExportCsv);
 
+            var pnlSpHPrint = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+            pnlHeader.Controls.Add(pnlSpHPrint);
+
+            _btnPrintReport = new Button
+            {
+                Text = "🖨️  Print Client Report",
+                Dock = DockStyle.Right,
+                Width = 165,
+                Height = 36,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(37, 99, 235),
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            _btnPrintReport.FlatAppearance.BorderSize = 0;
+            _btnPrintReport.Click += (s, e) => ReportDocumentEngine.ShowCustomerDirectoryReportPrintPreview(_customers, FindForm());
+            pnlHeader.Controls.Add(_btnPrintReport);
+
             var pnlSpH3 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
             pnlHeader.Controls.Add(pnlSpH3);
+
+            if (SessionManager.CanAssignOwner)
+            {
+                _btnAssignOwner = new Button
+                {
+                    Text = "👤  Assign Owner",
+                    Dock = DockStyle.Right,
+                    Width = 135,
+                    Height = 36,
+                    Enabled = false
+                };
+                Theme.ApplySecondaryButtonStyle(_btnAssignOwner);
+                _btnAssignOwner.Click += async (s, e) => await OnAssignOwnerClickAsync();
+                pnlHeader.Controls.Add(_btnAssignOwner);
+
+                var pnlSpAssign = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+                pnlHeader.Controls.Add(pnlSpAssign);
+            }
 
             _btnRefresh = new Button
             {
@@ -666,6 +751,15 @@ namespace App.WinForms.Views
                 },
                 new DataGridViewTextBoxColumn
                 {
+                    Name = "colAssigned",
+                    HeaderText = "Assigned Owner",
+                    Width = 130,
+                    MinimumWidth = 100,
+                    ReadOnly = true,
+                    SortMode = DataGridViewColumnSortMode.Programmatic
+                },
+                new DataGridViewTextBoxColumn
+                {
                     Name = "colBookings",
                     HeaderText = "Bookings",
                     Width = 90,
@@ -721,6 +815,68 @@ namespace App.WinForms.Views
                 colSpent.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             if (_grid.Columns["colRetention"] is { } colRetention)
                 colRetention.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            // Context menu for row actions
+            _gridContextMenu = new ContextMenuStrip { Font = new Font("Segoe UI", 9F) };
+            var mnuHistory = new ToolStripMenuItem("📜  View Service History...", null, (s, e) =>
+            {
+                var c = GetSelectedCustomer();
+                if (c != null)
+                {
+                    using var dialog = new CustomerServiceHistoryDialog(c.CustomerId, c.CustomerName);
+                    dialog.ShowDialog(FindForm());
+                }
+            });
+            var mnuNewBooking = new ToolStripMenuItem("📅  New Booking Request...", null, (s, e) =>
+            {
+                var c = GetSelectedCustomer();
+                if (c != null)
+                {
+                    using var dialog = new NewBookingRequestDialog(c.CustomerId, c.CustomerName, c.ServiceLocation);
+                    if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
+                    {
+                        ShowToast($"Booking request submitted for {c.CustomerName}!", true);
+                        _ = LoadAsync();
+                    }
+                }
+            });
+            var mnuAssignCust = new ToolStripMenuItem("👤  Assign Owner...", null, async (s, e) => await OnAssignOwnerClickAsync());
+            var mnuRefreshCust = new ToolStripMenuItem("↻  Refresh", null, async (s, e) => await LoadAsync());
+
+            _gridContextMenu.Items.AddRange(new ToolStripItem[]
+            {
+                mnuHistory,
+                mnuNewBooking,
+                new ToolStripSeparator(),
+                mnuAssignCust,
+                new ToolStripSeparator(),
+                mnuRefreshCust
+            });
+
+            _gridContextMenu.Opening += (s, e) =>
+            {
+                var c = GetSelectedCustomer();
+                mnuNewBooking.Visible = SessionManager.IsSalesStaff || SessionManager.IsAdmin;
+                mnuNewBooking.Enabled = c != null;
+                mnuAssignCust.Visible = SessionManager.CanAssignOwner;
+                mnuAssignCust.Enabled = c != null && SessionManager.CanAssignOwner;
+                mnuHistory.Enabled = c != null;
+            };
+
+            _grid.ContextMenuStrip = _gridContextMenu;
+
+            _grid.SelectionChanged += (s, e) =>
+            {
+                var selCust = GetSelectedCustomer();
+                if (_btnAssignOwner != null)
+                {
+                    _btnAssignOwner.Enabled = selCust != null;
+                }
+                if (_btnBookService != null)
+                {
+                    _btnBookService.Enabled = selCust != null;
+                }
+            };
 
             _grid.CellContentClick += OnGridCellContentClick;
             _grid.CellClick += OnGridCellClick;
@@ -913,13 +1069,22 @@ namespace App.WinForms.Views
 
             string filter = _txtSearch.Text.Trim().ToLowerInvariant();
 
-            _filteredCustomers = _customers.FindAll(c =>
+            var sourceList = _customers;
+            if (SessionManager.IsSalesStaff && SessionManager.CurrentUser != null)
+            {
+                sourceList = _customers.FindAll(c =>
+                    (c.AssignedUserId.HasValue && c.AssignedUserId.Value == SessionManager.CurrentUser.Id) ||
+                    string.Equals(c.AssignedSalesStaff, SessionManager.CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
+            }
+
+            _filteredCustomers = sourceList.FindAll(c =>
             {
                 bool matchesText = string.IsNullOrEmpty(filter) ||
                     (!string.IsNullOrEmpty(c.CustomerName) && c.CustomerName.ToLowerInvariant().Contains(filter)) ||
                     (!string.IsNullOrEmpty(c.ContactDetails) && c.ContactDetails.ToLowerInvariant().Contains(filter)) ||
                     (!string.IsNullOrEmpty(c.ServiceLocation) && c.ServiceLocation.ToLowerInvariant().Contains(filter)) ||
-                    (!string.IsNullOrEmpty(c.CustomerType) && c.CustomerType.ToLowerInvariant().Contains(filter));
+                    (!string.IsNullOrEmpty(c.CustomerType) && c.CustomerType.ToLowerInvariant().Contains(filter)) ||
+                    (!string.IsNullOrEmpty(c.AssignedSalesStaff) && c.AssignedSalesStaff.ToLowerInvariant().Contains(filter));
 
                 if (!matchesText) return false;
 
@@ -958,6 +1123,9 @@ namespace App.WinForms.Views
                 "ServiceLocation" => _sortAscending
                     ? _filteredCustomers.OrderBy(c => c.ServiceLocation).ToList()
                     : _filteredCustomers.OrderByDescending(c => c.ServiceLocation).ToList(),
+                "AssignedSalesStaff" => _sortAscending
+                    ? _filteredCustomers.OrderBy(c => c.AssignedSalesStaff ?? "").ToList()
+                    : _filteredCustomers.OrderByDescending(c => c.AssignedSalesStaff ?? "").ToList(),
                 "TotalBookings" => _sortAscending
                     ? _filteredCustomers.OrderBy(c => c.TotalBookings).ToList()
                     : _filteredCustomers.OrderByDescending(c => c.TotalBookings).ToList(),
@@ -1056,6 +1224,7 @@ namespace App.WinForms.Views
                         c.CustomerType ?? "Client",
                         c.ContactDetails ?? "—",
                         c.ServiceLocation ?? "—",
+                        !string.IsNullOrWhiteSpace(c.AssignedSalesStaff) ? c.AssignedSalesStaff : "— Unassigned —",
                         bookingsDisplay,
                         spentDisplay,
                         lastServiceDisplay,
@@ -1068,17 +1237,23 @@ namespace App.WinForms.Views
                     // Color code type
                     if (string.Equals(c.CustomerType, "Commercial", StringComparison.OrdinalIgnoreCase))
                     {
-                        row.Cells[2].Style.ForeColor = Color.FromArgb(79, 70, 229);
-                        row.Cells[2].Style.Font = _fontBold;
+                        row.Cells[ColIdxType].Style.ForeColor = Color.FromArgb(79, 70, 229);
+                        row.Cells[ColIdxType].Style.Font = _fontBold;
                     }
                     else
                     {
-                        row.Cells[2].Style.ForeColor = Color.FromArgb(2, 132, 199);
-                        row.Cells[2].Style.Font = _fontBold;
+                        row.Cells[ColIdxType].Style.ForeColor = Color.FromArgb(   2, 132, 199);
+                        row.Cells[ColIdxType].Style.Font = _fontBold;
+                    }
+
+                    // Style assigned owner column
+                    if (string.IsNullOrWhiteSpace(c.AssignedSalesStaff))
+                    {
+                        row.Cells[ColIdxAssigned].Style.ForeColor = Theme.TextMuted;
                     }
 
                     // Color code retention health
-                    var cellRetention = row.Cells[8];
+                    var cellRetention = row.Cells[ColIdxRetention];
                     if (c.IsAtRisk)
                     {
                         cellRetention.Style.ForeColor = Color.FromArgb(220, 38, 38);
@@ -1104,8 +1279,8 @@ namespace App.WinForms.Views
                     // Highlight VIP high-value accounts (₱10k+)
                     if (c.TotalSpent >= 10000)
                     {
-                        row.Cells[6].Style.ForeColor = Color.FromArgb(22, 163, 74);
-                        row.Cells[6].Style.Font = _fontSpentBold;
+                        row.Cells[ColIdxSpent].Style.ForeColor = Color.FromArgb(22, 163, 74);
+                        row.Cells[ColIdxSpent].Style.Font = _fontSpentBold;
                     }
 
                     rows.Add(row);
@@ -1178,6 +1353,7 @@ namespace App.WinForms.Views
                 "colType"      => "CustomerType",
                 "colContact"   => "ContactDetails",
                 "colLocation"  => "ServiceLocation",
+                "colAssigned"  => "AssignedSalesStaff",
                 "colBookings"  => "TotalBookings",
                 "colSpent"     => "TotalSpent",
                 "colDate"      => "LatestDate",
@@ -1213,7 +1389,7 @@ namespace App.WinForms.Views
             {
                 if (_grid.Rows[e.RowIndex].Tag is CustomerSummaryDto c)
                 {
-                    bool isNowChecked = Convert.ToBoolean(_grid.Rows[e.RowIndex].Cells["colSelect"].Value ?? false);
+                    bool isNowChecked = Convert.ToBoolean(_grid.Rows[e.RowIndex].Cells[ColIdxSelect].Value ?? false);
                     if (isNowChecked)
                     {
                         _selectedCustomerIds.Add(c.CustomerId);
@@ -1246,12 +1422,12 @@ namespace App.WinForms.Views
                     if (allCurrentSelected)
                     {
                         _selectedCustomerIds.Remove(c.CustomerId);
-                        row.Cells["colSelect"].Value = false;
+                        row.Cells[ColIdxSelect].Value = false;
                     }
                     else
                     {
                         _selectedCustomerIds.Add(c.CustomerId);
-                        row.Cells["colSelect"].Value = true;
+                        row.Cells[ColIdxSelect].Value = true;
                     }
                 }
             }
@@ -1264,7 +1440,7 @@ namespace App.WinForms.Views
             _selectedCustomerIds.Clear();
             foreach (DataGridViewRow row in _grid.Rows)
             {
-                row.Cells["colSelect"].Value = false;
+                row.Cells[ColIdxSelect].Value = false;
             }
             UpdateBatchBar();
         }
@@ -1390,6 +1566,44 @@ namespace App.WinForms.Views
             if (_btnNew != null)
             {
                 _btnNew.Visible = (userRole == Roles.SalesStaff || userRole == Roles.Admin);
+            }
+            if (_btnBookService != null)
+            {
+                _btnBookService.Visible = (userRole == Roles.SalesStaff || userRole == Roles.Manager || userRole == Roles.Admin);
+            }
+        }
+
+        private CustomerSummaryDto? GetSelectedCustomer()
+        {
+            if (_grid.CurrentRow?.Tag is CustomerSummaryDto cro) return cro;
+            if (_grid.SelectedRows.Count > 0 && _grid.SelectedRows[0].Tag is CustomerSummaryDto sro) return sro;
+            if (_grid.CurrentCell != null && _grid.CurrentCell.RowIndex >= 0 && _grid.CurrentCell.RowIndex < _grid.Rows.Count)
+            {
+                if (_grid.Rows[_grid.CurrentCell.RowIndex].Tag is CustomerSummaryDto cco) return cco;
+            }
+            return null;
+        }
+
+        private async Task OnAssignOwnerClickAsync()
+        {
+            var sel = GetSelectedCustomer();
+            if (sel == null) return;
+
+            using var dlg = new AssignOwnerDialog($"Customer #{sel.CustomerId} — {sel.CustomerName}", sel.AssignedUserId, sel.AssignedSalesStaff);
+            if (dlg.ShowDialog(FindForm()) == DialogResult.OK)
+            {
+                var (ok, msg) = await _api.AssignCustomerAsync(sel.CustomerId, dlg.SelectedUserId ?? 0, dlg.SelectedUsername ?? "");
+                if (ok)
+                {
+                    sel.AssignedUserId = dlg.SelectedUserId;
+                    sel.AssignedSalesStaff = dlg.SelectedUsername;
+                    ShowToast($"Customer #{sel.CustomerId} assigned to {dlg.SelectedUsername ?? "Unassigned"}.", true);
+                    await LoadAsync();
+                }
+                else
+                {
+                    ShowToast(msg, false);
+                }
             }
         }
     }

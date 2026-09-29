@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using App.WinForms.Core;
+using App.WinForms.Reporting;
 
 namespace App.WinForms.Views
 {
@@ -26,10 +27,12 @@ namespace App.WinForms.Views
 
         // Header controls
         private Label _lblCount = null!;
+        private Button _btnPrintReport = null!;
         private Button _btnRefresh = null!;
         private Button _btnNewLead = null!;
         private Button _btnAvailService = null!;
         private Button _btnMarkLost = null!;
+        private Button? _btnAssignOwner;
         private ContextMenuStrip _gridContextMenu = null!;
 
         // Filter & Search controls
@@ -164,6 +167,43 @@ namespace App.WinForms.Views
             var pnlSpacerH3 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
             pnlHeader.Controls.Add(pnlSpacerH3);
 
+            if (SessionManager.CanAssignOwner)
+            {
+                _btnAssignOwner = new Button
+                {
+                    Text = "👤  Assign Owner",
+                    Dock = DockStyle.Right,
+                    Width = 135,
+                    Height = 36,
+                    Enabled = false
+                };
+                Theme.ApplySecondaryButtonStyle(_btnAssignOwner);
+                _btnAssignOwner.Click += async (s, e) => await OnAssignOwnerClickAsync();
+                pnlHeader.Controls.Add(_btnAssignOwner);
+
+                var pnlSpacerAssign = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+                pnlHeader.Controls.Add(pnlSpacerAssign);
+            }
+
+            var pnlSpacerPrint = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+            pnlHeader.Controls.Add(pnlSpacerPrint);
+
+            _btnPrintReport = new Button
+            {
+                Text = "🖨️  Print Pipeline Report",
+                Dock = DockStyle.Right,
+                Width = 175,
+                Height = 36,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(37, 99, 235),
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            _btnPrintReport.FlatAppearance.BorderSize = 0;
+            _btnPrintReport.Click += (s, e) => ReportDocumentEngine.ShowLeadPipelineReportPrintPreview(_allLeads, FindForm());
+            pnlHeader.Controls.Add(_btnPrintReport);
+
             _btnRefresh = new Button
             {
                 Text = "↻ Refresh",
@@ -284,6 +324,7 @@ namespace App.WinForms.Views
                 new DataGridViewTextBoxColumn { Name = "colService",     HeaderText = "Interest",      DataPropertyName = "ServiceOfInterest", Width = 130, MinimumWidth = 100 },
                 new DataGridViewTextBoxColumn { Name = "colQuotedPrice", HeaderText = "Quoted Price",  DataPropertyName = "QuotedPrice",       Width = 110, MinimumWidth = 90 },
                 new DataGridViewTextBoxColumn { Name = "colStatus",      HeaderText = "Status",        DataPropertyName = "Status",            Width = 110, MinimumWidth = 90 },
+                new DataGridViewTextBoxColumn { Name = "colAssigned",    HeaderText = "Assigned Owner", DataPropertyName = "AssignedSalesStaff", Width = 125, MinimumWidth = 100 },
                 new DataGridViewTextBoxColumn { Name = "colAddress",     HeaderText = "Address",       DataPropertyName = "ServiceAddress",    Width = 150, MinimumWidth = 100 },
                 new DataGridViewTextBoxColumn { Name = "colDate",        HeaderText = "Created Date",  DataPropertyName = "CreatedAt",         Width = 120, MinimumWidth = 100 }
             });
@@ -321,6 +362,15 @@ namespace App.WinForms.Views
                     e.CellStyle.BackColor = LeadStatusHelper.GetStatusBgColor(status);
                     e.CellStyle.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
                 }
+                else if (colName == "colAssigned")
+                {
+                    if (string.IsNullOrWhiteSpace(e.Value as string))
+                    {
+                        e.Value = "— Unassigned —";
+                        e.CellStyle.ForeColor = Theme.TextMuted;
+                    }
+                    e.FormattingApplied = true;
+                }
             };
 
             // Context menu for row actions
@@ -329,6 +379,7 @@ namespace App.WinForms.Views
             var mnuAvail = new ToolStripMenuItem("⚡  Avail Service & Book...", null, async (s, e) => await OnAvailServiceClickAsync());
             var mnuContacted = new ToolStripMenuItem("📞  Mark as Contacted", null, async (s, e) => await OnMarkContactedClickAsync());
             var mnuLost = new ToolStripMenuItem("❌  Mark as Lost / Not Interested...", null, async (s, e) => await OnMarkLostClickAsync());
+            var mnuAssign = new ToolStripMenuItem("👤  Assign Owner...", null, async (s, e) => await OnAssignOwnerClickAsync());
             var mnuRefresh = new ToolStripMenuItem("↻  Refresh", null, async (s, e) => await LoadAsync());
 
             _gridContextMenu.Items.AddRange(new ToolStripItem[]
@@ -337,6 +388,7 @@ namespace App.WinForms.Views
                 new ToolStripSeparator(),
                 mnuContacted,
                 mnuLost,
+                mnuAssign,
                 new ToolStripSeparator(),
                 mnuRefresh
             });
@@ -344,6 +396,9 @@ namespace App.WinForms.Views
             _gridContextMenu.Opening += (s, e) =>
             {
                 var sel = GetSelectedLead();
+                mnuAssign.Visible = SessionManager.CanAssignOwner;
+                mnuAssign.Enabled = sel != null && SessionManager.CanAssignOwner;
+
                 if (sel == null || SessionManager.IsManager)
                 {
                     mnuAvail.Enabled = false;
@@ -493,6 +548,12 @@ namespace App.WinForms.Views
 
         private void UpdateActionButtonState()
         {
+            var selectedLead = GetSelectedLead();
+            if (_btnAssignOwner != null)
+            {
+                _btnAssignOwner.Enabled = selectedLead != null;
+            }
+
             if (SessionManager.IsManager)
             {
                 _btnAvailService.Enabled = false;
@@ -500,7 +561,6 @@ namespace App.WinForms.Views
                 return;
             }
 
-            var selectedLead = GetSelectedLead();
             if (selectedLead == null)
             {
                 _btnAvailService.Enabled = false;
@@ -551,6 +611,15 @@ namespace App.WinForms.Views
         {
             var query = _allLeads.AsEnumerable();
 
+            // Client-side guard for sales staff visibility (their assigned leads + open unassigned pool leads)
+            if (SessionManager.IsSalesStaff && SessionManager.CurrentUser != null)
+            {
+                query = query.Where(l => !l.AssignedUserId.HasValue ||
+                                         string.IsNullOrWhiteSpace(l.AssignedSalesStaff) ||
+                                         (l.AssignedUserId.HasValue && l.AssignedUserId.Value == SessionManager.CurrentUser.Id) ||
+                                         string.Equals(l.AssignedSalesStaff, SessionManager.CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
+            }
+
             var search = _txtSearch.Text.Trim();
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -561,6 +630,7 @@ namespace App.WinForms.Views
                     (!string.IsNullOrEmpty(l.LeadSource) && l.LeadSource.ToLowerInvariant().Contains(lower)) ||
                     (!string.IsNullOrEmpty(l.ServiceOfInterest) && l.ServiceOfInterest.ToLowerInvariant().Contains(lower)) ||
                     (!string.IsNullOrEmpty(l.ServiceAddress) && l.ServiceAddress.ToLowerInvariant().Contains(lower)) ||
+                    (!string.IsNullOrEmpty(l.AssignedSalesStaff) && l.AssignedSalesStaff.ToLowerInvariant().Contains(lower)) ||
                     $"ld-{l.LeadId:d4}".Contains(lower));
             }
 
@@ -762,6 +832,29 @@ namespace App.WinForms.Views
                 else
                 {
                     ShowToast(message, false);
+                }
+            }
+        }
+
+        private async Task OnAssignOwnerClickAsync()
+        {
+            var sel = GetSelectedLead();
+            if (sel == null) return;
+
+            using var dlg = new AssignOwnerDialog($"Lead #{sel.LeadId} — {sel.LeadName}", sel.AssignedUserId, sel.AssignedSalesStaff);
+            if (dlg.ShowDialog(FindForm()) == DialogResult.OK)
+            {
+                var (ok, msg) = await _api.AssignLeadAsync(sel.LeadId, dlg.SelectedUserId ?? 0, dlg.SelectedUsername ?? "");
+                if (ok)
+                {
+                    sel.AssignedUserId = dlg.SelectedUserId;
+                    sel.AssignedSalesStaff = dlg.SelectedUsername;
+                    _grid.Invalidate();
+                    ShowToast($"Lead #{sel.LeadId} assigned to {dlg.SelectedUsername ?? "Unassigned"}.", true);
+                }
+                else
+                {
+                    ShowToast(msg, false);
                 }
             }
         }

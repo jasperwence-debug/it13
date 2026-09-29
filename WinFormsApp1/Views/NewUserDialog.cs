@@ -30,9 +30,10 @@ namespace App.WinForms.Views
 
         private void BuildUI()
         {
-            Text = "Provision New System User";
-            Size = new Size(480, 480);
-            MinimumSize = new Size(440, 440);
+            bool isSuper = SessionManager.IsSuperAdmin;
+            Text = isSuper ? "Provision New System User" : "Add Company Staff Member";
+            Size = new Size(480, 520);
+            MinimumSize = new Size(480, 520);
             StartPosition = FormStartPosition.CenterParent;
             BackColor = Theme.Background;
             ShowIcon = false;
@@ -49,11 +50,10 @@ namespace App.WinForms.Views
                 BackColor = Theme.Surface,
                 Padding = new Padding(24, 0, 24, 0)
             };
-            Controls.Add(pnlHeader);
 
             var lblTitle = new Label
             {
-                Text = "Create User Account",
+                Text = isSuper ? "Create User Account" : "Add Staff Account",
                 Font = new Font("Segoe UI", 12.5F, FontStyle.Bold),
                 ForeColor = Theme.TextDark,
                 Dock = DockStyle.Left,
@@ -64,10 +64,10 @@ namespace App.WinForms.Views
 
             var lblBadge = new Label
             {
-                Text = "Super Admin Only",
+                Text = isSuper ? "Super Admin" : "Company Admin",
                 Font = new Font("Segoe UI", 8F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(202, 138, 4),
-                BackColor = Color.FromArgb(254, 252, 232),
+                ForeColor = isSuper ? Color.FromArgb(202, 138, 4) : Color.FromArgb(37, 99, 235),
+                BackColor = isSuper ? Color.FromArgb(254, 252, 232) : Color.FromArgb(239, 246, 255),
                 Dock = DockStyle.Right,
                 Width = 130,
                 Height = 24,
@@ -77,7 +77,6 @@ namespace App.WinForms.Views
             pnlHeader.Controls.Add(lblBadge);
 
             var pnlDivTop = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = Theme.Border };
-            Controls.Add(pnlDivTop);
 
             // ── Footer Panel ─────────────────────────────────────────
             var pnlFooter = new Panel
@@ -87,7 +86,6 @@ namespace App.WinForms.Views
                 BackColor = Theme.Surface,
                 Padding = new Padding(24, 10, 24, 10)
             };
-            Controls.Add(pnlFooter);
 
             _btnCancel = new Button
             {
@@ -110,57 +108,77 @@ namespace App.WinForms.Views
             pnlFooter.Controls.Add(_btnSave);
 
             var pnlDivBottom = new Panel { Dock = DockStyle.Bottom, Height = 1, BackColor = Theme.Border };
-            Controls.Add(pnlDivBottom);
 
             // ── Form Body ────────────────────────────────────────────
             var pnlBody = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = Theme.Background,
-                Padding = new Padding(24, 16, 24, 16)
+                AutoScroll = true
             };
+
+            // IMPORTANT: In WinForms docking, add Dock.Fill first and bring to front
+            // so Top and Bottom docked panels do not overlap the body content.
             Controls.Add(pnlBody);
+            Controls.Add(pnlDivTop);
+            Controls.Add(pnlHeader);
+            Controls.Add(pnlDivBottom);
+            Controls.Add(pnlFooter);
+            pnlBody.BringToFront();
 
             int top = 16;
-            int width = 415;
+            int left = 24;
+            int width = 416;
 
             // Username
-            var lblUsername = new Label { Text = "Username *", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Theme.TextDark, Location = new Point(0, top), Size = new Size(width, 20) };
+            var lblUsername = new Label { Text = "Username *", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Theme.TextDark, Location = new Point(left, top), Size = new Size(width, 20) };
             pnlBody.Controls.Add(lblUsername);
-            top += 22;
-            _txtUsername = new TextBox { Font = new Font("Segoe UI", 9.5F), Location = new Point(0, top), Size = new Size(width, 28) };
+            top += 24;
+            _txtUsername = new TextBox { Font = new Font("Segoe UI", 9.5F), Location = new Point(left, top), Size = new Size(width, 28) };
             pnlBody.Controls.Add(_txtUsername);
             top += 38;
 
             // Role
-            var lblRole = new Label { Text = "System Role *", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Theme.TextDark, Location = new Point(0, top), Size = new Size(width, 20) };
+            var lblRole = new Label { Text = "System Role *", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Theme.TextDark, Location = new Point(left, top), Size = new Size(width, 20) };
             pnlBody.Controls.Add(lblRole);
-            top += 22;
-            _cmbRole = new ComboBox { Font = new Font("Segoe UI", 9.5F), DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(0, top), Size = new Size(width, 28) };
-            _cmbRole.Items.AddRange(new object[]
+            top += 24;
+            _cmbRole = new ComboBox { Font = new Font("Segoe UI", 9.5F), DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(left, top), Size = new Size(width, 28) };
+            if (isSuper)
             {
-                Roles.SalesStaff,
-                Roles.Manager,
-                Roles.Admin,
-                Roles.SuperAdmin
-            });
+                _cmbRole.Items.AddRange(new object[]
+                {
+                    Roles.SalesStaff,
+                    Roles.Manager,
+                    Roles.Admin,
+                    Roles.SuperAdmin
+                });
+            }
+            else
+            {
+                // Tenant Admin can only provision staff users for their company
+                _cmbRole.Items.AddRange(new object[]
+                {
+                    Roles.SalesStaff,
+                    Roles.Manager
+                });
+            }
             _cmbRole.SelectedIndex = 0;
             pnlBody.Controls.Add(_cmbRole);
             top += 38;
 
             // Password
-            var lblPassword = new Label { Text = "Password *", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Theme.TextDark, Location = new Point(0, top), Size = new Size(width, 20) };
+            var lblPassword = new Label { Text = "Password *", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Theme.TextDark, Location = new Point(left, top), Size = new Size(width, 20) };
             pnlBody.Controls.Add(lblPassword);
-            top += 22;
-            _txtPassword = new TextBox { Font = new Font("Segoe UI", 9.5F), UseSystemPasswordChar = true, Location = new Point(0, top), Size = new Size(width, 28) };
+            top += 24;
+            _txtPassword = new TextBox { Font = new Font("Segoe UI", 9.5F), UseSystemPasswordChar = true, Location = new Point(left, top), Size = new Size(width, 28) };
             pnlBody.Controls.Add(_txtPassword);
             top += 38;
 
             // Confirm Password
-            var lblConfirm = new Label { Text = "Confirm Password *", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Theme.TextDark, Location = new Point(0, top), Size = new Size(width, 20) };
+            var lblConfirm = new Label { Text = "Confirm Password *", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Theme.TextDark, Location = new Point(left, top), Size = new Size(width, 20) };
             pnlBody.Controls.Add(lblConfirm);
-            top += 22;
-            _txtConfirmPassword = new TextBox { Font = new Font("Segoe UI", 9.5F), UseSystemPasswordChar = true, Location = new Point(0, top), Size = new Size(width, 28) };
+            top += 24;
+            _txtConfirmPassword = new TextBox { Font = new Font("Segoe UI", 9.5F), UseSystemPasswordChar = true, Location = new Point(left, top), Size = new Size(width, 28) };
             pnlBody.Controls.Add(_txtConfirmPassword);
             top += 38;
 
@@ -170,7 +188,7 @@ namespace App.WinForms.Views
                 Text = string.Empty,
                 Font = new Font("Segoe UI", 8.5F),
                 ForeColor = Color.FromArgb(220, 38, 38),
-                Location = new Point(0, top),
+                Location = new Point(left, top),
                 Size = new Size(width, 24),
                 TextAlign = ContentAlignment.MiddleLeft
             };

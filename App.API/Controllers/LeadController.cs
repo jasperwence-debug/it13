@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using App.Domain.Common;
 using App.Domain.Entities;
 using App.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -36,9 +37,14 @@ namespace App.API.Controllers
         // Read-only: uses AsNoTracking().
         // ============================================================
         [HttpGet]
-        public async Task<IActionResult> GetLeads([FromQuery] bool includeConverted = false, [FromQuery] string? status = null)
+        public async Task<IActionResult> GetLeads([FromQuery] bool includeConverted = false, [FromQuery] string? status = null, [FromQuery] int? assignedUserId = null)
         {
             var query = _context.Leads.AsNoTracking().Where(l => l.IsActive);
+
+            if (assignedUserId.HasValue)
+            {
+                query = query.Where(l => l.AssignedUserId == assignedUserId.Value || l.AssignedUserId == null);
+            }
 
             if (!string.IsNullOrWhiteSpace(status) && !status.Equals("All", StringComparison.OrdinalIgnoreCase))
             {
@@ -54,6 +60,10 @@ namespace App.API.Controllers
                 .Select(l => new LeadDto
                 {
                     LeadId              = l.LeadId,
+                    FirstName           = l.FirstName,
+                    MiddleName          = l.MiddleName,
+                    LastName            = l.LastName,
+                    Suffix              = l.Suffix,
                     LeadName            = l.LeadName,
                     ContactInfo         = l.ContactInfo,
                     LeadSource          = l.LeadSource,
@@ -65,7 +75,9 @@ namespace App.API.Controllers
                     LostReason          = l.LostReason,
                     ConvertedCustomerId = l.ConvertedCustomerId,
                     ConvertedAt         = l.ConvertedAt,
-                    CreatedAt           = l.CreatedAt
+                    CreatedAt           = l.CreatedAt,
+                    AssignedUserId      = l.AssignedUserId,
+                    AssignedSalesStaff  = l.AssignedSalesStaff
                 })
                 .ToListAsync();
 
@@ -75,7 +87,7 @@ namespace App.API.Controllers
         // ============================================================
         // POST /api/leads
         // Creates a new Lead inquiry record ONLY.
-        // Accepts: LeadName, Phone, Email, LeadSource, InquiryDetails, QuotedPrice, ServiceAddress.
+        // Accepts: FirstName, MiddleName, LastName, Suffix (or LeadName), Phone, Email, LeadSource, InquiryDetails, QuotedPrice, ServiceAddress, AssignedStaff.
         // ContactInfo is stored as "{Phone} | {Email}" or just one of them.
         // NEVER instantiates or writes to ServiceRequests or Customers.
         // ============================================================
@@ -85,8 +97,25 @@ namespace App.API.Controllers
             if (dto == null)
                 return BadRequest("Request body cannot be null.");
 
-            if (string.IsNullOrWhiteSpace(dto.LeadName))
-                return BadRequest("LeadName is required.");
+            string fn = !string.IsNullOrWhiteSpace(dto.FirstName) ? NameNormalizer.Normalize(dto.FirstName) : "";
+            string? mn = !string.IsNullOrWhiteSpace(dto.MiddleName) ? NameNormalizer.Normalize(dto.MiddleName) : null;
+            string ln = !string.IsNullOrWhiteSpace(dto.LastName) ? NameNormalizer.Normalize(dto.LastName) : "";
+            string? sx = !string.IsNullOrWhiteSpace(dto.Suffix) ? NameNormalizer.NormalizeSuffix(dto.Suffix) : null;
+
+            if (string.IsNullOrWhiteSpace(fn) && string.IsNullOrWhiteSpace(ln))
+            {
+                if (string.IsNullOrWhiteSpace(dto.LeadName))
+                    return BadRequest("FirstName and LastName are required.");
+                var (f, m, l) = NameNormalizer.SplitSingleString(dto.LeadName);
+                fn = f;
+                mn = m;
+                ln = l;
+            }
+
+            if (string.IsNullOrWhiteSpace(fn))
+                return BadRequest("FirstName is required.");
+            if (string.IsNullOrWhiteSpace(ln))
+                return BadRequest("LastName is required.");
 
             if (string.IsNullOrWhiteSpace(dto.Phone) && string.IsNullOrWhiteSpace(dto.Email))
                 return BadRequest("At least one of Phone or Email is required.");
@@ -105,16 +134,22 @@ namespace App.API.Controllers
 
             var lead = new Lead
             {
-                LeadName          = dto.LeadName.Trim(),
-                ContactInfo       = contactInfo,
-                LeadSource        = dto.LeadSource.Trim(),
-                ServiceOfInterest = string.Empty,   // Inquiry only — no service commitment
-                InquiryDetails    = dto.InquiryDetails?.Trim(),
-                Status            = "New",
-                QuotedPrice       = dto.QuotedPrice,
-                ServiceAddress    = dto.ServiceAddress?.Trim(),
-                IsActive          = true,
-                CreatedAt         = DateTime.UtcNow
+                FirstName          = fn,
+                MiddleName         = mn,
+                LastName           = ln,
+                Suffix             = sx,
+                LeadName           = NameNormalizer.FormatFullName(fn, mn, ln, sx),
+                ContactInfo        = contactInfo,
+                LeadSource         = dto.LeadSource.Trim(),
+                ServiceOfInterest  = string.Empty,   // Inquiry only — no service commitment
+                InquiryDetails     = dto.InquiryDetails?.Trim(),
+                Status             = "New",
+                QuotedPrice        = dto.QuotedPrice,
+                ServiceAddress     = dto.ServiceAddress?.Trim(),
+                AssignedUserId     = dto.AssignedUserId,
+                AssignedSalesStaff = dto.AssignedSalesStaff?.Trim(),
+                IsActive           = true,
+                CreatedAt          = DateTime.UtcNow
             };
 
             _context.Leads.Add(lead);
@@ -124,17 +159,23 @@ namespace App.API.Controllers
                 $"/api/leads/{lead.LeadId}",
                 new LeadDto
                 {
-                    LeadId            = lead.LeadId,
-                    LeadName          = lead.LeadName,
-                    ContactInfo       = lead.ContactInfo,
-                    LeadSource        = lead.LeadSource,
-                    ServiceOfInterest = lead.ServiceOfInterest,
-                    InquiryDetails    = lead.InquiryDetails,
-                    Status            = lead.Status,
-                    QuotedPrice       = lead.QuotedPrice,
-                    ServiceAddress    = lead.ServiceAddress,
-                    LostReason        = lead.LostReason,
-                    CreatedAt         = lead.CreatedAt
+                    LeadId             = lead.LeadId,
+                    FirstName          = lead.FirstName,
+                    MiddleName         = lead.MiddleName,
+                    LastName           = lead.LastName,
+                    Suffix             = lead.Suffix,
+                    LeadName           = lead.LeadName,
+                    ContactInfo        = lead.ContactInfo,
+                    LeadSource         = lead.LeadSource,
+                    ServiceOfInterest  = lead.ServiceOfInterest,
+                    InquiryDetails     = lead.InquiryDetails,
+                    Status             = lead.Status,
+                    QuotedPrice        = lead.QuotedPrice,
+                    ServiceAddress     = lead.ServiceAddress,
+                    LostReason         = lead.LostReason,
+                    CreatedAt          = lead.CreatedAt,
+                    AssignedUserId     = lead.AssignedUserId,
+                    AssignedSalesStaff = lead.AssignedSalesStaff
                 });
         }
 
@@ -183,10 +224,12 @@ namespace App.API.Controllers
                 ServiceOfInterest = lead.ServiceOfInterest,
                 InquiryDetails    = lead.InquiryDetails,
                 Status            = lead.Status,
-                QuotedPrice       = lead.QuotedPrice,
-                ServiceAddress    = lead.ServiceAddress,
-                LostReason        = lead.LostReason,
-                CreatedAt         = lead.CreatedAt
+                QuotedPrice        = lead.QuotedPrice,
+                ServiceAddress     = lead.ServiceAddress,
+                LostReason         = lead.LostReason,
+                CreatedAt          = lead.CreatedAt,
+                AssignedUserId     = lead.AssignedUserId,
+                AssignedSalesStaff = lead.AssignedSalesStaff
             });
         }
 
@@ -255,6 +298,11 @@ namespace App.API.Controllers
                     {
                         existing.ServiceLocation = lead.ServiceAddress;
                     }
+                    if (!existing.AssignedUserId.HasValue && lead.AssignedUserId.HasValue)
+                    {
+                        existing.AssignedUserId = lead.AssignedUserId;
+                        existing.AssignedSalesStaff = lead.AssignedSalesStaff;
+                    }
                 }
                 else
                 {
@@ -309,16 +357,27 @@ namespace App.API.Controllers
                         contactToStore = $"{lead.ContactInfo} #{lead.LeadId}";
                     }
 
+                    string custFn = !string.IsNullOrWhiteSpace(lead.FirstName) ? lead.FirstName : NameNormalizer.SplitSingleString(lead.LeadName).FirstName;
+                    string? custMn = !string.IsNullOrWhiteSpace(lead.MiddleName) ? lead.MiddleName : NameNormalizer.SplitSingleString(lead.LeadName).MiddleName;
+                    string custLn = !string.IsNullOrWhiteSpace(lead.LastName) ? lead.LastName : NameNormalizer.SplitSingleString(lead.LeadName).LastName;
+                    string? custSx = lead.Suffix;
+
                     var newCustomer = new Customer
                     {
-                        CustomerName    = lead.LeadName,
-                        CustomerType    = "Individual",
-                        ContactInfo     = contactToStore,
-                        Email           = !string.IsNullOrEmpty(leadEmail) ? leadEmail : null,
-                        ServiceLocation = lead.ServiceAddress ?? string.Empty,
-                        LeadId          = lead.LeadId,
-                        IsActive        = true,
-                        CreatedAt       = DateTime.UtcNow
+                        FirstName          = custFn,
+                        MiddleName         = custMn,
+                        LastName           = custLn,
+                        Suffix             = custSx,
+                        CustomerName       = NameNormalizer.FormatFullName(custFn, custMn, custLn, custSx),
+                        CustomerType       = "Individual",
+                        ContactInfo        = contactToStore,
+                        Email              = !string.IsNullOrEmpty(leadEmail) ? leadEmail : null,
+                        ServiceLocation    = lead.ServiceAddress ?? string.Empty,
+                        LeadId             = lead.LeadId,
+                        AssignedUserId     = lead.AssignedUserId,
+                        AssignedSalesStaff = lead.AssignedSalesStaff,
+                        IsActive           = true,
+                        CreatedAt          = DateTime.UtcNow
                     };
                     _context.Customers.Add(newCustomer);
                     await _context.SaveChangesAsync();
@@ -353,6 +412,34 @@ namespace App.API.Controllers
                 var innerMsg = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
                 return StatusCode(500, $"Conversion failed: {innerMsg}");
             }
+        }
+
+        // ============================================================
+        // PATCH /api/leads/{id}/assign
+        // Reassigns lead ownership to a sales staff member.
+        // ============================================================
+        [HttpPatch("{id:int}/assign")]
+        public async Task<IActionResult> AssignOwner(int id, [FromBody] AssignOwnerDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Payload is required.");
+
+            var lead = await _context.Leads.FirstOrDefaultAsync(l => l.LeadId == id && l.IsActive);
+            if (lead == null)
+                return NotFound($"No active lead found with ID {id}.");
+
+            lead.AssignedUserId = dto.AssignedUserId;
+            lead.AssignedSalesStaff = dto.AssignedSalesStaff;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                lead.LeadId,
+                lead.AssignedUserId,
+                lead.AssignedSalesStaff,
+                Message = $"Lead #{lead.LeadId} reassigned to {lead.AssignedSalesStaff ?? "unassigned"}."
+            });
         }
 
         private static string ExtractPhone(string? contact)

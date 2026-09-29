@@ -40,12 +40,21 @@ namespace App.API.Controllers
         // Read-only: AsNoTracking().
         // ============================================================
         [HttpGet]
-        public async Task<IActionResult> GetWorkOrders()
+        public async Task<IActionResult> GetWorkOrders([FromQuery] string? assignedStaff = null)
         {
-            var orders = await _context.ServiceRequests
+            var query = _context.ServiceRequests
                 .AsNoTracking()
                 .Include(sr => sr.Customer)
-                .Where(sr => sr.IsActive)
+                .Where(sr => sr.IsActive);
+
+            if (!string.IsNullOrWhiteSpace(assignedStaff))
+            {
+                var staffTrimmed = assignedStaff.Trim();
+                query = query.Where(sr => sr.AssignedSalesStaff == staffTrimmed ||
+                                         (sr.Customer != null && sr.Customer.AssignedSalesStaff == staffTrimmed));
+            }
+
+            var orders = await query
                 .OrderByDescending(sr => sr.PreferredDate)
                 .Select(sr => new WorkOrderDto
                 {

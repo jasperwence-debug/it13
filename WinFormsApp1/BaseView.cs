@@ -182,6 +182,20 @@ namespace App.WinForms
             _pnlToast.BackColor = bg;
             _lblToast.BackColor = bg;
             _lblToast.Text = (isSuccess ? "✓  " : "⚠  ") + message;
+
+            try
+            {
+                using var g = _pnlToast.CreateGraphics();
+                var sz = g.MeasureString(_lblToast.Text, _lblToast.Font);
+                int desiredWidth = Math.Clamp((int)sz.Width + 48, 380, Math.Max(420, Width - 60));
+                _pnlToast.Width = desiredWidth;
+            }
+            catch
+            {
+                // Fallback to default width if measurement fails
+                _pnlToast.Width = 380;
+            }
+
             PositionToast();
             _pnlToast.Visible = true;
             _pnlToast.BringToFront();

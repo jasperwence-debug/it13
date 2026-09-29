@@ -77,7 +77,7 @@ namespace App.WinForms.Views
             // Centered master container hosting Header + White Card
             _pnlCenter = new Panel
             {
-                Size = new Size(460, 600),
+                Size = new Size(460, 510),
                 BackColor = Color.Transparent
             };
             Controls.Add(_pnlCenter);
@@ -182,13 +182,13 @@ namespace App.WinForms.Views
         }
 
         // ============================================================
-        // 2. WHITE CARD (Form Controls & Demo Credentials)
+        // 2. WHITE CARD (Form Controls)
         // ============================================================
         private Panel CreateLoginCard()
         {
             var card = new Panel
             {
-                Size = new Size(460, 440),
+                Size = new Size(460, 360),
                 BackColor = Color.White
             };
 
@@ -275,7 +275,7 @@ namespace App.WinForms.Views
             top += 20;
 
             // USERNAME Flat Input Box
-            var pnlUser = CreateFlatInput(out _txtUsername, isPassword: false, placeholder: "admin, superadmin, or sales");
+            var pnlUser = CreateFlatInput(out _txtUsername, isPassword: false, placeholder: "Enter your username");
             pnlUser.Location = new Point(left, top);
             pnlUser.Size = new Size(width, 40);
             card.Controls.Add(pnlUser);
@@ -294,7 +294,7 @@ namespace App.WinForms.Views
             top += 20;
 
             // PASSWORD Flat Input Box
-            var pnlPass = CreateFlatInput(out _txtPassword, isPassword: true, placeholder: "");
+            var pnlPass = CreateFlatInput(out _txtPassword, isPassword: true, placeholder: "Enter your password");
             pnlPass.Location = new Point(left, top);
             pnlPass.Size = new Size(width, 40);
             card.Controls.Add(pnlPass);
@@ -325,24 +325,6 @@ namespace App.WinForms.Views
                 Size = new Size(width, 18)
             };
             card.Controls.Add(_lblStatus);
-            top += 20;
-
-            // 3. DEMO CREDENTIALS HELPER SECTION
-            var lblDemo = new Label
-            {
-                Text = "Demo credentials:",
-                Font = new Font("Segoe UI", 8F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(148, 163, 184), // Slate-400
-                Location = new Point(left, top),
-                Size = new Size(width, 18)
-            };
-            card.Controls.Add(lblDemo);
-            top += 22;
-
-            // 3 Side-by-Side Demo Cards
-            var pnlDemoCards = CreateDemoCredentialsRow(width);
-            pnlDemoCards.Location = new Point(left, top);
-            card.Controls.Add(pnlDemoCards);
 
             // Tab navigation order
             _txtUsername.TabIndex = 0;
@@ -418,110 +400,6 @@ namespace App.WinForms.Views
 
             txt = tb;
             return pnl;
-        }
-
-        // ============================================================
-        // 3. DEMO CREDENTIALS HELPER ROW (Admin, SuperAdmin, Sales Staff)
-        // ============================================================
-        private Panel CreateDemoCredentialsRow(int totalWidth)
-        {
-            var pnl = new Panel
-            {
-                Size = new Size(totalWidth, 50),
-                BackColor = Color.Transparent
-            };
-
-            int gap = 8;
-            int cardWidth = (totalWidth - (gap * 2)) / 3;
-
-            var demoRoles = new[]
-            {
-                ("Admin", "admin", "admin"),
-                ("SuperAdmin", "superadmin", "superadmin"),
-                ("Sales Staff", "sales", "sales")
-            };
-
-            for (int i = 0; i < demoRoles.Length; i++)
-            {
-                var role = demoRoles[i];
-                var btnCard = CreateDemoCard(role.Item1, role.Item2, role.Item3, cardWidth, 48);
-                btnCard.Location = new Point(i * (cardWidth + gap), 0);
-                pnl.Controls.Add(btnCard);
-            }
-
-            return pnl;
-        }
-
-        private Panel CreateDemoCard(string roleTitle, string username, string password, int width, int height)
-        {
-            var card = new Panel
-            {
-                Size = new Size(width, height),
-                BackColor = Color.FromArgb(248, 250, 252),
-                Cursor = Cursors.Hand
-            };
-
-            card.Resize += (s, e) =>
-            {
-                using var path = CreateRoundedPath(new Rectangle(0, 0, card.Width, card.Height), 6);
-                card.Region = new Region(path);
-            };
-            using (var path = CreateRoundedPath(new Rectangle(0, 0, width, height), 6))
-            {
-                card.Region = new Region(path);
-            }
-
-            bool isHover = false;
-            card.Paint += (s, e) =>
-            {
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using var pen = new Pen(isHover ? Color.FromArgb(148, 163, 184) : Color.FromArgb(226, 232, 240), 1f);
-                using var roundPath = CreateRoundedPath(new Rectangle(0, 0, card.Width - 1, card.Height - 1), 6);
-                e.Graphics.DrawPath(pen, roundPath);
-            };
-
-            var lblTitle = new Label
-            {
-                Text = roleTitle,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85), // Slate-700
-                TextAlign = ContentAlignment.MiddleCenter,
-                Size = new Size(width, 20),
-                Location = new Point(0, 5),
-                Cursor = Cursors.Hand
-            };
-            card.Controls.Add(lblTitle);
-
-            var lblSub = new Label
-            {
-                Text = username,
-                Font = new Font("Segoe UI", 7.5F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(100, 116, 139), // Slate-500
-                TextAlign = ContentAlignment.MiddleCenter,
-                Size = new Size(width, 18),
-                Location = new Point(0, 25),
-                Cursor = Cursors.Hand
-            };
-            card.Controls.Add(lblSub);
-
-            Action clickAction = () =>
-            {
-                _txtUsername.Text = username;
-                _txtPassword.Text = password;
-                _lblStatus.Text = "";
-                _btnLogin.Focus();
-            };
-
-            card.Click += (s, e) => clickAction();
-            lblTitle.Click += (s, e) => clickAction();
-            lblSub.Click += (s, e) => clickAction();
-
-            card.MouseEnter += (s, e) => { isHover = true; card.BackColor = Color.FromArgb(241, 245, 249); card.Invalidate(); };
-            card.MouseLeave += (s, e) => { isHover = false; card.BackColor = Color.FromArgb(248, 250, 252); card.Invalidate(); };
-            lblTitle.MouseEnter += (s, e) => { isHover = true; card.BackColor = Color.FromArgb(241, 245, 249); card.Invalidate(); };
-            lblSub.MouseEnter += (s, e) => { isHover = true; card.BackColor = Color.FromArgb(241, 245, 249); card.Invalidate(); };
-
-            return card;
         }
 
         // ============================================================

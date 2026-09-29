@@ -10,10 +10,49 @@
     <Compile Update="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\AssignOwnerDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\AvailServiceDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\BranchDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\BranchManagementView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\CustomerSearchDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\CustomerServiceHistoryDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\CustomersView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="Views\DashboardView.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Views\DataCollectionView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\DispatchWorkOrderDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\EditSubscriptionDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\FinancialManagementView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\LeadDuplicateResolutionDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\LeadStatusActionDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\LeadsView.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Views\LoginView.cs">
@@ -22,10 +61,52 @@
     <Compile Update="Views\NewBookingModalForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\NewBookingRequestDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\NewUserDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\NewWorkOrderDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\NotificationCenterDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\OnboardTenantDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\PlaceholderView.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Views\RecordsView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\ReportsAuditView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\RetentionView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\ScheduleView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\ServiceFeedbackDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\SubscriptionManagementView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\TermsManagementView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\UserManagementView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\WinBackEmailDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\WorkOrdersView.cs">
       <SubType>UserControl</SubType>
     </Compile>
   </ItemGroup>

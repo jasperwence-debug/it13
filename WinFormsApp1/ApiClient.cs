@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using App.Domain.Common;
+using App.Domain.Models.Email;
 using App.WinForms.Core;
 
 namespace App.WinForms
@@ -14,8 +16,32 @@ namespace App.WinForms
         public int? LeadId { get; set; }
         public int? CustomerId { get; set; }
 
+        // Normalized Name Fields (max length 50 each)
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
         // Lead
-        public string LeadName { get; set; } = string.Empty;
+        public string LeadName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _leadName;
+            set
+            {
+                _leadName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _leadName = string.Empty;
+
         public string ContactInfo { get; set; } = string.Empty;
         public string LeadSource { get; set; } = string.Empty;
         public string ServiceOfInterest { get; set; } = string.Empty;
@@ -23,7 +49,23 @@ namespace App.WinForms
 
         // Customer
         public string CustomerType { get; set; } = string.Empty;
-        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _customerName;
+            set
+            {
+                _customerName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _customerName = string.Empty;
+
         public string ContactDetails { get; set; } = string.Empty;
         public string ServiceLocation { get; set; } = string.Empty;
 
@@ -40,7 +82,32 @@ namespace App.WinForms
     {
         public int CustomerId { get; set; }
         public string CustomerType { get; set; } = string.Empty;
-        public string CustomerName { get; set; } = string.Empty;
+
+        // Normalized Name Fields
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
+        public string CustomerName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _customerName;
+            set
+            {
+                _customerName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _customerName = string.Empty;
+
         public string ContactDetails { get; set; } = string.Empty;
         public string ServiceLocation { get; set; } = string.Empty;
     }
@@ -94,13 +161,39 @@ namespace App.WinForms
     /// <summary>Input DTO for POST /api/leads (inquiry-only).</summary>
     public class LeadCreateDto
     {
-        public string LeadName { get; set; } = string.Empty;
+        // Normalized Name Fields (max length 50 each)
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
+        public string LeadName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _leadName;
+            set
+            {
+                _leadName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _leadName = string.Empty;
+
         public string Phone { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string LeadSource { get; set; } = string.Empty;
         public string? InquiryDetails { get; set; }
         public decimal? QuotedPrice { get; set; }
         public string? ServiceAddress { get; set; }
+        public int? AssignedUserId { get; set; }
+        public string? AssignedSalesStaff { get; set; }
     }
 
     /// <summary>Input DTO for updating Lead status, quote, or lost reason.</summary>
@@ -115,7 +208,32 @@ namespace App.WinForms
     public class LeadDto
     {
         public int LeadId { get; set; }
-        public string LeadName { get; set; } = string.Empty;
+
+        // Normalized Name Fields
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
+        public string LeadName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _leadName;
+            set
+            {
+                _leadName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _leadName = string.Empty;
+
         public string ContactInfo { get; set; } = string.Empty;
         public string LeadSource { get; set; } = string.Empty;
         public string ServiceOfInterest { get; set; } = string.Empty;
@@ -127,6 +245,8 @@ namespace App.WinForms
         public int? ConvertedCustomerId { get; set; }
         public DateTime? ConvertedAt { get; set; }
         public DateTime CreatedAt { get; set; }
+        public int? AssignedUserId { get; set; }
+        public string? AssignedSalesStaff { get; set; }
     }
 
     /// <summary>Input DTO for POST /api/leads/{id}/convert.</summary>
@@ -180,9 +300,35 @@ namespace App.WinForms
     {
         public int CustomerId { get; set; }
         public int? LeadId { get; set; }
-        public string CustomerName { get; set; } = string.Empty;
+
+        // Normalized Name Fields
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
+        public string CustomerName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _customerName;
+            set
+            {
+                _customerName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _customerName = string.Empty;
+
         public string CustomerType { get; set; } = string.Empty;
         public string ContactDetails { get; set; } = string.Empty;
+        public string? Email { get; set; }
         public string ServiceLocation { get; set; } = string.Empty;
         public int TotalBookings { get; set; }
         public int CompletedBookings { get; set; }
@@ -192,6 +338,11 @@ namespace App.WinForms
         public string RetentionStatus { get; set; } = "Active";
         public string? LatestService { get; set; }
         public DateTime? LatestDate { get; set; }
+        public DateTime? CreatedAt { get; set; }
+        public int? AssignedUserId { get; set; }
+        public string? AssignedSalesStaff { get; set; }
+        public bool HasNegativeFeedback { get; set; }
+        public int? LatestRating { get; set; }
     }
 
     /// <summary>
@@ -200,7 +351,32 @@ namespace App.WinForms
     public class AtRiskCustomerDto
     {
         public int CustomerId { get; set; }
-        public string CustomerName { get; set; } = string.Empty;
+
+        // Normalized Name Fields
+        public string FirstName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public string? Suffix { get; set; }
+
+        public string FullName => NameNormalizer.FormatFullName(FirstName, MiddleName, LastName, Suffix);
+
+        public string CustomerName
+        {
+            get => !string.IsNullOrWhiteSpace(FullName) ? FullName : _customerName;
+            set
+            {
+                _customerName = value ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(FirstName) && string.IsNullOrWhiteSpace(LastName) && !string.IsNullOrWhiteSpace(value))
+                {
+                    var (f, m, l) = NameNormalizer.SplitSingleString(value);
+                    FirstName = f;
+                    MiddleName = m;
+                    LastName = l;
+                }
+            }
+        }
+        private string _customerName = string.Empty;
+
         public string CustomerType { get; set; } = string.Empty;
         public string ContactDetails { get; set; } = string.Empty;
         public string ServiceLocation { get; set; } = string.Empty;
@@ -432,11 +608,29 @@ namespace App.WinForms
         // ------------------------------------------------------------
         // DASHBOARD / BI ANALYTICS (existing)
         // ------------------------------------------------------------
-        public async Task<DashboardDto?> GetDashboardAsync()
+        public async Task<DashboardDto?> GetDashboardAsync(string? assignedStaff = null, int? assignedUserId = null)
         {
             try
             {
-                var result = await _http.GetFromJsonAsync<DashboardDto>("/api/analytics/dashboard");
+                var queryParams = new List<string>();
+                if (SessionManager.IsSalesStaff && SessionManager.CurrentUser != null)
+                {
+                    queryParams.Add($"assignedStaff={Uri.EscapeDataString(SessionManager.CurrentUser.Username)}");
+                    queryParams.Add($"assignedUserId={SessionManager.CurrentUser.Id}");
+                }
+                else
+                {
+                    if (!string.IsNullOrWhiteSpace(assignedStaff))
+                        queryParams.Add($"assignedStaff={Uri.EscapeDataString(assignedStaff.Trim())}");
+                    if (assignedUserId.HasValue)
+                        queryParams.Add($"assignedUserId={assignedUserId.Value}");
+                }
+
+                var url = "/api/analytics/dashboard";
+                if (queryParams.Count > 0)
+                    url += "?" + string.Join("&", queryParams);
+
+                var result = await _http.GetFromJsonAsync<DashboardDto>(url);
                 LastConnectionFailed = false;
                 LastErrorMessage = null;
                 return result;
@@ -553,14 +747,24 @@ namespace App.WinForms
         // LAYER 1 — LEADS API METHODS
         // ============================================================
 
-        /// <summary>Returns active or filtered leads for the Leads grid.</summary>
-        public async Task<List<LeadDto>> GetLeadsAsync(string? status = null, bool includeConverted = false)
+        /// <summary>Returns active or filtered leads for the Leads grid. Scoped by assigned user when provided or for Sales Staff.</summary>
+        public async Task<List<LeadDto>> GetLeadsAsync(string? status = null, bool includeConverted = false, int? assignedUserId = null)
         {
             try
             {
                 var queryParams = new List<string>();
                 if (includeConverted) queryParams.Add("includeConverted=true");
                 if (!string.IsNullOrWhiteSpace(status)) queryParams.Add($"status={Uri.EscapeDataString(status.Trim())}");
+
+                // Sales staff is strictly scoped to their own leads
+                if (SessionManager.IsSalesStaff && SessionManager.CurrentUser != null)
+                {
+                    queryParams.Add($"assignedUserId={SessionManager.CurrentUser.Id}");
+                }
+                else if (assignedUserId.HasValue)
+                {
+                    queryParams.Add($"assignedUserId={assignedUserId.Value}");
+                }
 
                 var url = "/api/leads";
                 if (queryParams.Count > 0)
@@ -712,12 +916,33 @@ namespace App.WinForms
         /// <summary>
         /// Returns all active customers — one row per customer
         /// with TotalBookings, LatestService, LatestDate aggregates.
+        /// Scoped to assigned user for Sales Staff.
         /// </summary>
-        public async Task<List<CustomerSummaryDto>> GetCustomersAsync()
+        public async Task<List<CustomerSummaryDto>> GetCustomersAsync(int? assignedUserId = null)
         {
             try
             {
-                var result = await _http.GetFromJsonAsync<List<CustomerSummaryDto>>("/api/customers");
+                var url = "/api/customers";
+                int? effectiveUserId = (SessionManager.IsSalesStaff && SessionManager.CurrentUser != null)
+                    ? SessionManager.CurrentUser.Id
+                    : assignedUserId;
+
+                var queryParams = new List<string>();
+                if (effectiveUserId.HasValue)
+                {
+                    queryParams.Add($"assignedUserId={effectiveUserId.Value}");
+                }
+                if (SessionManager.IsSalesStaff && !string.IsNullOrWhiteSpace(SessionManager.CurrentUser?.Username))
+                {
+                    queryParams.Add($"assignedStaff={Uri.EscapeDataString(SessionManager.CurrentUser.Username)}");
+                }
+
+                if (queryParams.Count > 0)
+                {
+                    url += "?" + string.Join("&", queryParams);
+                }
+
+                var result = await _http.GetFromJsonAsync<List<CustomerSummaryDto>>(url);
                 LastConnectionFailed = false;
                 LastErrorMessage = null;
                 return result ?? new List<CustomerSummaryDto>();
@@ -730,16 +955,59 @@ namespace App.WinForms
             }
         }
 
+        /// <summary>
+        /// Reassigns lead ownership to a specific staff member.
+        /// </summary>
+        public async Task<(bool Success, string Message)> AssignLeadAsync(int leadId, int assignedUserId, string assignedSalesStaff)
+        {
+            try
+            {
+                var resp = await _http.PatchAsJsonAsync($"/api/leads/{leadId}/assign", new { assignedUserId, assignedSalesStaff });
+                return (resp.IsSuccessStatusCode, resp.IsSuccessStatusCode ? "Lead reassigned successfully." : "Failed to reassign lead.");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Reassigns customer account ownership to a specific staff member.
+        /// </summary>
+        public async Task<(bool Success, string Message)> AssignCustomerAsync(int customerId, int assignedUserId, string assignedSalesStaff)
+        {
+            try
+            {
+                var resp = await _http.PatchAsJsonAsync($"/api/customers/{customerId}/assign", new { assignedUserId, assignedSalesStaff });
+                return (resp.IsSuccessStatusCode, resp.IsSuccessStatusCode ? "Customer reassigned successfully." : "Failed to reassign customer.");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
         // ============================================================
         // LAYER 3 — WORK ORDERS API METHODS
         // ============================================================
 
-        /// <summary>Returns all active work orders for the grid.</summary>
-        public async Task<List<WorkOrderDto>> GetWorkOrdersAsync()
+        /// <summary>Returns active work orders for the grid, auto-scoped for Sales Staff.</summary>
+        public async Task<List<WorkOrderDto>> GetWorkOrdersAsync(string? assignedStaff = null)
         {
             try
             {
-                var result = await _http.GetFromJsonAsync<List<WorkOrderDto>>("/api/servicerequests");
+                var url = "/api/servicerequests";
+                if (string.IsNullOrEmpty(assignedStaff) && SessionManager.IsSalesStaff && SessionManager.CurrentUser != null)
+                {
+                    assignedStaff = SessionManager.CurrentUser.Username;
+                }
+
+                if (!string.IsNullOrEmpty(assignedStaff))
+                {
+                    url += $"?assignedStaff={Uri.EscapeDataString(assignedStaff)}";
+                }
+
+                var result = await _http.GetFromJsonAsync<List<WorkOrderDto>>(url);
                 LastConnectionFailed = false;
                 LastErrorMessage = null;
                 return result ?? new List<WorkOrderDto>();
@@ -908,11 +1176,29 @@ namespace App.WinForms
         /// <summary>
         /// Fetches customers with no completed bookings in 60+ days for retention re-engagement.
         /// </summary>
-        public async Task<List<AtRiskCustomerDto>> GetAtRiskCustomersAsync()
+        public async Task<List<AtRiskCustomerDto>> GetAtRiskCustomersAsync(string? assignedStaff = null, int? assignedUserId = null)
         {
             try
             {
-                var result = await _http.GetFromJsonAsync<List<AtRiskCustomerDto>>("/api/analytics/at-risk-customers");
+                var queryParams = new List<string>();
+                if (SessionManager.IsSalesStaff && SessionManager.CurrentUser != null)
+                {
+                    queryParams.Add($"assignedStaff={Uri.EscapeDataString(SessionManager.CurrentUser.Username)}");
+                    queryParams.Add($"assignedUserId={SessionManager.CurrentUser.Id}");
+                }
+                else
+                {
+                    if (!string.IsNullOrWhiteSpace(assignedStaff))
+                        queryParams.Add($"assignedStaff={Uri.EscapeDataString(assignedStaff.Trim())}");
+                    if (assignedUserId.HasValue)
+                        queryParams.Add($"assignedUserId={assignedUserId.Value}");
+                }
+
+                var url = "/api/analytics/at-risk-customers";
+                if (queryParams.Count > 0)
+                    url += "?" + string.Join("&", queryParams);
+
+                var result = await _http.GetFromJsonAsync<List<AtRiskCustomerDto>>(url);
                 return result ?? new List<AtRiskCustomerDto>();
             }
             catch
@@ -1122,5 +1408,109 @@ namespace App.WinForms
                 return (false, $"Error contacting server: {ex.Message}");
             }
         }
+
+        // ============================================================
+        // RETENTION & WIN-BACK SMTP EMAIL AUTOMATION
+        // ============================================================
+
+        public async Task<EmailResult> SendWinBackEmailAsync(WinBackEmailRequest request)
+        {
+            try
+            {
+                var response = await _http.PostAsJsonAsync("/api/retention/send-winback", request);
+                var content = await response.Content.ReadFromJsonAsync<EmailResult>();
+
+                if (content != null)
+                {
+                    return content;
+                }
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return EmailResult.Success(request.RecipientEmail, "Win-back email dispatched successfully via SMTP.");
+                }
+
+                return EmailResult.Failed(request.RecipientEmail, $"Server returned {(int)response.StatusCode} {response.ReasonPhrase}");
+            }
+            catch (Exception ex)
+            {
+                return EmailResult.Failed(request.RecipientEmail, $"Connection error: {ex.Message}", ex.ToString(),
+                    "Ensure App.API is running on http://localhost:5000.");
+            }
+        }
+
+        public async Task<WinBackBatchResult> BatchSendWinBackEmailAsync(WinBackBatchRequest batchRequest)
+        {
+            try
+            {
+                var response = await _http.PostAsJsonAsync("/api/retention/batch-winback", batchRequest);
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<WinBackBatchResult>();
+                    return result ?? new WinBackBatchResult { TotalRequested = batchRequest.CustomerIds.Count };
+                }
+
+                var errorResult = await response.Content.ReadFromJsonAsync<WinBackBatchResult>();
+                return errorResult ?? new WinBackBatchResult
+                {
+                    TotalRequested = batchRequest.CustomerIds.Count,
+                    TotalFailed = batchRequest.CustomerIds.Count,
+                    Results = new List<EmailResult>
+                    {
+                        EmailResult.Failed(string.Empty, $"Batch request failed: {(int)response.StatusCode} {response.ReasonPhrase}")
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                return new WinBackBatchResult
+                {
+                    TotalRequested = batchRequest.CustomerIds.Count,
+                    TotalFailed = batchRequest.CustomerIds.Count,
+                    Results = new List<EmailResult>
+                    {
+                        EmailResult.Failed(string.Empty, $"Network error dispatching batch win-back: {ex.Message}", ex.ToString())
+                    }
+                };
+            }
+        }
+
+        public async Task<SmtpStatusDto?> GetSmtpStatusAsync()
+        {
+            try
+            {
+                return await _http.GetFromJsonAsync<SmtpStatusDto>("/api/retention/smtp-status");
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task<EmailResult> SendTestEmailAsync(string recipientEmail)
+        {
+            try
+            {
+                var response = await _http.PostAsJsonAsync("/api/retention/test-email", new { RecipientEmail = recipientEmail });
+                var result = await response.Content.ReadFromJsonAsync<EmailResult>();
+                return result ?? EmailResult.Failed(recipientEmail, "Empty response from server.");
+            }
+            catch (Exception ex)
+            {
+                return EmailResult.Failed(recipientEmail, $"Error sending test email: {ex.Message}");
+            }
+        }
+    }
+
+    public class SmtpStatusDto
+    {
+        public string Host { get; set; } = string.Empty;
+        public int Port { get; set; }
+        public bool EnableSsl { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string FromEmail { get; set; } = string.Empty;
+        public string FromName { get; set; } = string.Empty;
+        public int TimeoutSeconds { get; set; }
+        public bool IsValid { get; set; }
     }
 }

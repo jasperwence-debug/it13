@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
 using App.WinForms.Core;
+using App.WinForms.Reporting;
 
 namespace App.WinForms.Views
 {
@@ -23,6 +24,7 @@ namespace App.WinForms.Views
         private Label _lblHeaderTitle = null!;
         private Label _lblHeaderSubtitle = null!;
         private Label _lblLastUpdated = null!;
+        private Button _btnPrintReport = null!;
         private Button _btnRefresh = null!;
 
         // Top Row: 4 KPI Cards
@@ -138,9 +140,26 @@ namespace App.WinForms.Views
             {
                 MinimumSize = new Size(10, 10),
                 Dock = DockStyle.Right,
-                Width = 330,
+                Width = 490,
                 BackColor = Theme.Background
             };
+
+            _btnPrintReport = new Button
+            {
+                Text = "🖨️  Print BI Report",
+                AutoSize = false,
+                Size = new Size(150, 32),
+                Location = new Point(pnlHeaderActions.Width - 100 - 8 - 150, 12),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(37, 99, 235),
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            _btnPrintReport.FlatAppearance.BorderSize = 0;
+            _btnPrintReport.Click += (s, e) => ReportDocumentEngine.ShowExecutiveReportPrintPreview(_latestData, null, FindForm());
+            pnlHeaderActions.Controls.Add(_btnPrintReport);
 
             _btnRefresh = new Button
             {
@@ -161,7 +180,7 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 9F, FontStyle.Italic),
                 ForeColor = Theme.TextSubtle,
                 Location = new Point(0, 18),
-                Size = new Size(pnlHeaderActions.Width - 110, 20),
+                Size = new Size(pnlHeaderActions.Width - 270, 20),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 TextAlign = ContentAlignment.MiddleRight
             };
@@ -189,28 +208,52 @@ namespace App.WinForms.Views
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
 
             // 1. Total Customers / Tenant Accounts
-            var (card1, title1, val1, sub1) = CreateKpiCard("👥  TOTAL CUSTOMERS", "--", "Active customer accounts", Theme.TextDark, new Padding(0, 0, 8, 0));
+            var (card1, title1, val1, sub1) = CreateKpiCard("👥  TOTAL CUSTOMERS", "--", "Active customer accounts", Theme.TextDark, new Padding(0, 0, 8, 0), () =>
+            {
+                if (SessionManager.IsSuperAdmin)
+                    (FindForm() as MainForm)?.NavigateToKey("users");
+                else
+                    (FindForm() as MainForm)?.NavigateToKey("clients");
+            });
             _lblCustomersTitle = title1;
             _lblCustomersVal = val1;
             _lblCustomersSub = sub1;
             pnlKpis.Controls.Add(card1, 0, 0);
 
             // 2. Total Bookings / Active Subscriptions
-            var (card2, title2, val2, sub2) = CreateKpiCard("📅  TOTAL BOOKINGS", "--", "All service requests", Theme.TextDark, new Padding(4, 0, 6, 0));
+            var (card2, title2, val2, sub2) = CreateKpiCard("📅  TOTAL BOOKINGS", "--", "All service requests", Theme.TextDark, new Padding(4, 0, 6, 0), () =>
+            {
+                if (SessionManager.IsSuperAdmin)
+                    (FindForm() as MainForm)?.NavigateToKey("subscription");
+                else
+                    (FindForm() as MainForm)?.NavigateToKey("scheduling");
+            });
             _lblBookingsTitle = title2;
             _lblBookingsVal = val2;
             _lblBookingsSub = sub2;
             pnlKpis.Controls.Add(card2, 1, 0);
 
             // 3. Total Revenue (#16A34A Green) / Platform MRR
-            var (card3, title3, val3, sub3) = CreateKpiCard("💰  TOTAL REVENUE", "--", "Completed bookings total", Color.FromArgb(22, 163, 74), new Padding(6, 0, 4, 0));
+            var (card3, title3, val3, sub3) = CreateKpiCard("💰  TOTAL REVENUE", "--", "Completed bookings total", Color.FromArgb(22, 163, 74), new Padding(6, 0, 4, 0), () =>
+            {
+                if (SessionManager.IsSuperAdmin)
+                    (FindForm() as MainForm)?.NavigateToKey("subscription");
+                else
+                    (FindForm() as MainForm)?.NavigateToKey("financial");
+            });
             _lblRevenueTitle = title3;
             _lblRevenueVal = val3;
             _lblRevenueSub = sub3;
             pnlKpis.Controls.Add(card3, 2, 0);
 
             // 4. Repeat Rate (#2563EB Blue) / Dunning & Grace
-            var (card4, title4, val4, sub4) = CreateKpiCard("🔁  REPEAT RATE", "--", "Customers with >1 booking", Color.FromArgb(37, 99, 235), new Padding(8, 0, 0, 0));
+            var (card4, title4, val4, sub4) = CreateKpiCard("🔁  REPEAT RATE", "--", "Customers with >1 booking", Color.FromArgb(37, 99, 235), new Padding(8, 0, 0, 0), () =>
+            {
+                if (SessionManager.IsSuperAdmin)
+                    (FindForm() as MainForm)?.NavigateToKey("subscription");
+                else
+                    (FindForm() as MainForm)?.NavigateToKey("sales");
+            });
             _lblRepeatRateTitle = title4;
             _lblRepeatRateVal = val4;
             _lblRepeatRateSub = sub4;
@@ -333,22 +376,34 @@ namespace App.WinForms.Views
             pnlRetentionBody.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
             // 1. Repeat Customer Rate (Blue #2563EB)
-            var (box1, valRet1) = CreateInsightBox("Repeat Customer Rate", "--", "Active accounts with repeat orders", Color.FromArgb(37, 99, 235));
+            var (box1, valRet1) = CreateInsightBox("Repeat Customer Rate", "--", "Active accounts with repeat orders", Color.FromArgb(37, 99, 235), () =>
+            {
+                (FindForm() as MainForm)?.NavigateToKey("sales");
+            });
             _lblRetentionRepeatRate = valRet1;
             pnlRetentionBody.Controls.Add(box1, 0, 0);
 
             // 2. At-Risk Customers (Red #DC2626)
-            var (box2, valRet2) = CreateInsightBox("At-Risk Customers", "--", "No completed booking in 60+ days", Color.FromArgb(220, 38, 38));
+            var (box2, valRet2) = CreateInsightBox("At-Risk Customers", "--", "No completed booking in 60+ days", Color.FromArgb(220, 38, 38), () =>
+            {
+                (FindForm() as MainForm)?.NavigateToKey("sales");
+            });
             _lblRetentionAtRisk = valRet2;
             pnlRetentionBody.Controls.Add(box2, 1, 0);
 
             // 3. Average Booking Value (Dark Slate)
-            var (box3, valRet3) = CreateInsightBox("Average Booking Value", "--", "Mean revenue per completed booking", Theme.TextDark);
+            var (box3, valRet3) = CreateInsightBox("Average Booking Value", "--", "Mean revenue per completed booking", Theme.TextDark, () =>
+            {
+                (FindForm() as MainForm)?.NavigateToKey("financial");
+            });
             _lblRetentionAvgValue = valRet3;
             pnlRetentionBody.Controls.Add(box3, 0, 1);
 
             // 4. Completion Rate (Green #16A34A)
-            var (box4, valRet4) = CreateInsightBox("Completion Rate", "--", "Completed vs total bookings", Color.FromArgb(22, 163, 74));
+            var (box4, valRet4) = CreateInsightBox("Completion Rate", "--", "Completed vs total bookings", Color.FromArgb(22, 163, 74), () =>
+            {
+                (FindForm() as MainForm)?.NavigateToKey("scheduling");
+            });
             _lblRetentionCompletedRate = valRet4;
             pnlRetentionBody.Controls.Add(box4, 1, 1);
 
@@ -369,7 +424,8 @@ namespace App.WinForms.Views
             string initialVal,
             string subtext,
             Color valColor,
-            Padding margin)
+            Padding margin,
+            Action? onClick = null)
         {
             var card = new Panel
             {
@@ -378,14 +434,17 @@ namespace App.WinForms.Views
                 BackColor = Theme.Surface,
                 BorderStyle = BorderStyle.None,
                 Margin = margin,
-                Padding = new Padding(0)
+                Padding = new Padding(0),
+                Cursor = Cursors.Hand
             };
+
+            bool isHovered = false;
 
             card.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 using var brush = new SolidBrush(card.BackColor);
-                using var pen = new Pen(Theme.Border, 1);
+                using var pen = isHovered ? new Pen(Color.FromArgb(99, 102, 241), 1.5f) : new Pen(Theme.Border, 1);
                 var rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
                 e.Graphics.FillRectangle(brush, rect);
                 e.Graphics.DrawRectangle(pen, rect);
@@ -401,7 +460,8 @@ namespace App.WinForms.Views
                 Location = new Point(18, 12),
                 Size = new Size(200, 20),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                AutoSize = false
+                AutoSize = false,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(lblTitle);
 
@@ -416,7 +476,8 @@ namespace App.WinForms.Views
                 Size = new Size(200, 50),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 AutoSize = false,
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(valLabel);
 
@@ -430,9 +491,50 @@ namespace App.WinForms.Views
                 Location = new Point(18, 88),
                 Size = new Size(200, 20),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                AutoSize = false
+                AutoSize = false,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(lblSub);
+
+            void SetHover(bool hover)
+            {
+                isHovered = hover;
+                card.BackColor = hover ? Color.FromArgb(248, 250, 252) : Theme.Surface;
+                lblTitle.BackColor = card.BackColor;
+                valLabel.BackColor = card.BackColor;
+                lblSub.BackColor = card.BackColor;
+                card.Invalidate();
+            }
+
+            card.MouseEnter += (s, e) => SetHover(true);
+            lblTitle.MouseEnter += (s, e) => SetHover(true);
+            valLabel.MouseEnter += (s, e) => SetHover(true);
+            lblSub.MouseEnter += (s, e) => SetHover(true);
+
+            card.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            lblTitle.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            valLabel.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            lblSub.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+
+            if (onClick != null)
+            {
+                card.Click += (s, e) => onClick();
+                lblTitle.Click += (s, e) => onClick();
+                valLabel.Click += (s, e) => onClick();
+                lblSub.Click += (s, e) => onClick();
+            }
 
             card.Layout += (s, e) =>
             {
@@ -509,7 +611,7 @@ namespace App.WinForms.Views
         // =============================================================
         // Insight Box Helper (Retention 2x2 Grid Item)
         // =============================================================
-        private static (Panel box, Label valLabel) CreateInsightBox(string title, string initialVal, string description, Color valColor)
+        private static (Panel box, Label valLabel) CreateInsightBox(string title, string initialVal, string description, Color valColor, Action? onClick = null)
         {
             var box = new Panel
             {
@@ -517,12 +619,15 @@ namespace App.WinForms.Views
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(248, 250, 252),
                 Padding = new Padding(12, 10, 12, 10),
-                Margin = new Padding(5)
+                Margin = new Padding(5),
+                Cursor = Cursors.Hand
             };
+
+            bool isHovered = false;
 
             box.Paint += (s, e) =>
             {
-                using var pen = new Pen(Theme.Border, 1);
+                using var pen = isHovered ? new Pen(Color.FromArgb(99, 102, 241), 1.5f) : new Pen(Theme.Border, 1);
                 var rect = new Rectangle(0, 0, box.Width - 1, box.Height - 1);
                 e.Graphics.DrawRectangle(pen, rect);
             };
@@ -532,9 +637,10 @@ namespace App.WinForms.Views
                 Text = title,
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
                 ForeColor = Theme.TextMuted,
-                BackColor = Color.FromArgb(248, 250, 252),
+                BackColor = Color.Transparent,
                 Dock = DockStyle.Top,
-                Height = 18
+                Height = 18,
+                Cursor = Cursors.Hand
             };
             box.Controls.Add(lblTitle);
 
@@ -543,9 +649,10 @@ namespace App.WinForms.Views
                 Text = initialVal,
                 Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                 ForeColor = valColor,
-                BackColor = Color.FromArgb(248, 250, 252),
+                BackColor = Color.Transparent,
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                Cursor = Cursors.Hand
             };
             box.Controls.Add(valLabel);
             valLabel.BringToFront();
@@ -555,11 +662,49 @@ namespace App.WinForms.Views
                 Text = description,
                 Font = new Font("Segoe UI", 8F),
                 ForeColor = Theme.TextSubtle,
-                BackColor = Color.FromArgb(248, 250, 252),
+                BackColor = Color.Transparent,
                 Dock = DockStyle.Bottom,
-                Height = 16
+                Height = 16,
+                Cursor = Cursors.Hand
             };
             box.Controls.Add(lblDesc);
+
+            void SetHover(bool hover)
+            {
+                isHovered = hover;
+                box.BackColor = hover ? Color.FromArgb(241, 245, 249) : Color.FromArgb(248, 250, 252);
+                box.Invalidate();
+            }
+
+            box.MouseEnter += (s, e) => SetHover(true);
+            lblTitle.MouseEnter += (s, e) => SetHover(true);
+            valLabel.MouseEnter += (s, e) => SetHover(true);
+            lblDesc.MouseEnter += (s, e) => SetHover(true);
+
+            box.MouseLeave += (s, e) => {
+                var p = box.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!box.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            lblTitle.MouseLeave += (s, e) => {
+                var p = box.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!box.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            valLabel.MouseLeave += (s, e) => {
+                var p = box.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!box.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            lblDesc.MouseLeave += (s, e) => {
+                var p = box.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!box.ClientRectangle.Contains(p)) SetHover(false);
+            };
+
+            if (onClick != null)
+            {
+                box.Click += (s, e) => onClick();
+                lblTitle.Click += (s, e) => onClick();
+                valLabel.Click += (s, e) => onClick();
+                lblDesc.Click += (s, e) => onClick();
+            }
 
             return (box, valLabel);
         }
@@ -693,6 +838,7 @@ namespace App.WinForms.Views
             var role = roleOverride ?? SessionManager.CurrentUser?.Role;
             bool isSuper = string.Equals(role, Roles.SuperAdmin, StringComparison.OrdinalIgnoreCase);
             bool isAdmin = string.Equals(role, Roles.Admin, StringComparison.OrdinalIgnoreCase);
+            bool isSalesStaff = string.Equals(role, Roles.SalesStaff, StringComparison.OrdinalIgnoreCase);
             bool isAdminOrSuper = isSuper || isAdmin;
 
             if (isSuper)
@@ -711,6 +857,48 @@ namespace App.WinForms.Views
 
                 if (_lblRepeatRateTitle != null) _lblRepeatRateTitle.Text = "⚠️  DUNNING & GRACE";
                 if (_lblRepeatRateSub != null) _lblRepeatRateSub.Text = "Accounts requiring billing attention";
+            }
+            else if (isSalesStaff)
+            {
+                if (_lblHeaderTitle != null) _lblHeaderTitle.Text = "Sales & Operations Dashboard";
+                if (_lblHeaderSubtitle != null) _lblHeaderSubtitle.Text = "Your personal sales performance, assigned accounts, and retention tracking";
+
+                if (_lblCustomersTitle != null) _lblCustomersTitle.Text = "👥  MY CUSTOMERS";
+                if (_lblCustomersSub != null) _lblCustomersSub.Text = "Your assigned customer accounts";
+
+                if (_lblBookingsTitle != null) _lblBookingsTitle.Text = "📅  MY BOOKINGS";
+                if (_lblBookingsSub != null) _lblBookingsSub.Text = "Your assigned service requests";
+
+                if (_lblRepeatRateTitle != null) _lblRepeatRateTitle.Text = "🔁  MY REPEAT RATE";
+                if (_lblRepeatRateSub != null) _lblRepeatRateSub.Text = "Assigned clients with >1 booking";
+
+                if (_lblRevenueVal != null)
+                {
+                    if (_lblRevenueTitle != null) _lblRevenueTitle.Text = "🎯  MY CONVERSION";
+                    if (_lblRevenueSub != null) _lblRevenueSub.Text = "Assigned leads converted to bookings";
+                    _lblRevenueVal.Text = _latestData != null ? $"{_latestData.LeadConversionRate:F1}%" : "--";
+                    _lblRevenueVal.Font = new Font("Segoe UI", 24F, FontStyle.Bold);
+                    _lblRevenueVal.ForeColor = Color.FromArgb(37, 99, 235); // #2563EB Blue
+                }
+
+                if (_lblRetentionAvgValue != null)
+                {
+                    _lblRetentionAvgValue.Text = "RESTRICTED";
+                    _lblRetentionAvgValue.ForeColor = Theme.TextMuted;
+                }
+
+                if (_latestData != null)
+                {
+                    PopulateCategoryBreakdown(_latestData.CategoryBreakdown, _latestData.TotalBookings, false);
+                    PopulateTopServices(_latestData.TopServices, false);
+                    PopulateMonthlyChart(_latestData.MonthlyTrend, false);
+                }
+                else
+                {
+                    PopulateCategoryBreakdown(null, 0, false);
+                    PopulateTopServices(null, false);
+                    PopulateMonthlyChart(null, false);
+                }
             }
             else
             {

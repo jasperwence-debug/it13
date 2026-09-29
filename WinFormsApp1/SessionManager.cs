@@ -36,6 +36,15 @@ namespace App.WinForms
         public static bool IsManager => IsInRole(Roles.Manager);
         public static bool IsSalesStaff => IsInRole(Roles.SalesStaff);
 
+        /// <summary>Manager, Admin, or SuperAdmin who can supervise records across the business</summary>
+        public static bool CanManageTeam => IsManager || IsAdmin || IsSuperAdmin;
+
+        /// <summary>True if user can view all tenant records, false if restricted to own assigned records (SalesStaff)</summary>
+        public static bool SeesAllRecords => CanManageTeam;
+
+        /// <summary>Can reassign record ownership</summary>
+        public static bool CanAssignOwner => CanManageTeam;
+
         // ============================================================
         // SaaS Multi-Tenant Support & Maintenance Mode (Super Admin)
         // ============================================================

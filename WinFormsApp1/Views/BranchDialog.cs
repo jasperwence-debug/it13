@@ -176,7 +176,11 @@ namespace App.WinForms.Views
             pnlBody.Controls.Add(lblEmail);
             y += 24;
 
-            _txtPhone = new TextBox { Location = new Point(24, y), Width = 230, Font = new Font("Segoe UI", 9F), PlaceholderText = "e.g. 09171234567" };
+            _txtPhone = new TextBox { Location = new Point(24, y), Width = 230, MaxLength = 11, Font = new Font("Segoe UI", 9F), PlaceholderText = "e.g. 09171234567" };
+            _txtPhone.KeyPress += (s, e) =>
+            {
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar)) e.Handled = true;
+            };
             pnlBody.Controls.Add(_txtPhone);
 
             _txtEmail = new TextBox { Location = new Point(275, y), Width = 215, Font = new Font("Segoe UI", 9F), PlaceholderText = "e.g. davao@tenant-c.ph" };
@@ -248,6 +252,17 @@ namespace App.WinForms.Views
                 MessageBox.Show("Please enter a valid email address.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 _txtEmail.Focus();
                 return;
+            }
+
+            string phone = _txtPhone.Text.Trim();
+            if (!string.IsNullOrEmpty(phone))
+            {
+                if (!ValidationHelper.IsValidPhoneNumber(phone, isRequired: false, out var phoneErr))
+                {
+                    MessageBox.Show(phoneErr, "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    _txtPhone.Focus();
+                    return;
+                }
             }
 
             _btnSave.Enabled = false;

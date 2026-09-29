@@ -1,0 +1,62 @@
+@CRM.api_HostAddress = http://localhost:5248
+
+GET {{CRM.api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+POST {{CRM.api_HostAddress}}/tenants
+Content-Type: application/json
+
+{
+  "name": "My First Company",
+  "slug": "my-first-company",
+  "createdAt": "2026-09-03T09:15:00"
+}
+
+### Register Tenant 1's database
+POST {{CRM.api_HostAddress}}/tenant-databases
+Content-Type: application/json
+
+{
+  "tenantId": 1,
+  "serverName": "db66559.public.databaseasp.net",
+  "databaseName": "db66559",
+  "isActive": true
+}
+
+### Test tenant DB connectivity
+GET {{CRM.api_HostAddress}}/test-tenant/1
+Accept: application/json
+
+### Create product for tenant 1
+POST {{CRM.api_HostAddress}}/tenant/1/products
+Content-Type: application/json
+
+{
+  "productCode": "PROD001",
+  "productName": "Demo Product",
+  "unitPrice": 99.50,
+  "isActive": true
+}
+
+### List products for tenant 1
+GET {{CRM.api_HostAddress}}/tenant/1/products
+Accept: application/json
+
+### Tenant 1 — add customer
+POST {{CRM.api_HostAddress}}/tenant/1/customers
+Content-Type: application/json
+
+{
+  "customerCode": "CUST001",
+  "customerName": "Juan Dela Cruz",
+  "contactNumber": "09171234567",
+  "emailAddress": "juan@example.com",
+  "address": "Davao City",
+  "isActive": true
+}
+
+### Tenant 1 — list customers
+GET {{CRM.api_HostAddress}}/tenant/1/customers
+Accept: application/json

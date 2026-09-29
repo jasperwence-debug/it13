@@ -48,6 +48,7 @@ namespace App.WinForms.Views
         // Header controls
         private Label _lblTitle = null!;
         private Label _lblCount = null!;
+        private Button _btnPrintReport = null!;
         private Button _btnRefresh = null!;
         private Button _btnExportCsv = null!;
         private Button _btnPrintInvoice = null!;
@@ -200,6 +201,22 @@ namespace App.WinForms.Views
             _btnExportCsv.Click += (s, e) => ExportLedgerToCsv();
             pnlHeaderRight.Controls.Add(_btnExportCsv);
 
+            _btnPrintReport = new Button
+            {
+                Text = "🖨️  Print Financial Report",
+                Height = 36,
+                Width = 185,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(37, 99, 235),
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 8, 0)
+            };
+            _btnPrintReport.FlatAppearance.BorderSize = 0;
+            _btnPrintReport.Click += (s, e) => ReportDocumentEngine.ShowFinancialSummaryReportPrintPreview(null, _allOrders, FindForm());
+            pnlHeaderRight.Controls.Add(_btnPrintReport);
+
             _btnPrintInvoice = new Button
             {
                 Text = "🖨️  Print Statement / Invoice",
@@ -239,19 +256,34 @@ namespace App.WinForms.Views
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             card.Controls.Add(pnlKpis);
 
-            var (k1, _, v1, _) = CreateKpiCard("TOTAL INVOICED REVENUE", "₱0.00", "Gross fulfilled billings to date", Color.FromArgb(30, 41, 59));
+            var (k1, _, v1, _) = CreateKpiCard("TOTAL INVOICED REVENUE", "₱0.00", "Gross fulfilled billings to date", Color.FromArgb(30, 41, 59), () =>
+            {
+                _txtSearch.Text = string.Empty;
+                _cmbStatusFilter.SelectedIndex = 0;
+            });
             _lblTotalBilled = v1;
             pnlKpis.Controls.Add(k1, 0, 0);
 
-            var (k2, _, v2, _) = CreateKpiCard("SETTLED CASH PAYMENTS", "₱0.00", "Payments collected & cleared", Color.FromArgb(22, 163, 74));
+            var (k2, _, v2, _) = CreateKpiCard("SETTLED CASH PAYMENTS", "₱0.00", "Payments collected & cleared", Color.FromArgb(22, 163, 74), () =>
+            {
+                _cmbStatusFilter.SelectedIndex = 1;
+            });
             _lblTotalCollected = v2;
             pnlKpis.Controls.Add(k2, 1, 0);
 
-            var (k3, _, v3, _) = CreateKpiCard("PENDING RECEIVABLES", "₱0.00", "Awaiting customer settlement", Color.FromArgb(220, 38, 38));
+            var (k3, _, v3, _) = CreateKpiCard("PENDING RECEIVABLES", "₱0.00", "Awaiting customer settlement", Color.FromArgb(220, 38, 38), () =>
+            {
+                _cmbStatusFilter.SelectedIndex = 2;
+            });
             _lblOutstanding = v3;
             pnlKpis.Controls.Add(k3, 2, 0);
 
-            var (k4, _, v4, _) = CreateKpiCard("AVG INVOICE TICKET", "₱0.00", "Mean gross revenue per service job", Color.FromArgb(37, 99, 235));
+            var (k4, _, v4, _) = CreateKpiCard("AVG INVOICE TICKET", "₱0.00", "Mean gross revenue per service job", Color.FromArgb(37, 99, 235), () =>
+            {
+                _sortColumn = "BilledPrice";
+                _sortAscending = false;
+                ApplyFilterAndSort();
+            });
             _lblAverageTicket = v4;
             pnlKpis.Controls.Add(k4, 3, 0);
 
@@ -1122,21 +1154,27 @@ namespace App.WinForms.Views
             string title,
             string initialVal,
             string subtext,
-            Color valColor)
+            Color valColor,
+            Action? onClick = null)
         {
             var card = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = Theme.Surface,
                 Margin = new Padding(4),
-                Padding = new Padding(14, 8, 14, 8)
+                Padding = new Padding(14, 8, 14, 8),
+                Cursor = Cursors.Hand
             };
+
+            bool isHovered = false;
 
             card.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using var pen = new Pen(Theme.Border, 1);
+                using var brush = new SolidBrush(card.BackColor);
+                using var pen = isHovered ? new Pen(Color.FromArgb(99, 102, 241), 1.5f) : new Pen(Theme.Border, 1);
                 var rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
+                e.Graphics.FillRectangle(brush, rect);
                 e.Graphics.DrawRectangle(pen, rect);
             };
 
@@ -1146,7 +1184,8 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
                 ForeColor = Theme.TextMuted,
                 Dock = DockStyle.Top,
-                Height = 16
+                Height = 16,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(lblTitle);
 
@@ -1157,7 +1196,8 @@ namespace App.WinForms.Views
                 ForeColor = valColor,
                 Dock = DockStyle.Top,
                 Height = 34,
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(valLabel);
 
@@ -1167,9 +1207,50 @@ namespace App.WinForms.Views
                 Font = new Font("Segoe UI", 7.5F, FontStyle.Regular),
                 ForeColor = Theme.TextSubtle,
                 Dock = DockStyle.Bottom,
-                Height = 16
+                Height = 16,
+                Cursor = Cursors.Hand
             };
             card.Controls.Add(lblSub);
+
+            void SetHover(bool hover)
+            {
+                isHovered = hover;
+                card.BackColor = hover ? Color.FromArgb(248, 250, 252) : Theme.Surface;
+                lblTitle.BackColor = card.BackColor;
+                valLabel.BackColor = card.BackColor;
+                lblSub.BackColor = card.BackColor;
+                card.Invalidate();
+            }
+
+            card.MouseEnter += (s, e) => SetHover(true);
+            lblTitle.MouseEnter += (s, e) => SetHover(true);
+            valLabel.MouseEnter += (s, e) => SetHover(true);
+            lblSub.MouseEnter += (s, e) => SetHover(true);
+
+            card.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            lblTitle.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            valLabel.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+            lblSub.MouseLeave += (s, e) => {
+                var p = card.PointToClient(System.Windows.Forms.Cursor.Position);
+                if (!card.ClientRectangle.Contains(p)) SetHover(false);
+            };
+
+            if (onClick != null)
+            {
+                card.Click += (s, e) => onClick();
+                lblTitle.Click += (s, e) => onClick();
+                valLabel.Click += (s, e) => onClick();
+                lblSub.Click += (s, e) => onClick();
+            }
 
             return (card, lblTitle, valLabel, lblSub);
         }

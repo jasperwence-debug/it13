@@ -947,7 +947,10 @@ namespace App.WinForms.Views
         private readonly DataCollectionDto _record;
         private readonly ApiClient _api;
 
-        private TextBox _txtName = null!;
+        private TextBox _txtFirstName = null!;
+        private TextBox _txtMiddleName = null!;
+        private TextBox _txtLastName = null!;
+        private TextBox _txtSuffix = null!;
         private TextBox _txtContact = null!;
         private ComboBox _cmbType = null!;
         private ComboBox _cmbService = null!;
@@ -964,7 +967,7 @@ namespace App.WinForms.Views
             _api = api;
 
             Text = $"Edit Record #{_record.ServiceRequestId} — {_record.CustomerName}";
-            Size = new Size(580, 680);
+            Size = new Size(580, 720);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -984,7 +987,22 @@ namespace App.WinForms.Views
 
             AddHeader(pnl, "Edit Customer & Service Request", ref y);
 
-            _txtName = AddField(pnl, "Customer / Company Name:", _record.CustomerName, ref y);
+            string initFirst = _record.FirstName ?? "";
+            string initMiddle = _record.MiddleName ?? "";
+            string initLast = _record.LastName ?? "";
+            string initSuffix = _record.Suffix ?? "";
+
+            if (string.IsNullOrWhiteSpace(initFirst) && string.IsNullOrWhiteSpace(initLast))
+            {
+                var legacy = App.Domain.Common.NameNormalizer.SplitSingleString(_record.CustomerName ?? _record.LeadName ?? "");
+                initFirst = legacy.FirstName;
+                initMiddle = legacy.MiddleName ?? "";
+                initLast = legacy.LastName;
+            }
+
+            AddTwoFieldsRow(pnl, "First Name *:", initFirst, "Middle Name (Optional):", initMiddle, ref y, out _txtFirstName, out _txtMiddleName);
+            AddTwoFieldsRow(pnl, "Last Name *:", initLast, "Suffix (e.g. Jr., Sr., III):", initSuffix, ref y, out _txtLastName, out _txtSuffix);
+
             _txtContact = AddField(pnl, "Contact Details:", _record.ContactDetails, ref y);
 
             _cmbType = AddDropdown(pnl, "Customer Type:", new[] { "Individual", "Company" }, _record.CustomerType, ref y);
@@ -1017,14 +1035,24 @@ namespace App.WinForms.Views
 
         private async Task SaveChangesAsync()
         {
-            if (string.IsNullOrWhiteSpace(_txtName.Text) || string.IsNullOrWhiteSpace(_txtContact.Text))
+            if (string.IsNullOrWhiteSpace(_txtFirstName.Text) || string.IsNullOrWhiteSpace(_txtLastName.Text) || string.IsNullOrWhiteSpace(_txtContact.Text))
             {
-                MessageBox.Show("Name and Contact Details are required.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("First Name, Last Name, and Contact Details are required.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            _record.CustomerName = _txtName.Text.Trim();
-            _record.LeadName = _txtName.Text.Trim();
+            var normFirst = App.Domain.Common.NameNormalizer.Normalize(_txtFirstName.Text);
+            var normMiddle = App.Domain.Common.NameNormalizer.Normalize(_txtMiddleName.Text);
+            var normLast = App.Domain.Common.NameNormalizer.Normalize(_txtLastName.Text);
+            var normSuffix = App.Domain.Common.NameNormalizer.NormalizeSuffix(_txtSuffix.Text);
+            var computedFullName = App.Domain.Common.NameNormalizer.FormatFullName(normFirst, normMiddle, normLast, normSuffix);
+
+            _record.FirstName = normFirst;
+            _record.MiddleName = normMiddle;
+            _record.LastName = normLast;
+            _record.Suffix = normSuffix;
+            _record.CustomerName = computedFullName;
+            _record.LeadName = computedFullName;
             _record.ContactDetails = _txtContact.Text.Trim();
             _record.ContactInfo = _txtContact.Text.Trim();
             _record.CustomerType = _cmbType.SelectedItem?.ToString() ?? "Individual";
@@ -1069,6 +1097,25 @@ namespace App.WinForms.Views
             var lbl = new Label { Text = text, Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.FromArgb(30, 41, 59), Location = new Point(24, y), Size = new Size(500, 26) };
             parent.Controls.Add(lbl);
             y += 34;
+        }
+
+        private static void AddTwoFieldsRow(Control parent, string label1, string val1, string label2, string val2, ref int y, out TextBox tb1, out TextBox tb2)
+        {
+            const int totalWidth = 510;
+            const int gap = 16;
+            int colWidth = (totalWidth - gap) / 2;
+
+            var lbl1 = new Label { Text = label1, Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(71, 85, 105), Location = new Point(24, y), Size = new Size(colWidth, 18) };
+            var lbl2 = new Label { Text = label2, Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(71, 85, 105), Location = new Point(24 + colWidth + gap, y), Size = new Size(colWidth, 18) };
+            parent.Controls.Add(lbl1);
+            parent.Controls.Add(lbl2);
+            y += 20;
+
+            tb1 = new TextBox { Text = val1, Location = new Point(24, y), Size = new Size(colWidth, 28) };
+            tb2 = new TextBox { Text = val2, Location = new Point(24 + colWidth + gap, y), Size = new Size(colWidth, 28) };
+            parent.Controls.Add(tb1);
+            parent.Controls.Add(tb2);
+            y += 36;
         }
 
         private static TextBox AddField(Control parent, string label, string val, ref int y)

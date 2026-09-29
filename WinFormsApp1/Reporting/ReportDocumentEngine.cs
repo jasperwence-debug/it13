@@ -19,7 +19,7 @@ namespace App.WinForms.Reporting
     ///   2. Official Commercial Billing Invoice & Statement of Account
     ///   3. Executive Business Intelligence & System Compliance Audit Report
     /// </summary>
-    public static class ReportDocumentEngine
+    public static partial class ReportDocumentEngine
     {
         private const string CompanyName = "SPOTLESS FACILITY SERVICES INC.";
         private const string CompanyTagline = "Professional Commercial & Residential Cleaning Solutions";
@@ -576,7 +576,7 @@ namespace App.WinForms.Reporting
 
         public static void ShowExecutiveReportPrintPreview(
             DashboardDto? dashboard,
-            List<WorkOrderDto> workOrders,
+            List<WorkOrderDto>? workOrders = null,
             IWin32Window? owner = null)
         {
             var doc = CreateExecutiveReportPrintDocument(dashboard, workOrders);
@@ -585,11 +585,13 @@ namespace App.WinForms.Reporting
 
         public static PrintDocument CreateExecutiveReportPrintDocument(
             DashboardDto? dashboard,
-            List<WorkOrderDto> workOrders)
+            List<WorkOrderDto>? workOrders = null)
         {
             var doc = new PrintDocument();
             doc.DocumentName = $"Executive_BI_Report_{DateTime.Now:yyyyMMdd}";
             doc.DefaultPageSettings.Margins = new Margins(40, 40, 40, 40);
+
+            var orders = workOrders ?? new List<WorkOrderDto>();
 
             doc.PrintPage += (s, e) =>
             {
@@ -637,8 +639,8 @@ namespace App.WinForms.Reporting
                 int cardW = (width - (cardGap * 3)) / 4;
                 int cardH = 68;
 
-                decimal rev = dashboard?.TotalRevenue ?? workOrders.Where(w => w.Status == "Completed").Sum(w => w.ActualPrice ?? w.QuotedPrice ?? 0m);
-                int jobs = dashboard?.CompletedBookings ?? workOrders.Count(w => w.Status == "Completed");
+                decimal rev = dashboard?.TotalRevenue ?? orders.Where(w => w.Status == "Completed").Sum(w => w.ActualPrice ?? w.QuotedPrice ?? 0m);
+                int jobs = dashboard?.CompletedBookings ?? orders.Count(w => w.Status == "Completed");
                 double repeat = dashboard?.RepeatCustomerRate ?? 68.5;
                 decimal avgTicket = dashboard?.AverageBookingValue ?? (jobs > 0 ? rev / jobs : 0m);
 
@@ -674,7 +676,7 @@ namespace App.WinForms.Reporting
                     y += thH;
 
                     // Compute category groupings
-                    var svcGroups = workOrders
+                    var svcGroups = orders
                         .GroupBy(w => string.IsNullOrWhiteSpace(w.ServiceType) ? "General Cleaning" : w.ServiceType)
                         .Select(g => new
                         {

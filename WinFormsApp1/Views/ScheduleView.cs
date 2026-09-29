@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using App.WinForms.Core;
+using App.WinForms.Reporting;
 
 namespace App.WinForms.Views
 {
@@ -44,6 +45,8 @@ namespace App.WinForms.Views
         private Label _lblCount = null!;
         private Button _btnRefresh = null!;
         private Button _btnNewBooking = null!;
+        private Button _btnPrintOrder = null!;
+        private Button _btnFeedback = null!;
 
         // KPI Metric Badges (Ribbon)
         private Label _lblKpiTotal = null!;
@@ -148,7 +151,7 @@ namespace App.WinForms.Views
 
             _lblTitle = new Label
             {
-                Text = "Dispatch & Scheduling",
+                Text = "Scheduling & Work Orders",
                 Font = Theme.SubHeaderFont,
                 ForeColor = Theme.TextDark,
                 Location = new Point(0, 10),
@@ -159,7 +162,7 @@ namespace App.WinForms.Views
 
             _lblCount = new Label
             {
-                Text = "Loading all bookings...",
+                Text = "Loading operations & dispatch board...",
                 Font = Theme.CaptionFont,
                 ForeColor = Theme.TextMuted,
                 Location = new Point(0, 34),
@@ -167,21 +170,7 @@ namespace App.WinForms.Views
             };
             pnlTitleBox.Controls.Add(_lblCount);
 
-            // Right header actions
-            _btnNewBooking = new Button
-            {
-                Text = "+ New Booking Request",
-                Dock = DockStyle.Right,
-                Width = 195,
-                Height = 36
-            };
-            Theme.ApplyPrimaryButtonStyle(_btnNewBooking);
-            _btnNewBooking.Click += OnNewBookingClick;
-            pnlHeader.Controls.Add(_btnNewBooking);
-
-            var pnlSpH1 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
-            pnlHeader.Controls.Add(pnlSpH1);
-
+            // Right header actions (Dock = Right adds right-to-left)
             _btnRefresh = new Button
             {
                 Text = "↻  Refresh",
@@ -192,6 +181,52 @@ namespace App.WinForms.Views
             Theme.ApplySecondaryButtonStyle(_btnRefresh);
             _btnRefresh.Click += async (s, e) => await LoadScheduleAsync();
             pnlHeader.Controls.Add(_btnRefresh);
+
+            var pnlSpH1 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+            pnlHeader.Controls.Add(pnlSpH1);
+
+            _btnFeedback = new Button
+            {
+                Text = "⭐ Feedback / QA",
+                Dock = DockStyle.Right,
+                Width = 145,
+                Height = 36,
+                Enabled = false
+            };
+            Theme.ApplySecondaryButtonStyle(_btnFeedback);
+            _btnFeedback.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            _btnFeedback.Click += OnFeedbackClick;
+            pnlHeader.Controls.Add(_btnFeedback);
+
+            var pnlSpH2 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+            pnlHeader.Controls.Add(pnlSpH2);
+
+            _btnPrintOrder = new Button
+            {
+                Text = "🖨️  Print Order",
+                Dock = DockStyle.Right,
+                Width = 140,
+                Height = 36,
+                Enabled = false
+            };
+            Theme.ApplySecondaryButtonStyle(_btnPrintOrder);
+            _btnPrintOrder.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            _btnPrintOrder.Click += OnPrintOrderClick;
+            pnlHeader.Controls.Add(_btnPrintOrder);
+
+            var pnlSpH3 = new Panel { Dock = DockStyle.Right, Width = 8, BackColor = Theme.Surface };
+            pnlHeader.Controls.Add(pnlSpH3);
+
+            _btnNewBooking = new Button
+            {
+                Text = "+ New Booking Request",
+                Dock = DockStyle.Right,
+                Width = 195,
+                Height = 36
+            };
+            Theme.ApplyPrimaryButtonStyle(_btnNewBooking);
+            _btnNewBooking.Click += OnNewBookingClick;
+            pnlHeader.Controls.Add(_btnNewBooking);
 
             // ── 2. Compact Dispatch Metrics Ribbon ──────────────────
             var pnlKpiRibbon = new Panel
@@ -219,10 +254,16 @@ namespace App.WinForms.Views
 
             _lblKpiTotal = CreateRibbonBadge(flowKpis, "📋  All Bookings: --", Color.FromArgb(30, 41, 59), Color.FromArgb(241, 245, 249));
             _lblKpiTotal.Cursor = Cursors.Hand;
-            _lblKpiTotal.Click += (s, e) => SelectViewMode("All");
+            _lblKpiTotal.Click += (s, e) => { _cmbStatusFilter.SelectedIndex = 0; SelectViewMode("All"); };
 
             _lblKpiScheduled = CreateRibbonBadge(flowKpis, "📅  Scheduled: --", Color.FromArgb(37, 99, 235), Color.FromArgb(239, 246, 255));
+            _lblKpiScheduled.Cursor = Cursors.Hand;
+            _lblKpiScheduled.Click += (s, e) => { _cmbStatusFilter.SelectedIndex = 1; };
+
             _lblKpiInProgress = CreateRibbonBadge(flowKpis, "⚡  In-Progress: --", Color.FromArgb(79, 70, 229), Color.FromArgb(238, 242, 255));
+            _lblKpiInProgress.Cursor = Cursors.Hand;
+            _lblKpiInProgress.Click += (s, e) => { _cmbStatusFilter.SelectedIndex = 2; };
+
             _lblKpiCompleted = CreateRibbonBadge(flowKpis, "✔  Completed: --", Color.FromArgb(22, 163, 74), Color.FromArgb(240, 253, 244));
             _lblKpiCompleted.Cursor = Cursors.Hand;
             _lblKpiCompleted.Click += (s, e) => SelectViewMode("Completed");
@@ -670,6 +711,7 @@ namespace App.WinForms.Views
 
             _grid.CellClick += OnGridCellClick;
             _grid.CellDoubleClick += OnGridCellDoubleClick;
+            _grid.SelectionChanged += (s, e) => UpdateActionButtons();
 
             pnlGridContainer.Controls.Add(_grid);
 
@@ -1034,6 +1076,8 @@ namespace App.WinForms.Views
             {
                 _grid.ResumeLayout();
             }
+
+            UpdateActionButtons();
         }
 
         private void UpdatePageNumberButtons()
@@ -1138,13 +1182,60 @@ namespace App.WinForms.Views
 
         private void OnNewBookingClick(object? sender, EventArgs e)
         {
-            using var dialog = new NewWorkOrderDialog();
-            dialog.WorkOrderSaved += async () =>
+            var sel = GetSelectedWorkOrder();
+            using var dialog = sel != null && sel.CustomerId > 0
+                ? new NewBookingRequestDialog(sel.CustomerId, sel.CustomerName)
+                : new NewBookingRequestDialog();
+
+            dialog.BookingRequestSaved += async (order) =>
             {
-                ShowToast("New booking request scheduled successfully!", true);
+                ShowToast("New booking request created successfully!", true);
                 await LoadScheduleAsync();
             };
             dialog.ShowDialog(FindForm());
+        }
+
+        private WorkOrderDto? GetSelectedWorkOrder()
+        {
+            if (_grid.CurrentRow?.Tag is WorkOrderDto o1) return o1;
+            if (_grid.SelectedRows.Count > 0 && _grid.SelectedRows[0].Tag is WorkOrderDto o2) return o2;
+            if (_grid.CurrentCell?.RowIndex is int idx && idx >= 0 && idx < _grid.Rows.Count && _grid.Rows[idx].Tag is WorkOrderDto o3) return o3;
+            return null;
+        }
+
+        private void OnPrintOrderClick(object? sender, EventArgs e)
+        {
+            var sel = GetSelectedWorkOrder();
+            if (sel != null)
+            {
+                ReportDocumentEngine.ShowWorkOrderPrintPreview(sel, this);
+            }
+        }
+
+        private void OnFeedbackClick(object? sender, EventArgs e)
+        {
+            var sel = GetSelectedWorkOrder();
+            if (sel == null) return;
+
+            if (!sel.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show("Customer Feedback and QA Inspection ratings can only be logged for Completed work orders.", "Completed Order Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using var dialog = new ServiceFeedbackDialog(sel);
+            dialog.FeedbackSaved += async (updated) =>
+            {
+                await LoadScheduleAsync();
+            };
+            dialog.ShowDialog(FindForm());
+        }
+
+        private void UpdateActionButtons()
+        {
+            var sel = GetSelectedWorkOrder();
+            if (_btnPrintOrder != null) _btnPrintOrder.Enabled = (sel != null);
+            if (_btnFeedback != null) _btnFeedback.Enabled = (sel != null && sel.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase));
         }
 
         // ============================================================
@@ -1159,6 +1250,8 @@ namespace App.WinForms.Views
             // Admin: VIEW (Read-only schedule view)
             bool canBook = (userRole == Roles.Manager || userRole == Roles.SalesStaff);
             if (_btnNewBooking != null) _btnNewBooking.Visible = canBook;
+            if (_btnFeedback != null) _btnFeedback.Visible = (userRole == Roles.Manager || userRole == Roles.SalesStaff || userRole == Roles.Admin);
+            if (_btnPrintOrder != null) _btnPrintOrder.Visible = true;
 
             if (_grid.Columns["colDispatch"] is DataGridViewButtonColumn colDispatch)
             {

@@ -67,6 +67,19 @@ namespace App.WinForms
 
         public bool IsLoggedOut { get; private set; }
 
+        public List<string> GetVisibleNavigationKeys()
+        {
+            var keys = new List<string>();
+            foreach (var btn in _sidebarButtons)
+            {
+                if (btn.Visible && btn.Tag is string k)
+                {
+                    keys.Add(k);
+                }
+            }
+            return keys;
+        }
+
         public MainForm()
         {
             InitializeUI();
@@ -233,7 +246,7 @@ namespace App.WinForms
             // Create Sidebar Buttons with display names matching official Use Cases
             btnLeads = CreateSidebarButton("leads", "🎯", "Leads & Inquiries");
             btnClientContract = CreateSidebarButton("clients", "📋", "Client & Contract");
-            btnSchedulingDispatch = CreateSidebarButton("scheduling", "📅", "Scheduling & Dispatch");
+            btnSchedulingDispatch = CreateSidebarButton("scheduling", "📅", "Scheduling & Work Orders");
             btnBranches = CreateSidebarButton("branches", "🏢", "Operating Branches");
             btnSalesRetention = CreateSidebarButton("sales", "💼", "Sales & Retention");
             btnFinancial = CreateSidebarButton("financial", "💰", "Financial Management");
@@ -589,29 +602,58 @@ namespace App.WinForms
             {
                 _pnlMaintenanceBanner.Visible = false;
 
-                // DASHBOARD: Standalone top-level button visible to all authenticated roles.
-                // Super Admin views SaaS Platform Executive metrics; Tenant roles view Cleaning Operations BI.
-                btnDashboard.Visible = true;
-                pnlDashboardDivider.Visible = true;
+                // DASHBOARD: Standalone top-level button visible to Super Admin, Admin, and Manager
+                btnDashboard.Visible = (role != Roles.SalesStaff);
+                pnlDashboardDivider.Visible = btnDashboard.Visible;
 
-                // OPERATIONS: Leads, Customers, Schedule (Tenant roles). Operating Branches (Super Admin platform control).
+                // OPERATIONS:
+                // Super Admin: Operating Branches platform control
+                // Admin, Manager & Sales Staff: Leads & Inquiries, Client & Contact
+                // Manager & Sales Staff: Scheduling & Work Orders
                 btnLeads.Visible = (role != Roles.SuperAdmin);
                 btnClientContract.Visible = (role != Roles.SuperAdmin);
-                btnSchedulingDispatch.Visible = (role != Roles.SuperAdmin);
+                btnSchedulingDispatch.Visible = (role == Roles.Manager || role == Roles.SalesStaff);
                 btnBranches.Visible = (role == Roles.SuperAdmin);
                 lblHeaderOperations.Visible = (btnLeads.Visible || btnClientContract.Visible || btnSchedulingDispatch.Visible || btnBranches.Visible);
 
-                // PERFORMANCE: Retention visible to Tenant roles. Financials visible ONLY to Tenant Admin. Reports/Audit visible to SuperAdmin and Management.
-                btnSalesRetention.Visible = (role != Roles.SuperAdmin);
-                btnFinancial.Visible = (role == Roles.Admin);
-                btnReportsAudit.Visible = (role != Roles.SalesStaff);
+                // PERFORMANCE:
+                // Sales & Retention: Manager & Sales Staff
+                // Financial Management: Admin, Manager, Sales Staff
+                // Reports & Audit: Admin, Manager, Sales Staff
+                btnSalesRetention.Visible = (role == Roles.Manager || role == Roles.SalesStaff);
+                btnFinancial.Visible = (role != Roles.SuperAdmin);
+                btnReportsAudit.Visible = (role != Roles.SuperAdmin);
                 lblHeaderPerformance.Visible = (btnSalesRetention.Visible || btnFinancial.Visible || btnReportsAudit.Visible);
 
-                // ADMINISTRATION: Platform Master Tier.
-                // Super Admin handles selling the system to tenant admins, subscription plans, user provisioning, and maintenance.
-                btnUserManagement.Visible = (role == Roles.SuperAdmin);
-                btnManageSubscription.Visible = (role == Roles.SuperAdmin);
-                btnTermsManagement.Visible = true;
+                // ADMINISTRATION:
+                // Super Admin: Tenant Management, Manage Subscription, Terms & Management
+                // Admin: User Management, Terms & Management
+                // Manager & Sales Staff: Hidden
+                if (role == Roles.SuperAdmin)
+                {
+                    btnUserManagement.Visible = true;
+                    btnUserManagement.Text = "   🏢   Tenant Management";
+                    _buttonMeta[btnUserManagement] = ("🏢", "Tenant Management", "users");
+                    _toolTip.SetToolTip(btnUserManagement, "Tenant Management");
+                    btnManageSubscription.Visible = true;
+                    btnTermsManagement.Visible = true;
+                }
+                else if (role == Roles.Admin)
+                {
+                    btnUserManagement.Visible = true;
+                    btnUserManagement.Text = "   👥   User Management";
+                    _buttonMeta[btnUserManagement] = ("👥", "User Management", "users");
+                    _toolTip.SetToolTip(btnUserManagement, "User Management");
+                    btnManageSubscription.Visible = false;
+                    btnTermsManagement.Visible = true;
+                }
+                else
+                {
+                    btnUserManagement.Visible = false;
+                    btnManageSubscription.Visible = false;
+                    btnTermsManagement.Visible = false;
+                }
+
                 lblHeaderAdministration.Visible = (btnUserManagement.Visible || btnManageSubscription.Visible || btnTermsManagement.Visible);
             }
 
@@ -907,12 +949,17 @@ namespace App.WinForms
 
         public void NavigateToKey(string key)
         {
+            if (key == "workorders") key = "scheduling";
             var btn = _sidebarButtons.FirstOrDefault(b => b.Tag?.ToString() == key);
-            if (btn != null && btn.Visible)
+            if (btn != null)
             {
-                SetActiveButton(btn);
+                if (btn.Visible) SetActiveButton(btn);
                 string label = _buttonMeta.TryGetValue(btn, out var meta) ? meta.Label : GetCleanLabel(btn.Text);
                 ShowView(key, label);
+            }
+            else
+            {
+                ShowView(key, key);
             }
         }
 
@@ -1136,14 +1183,20 @@ namespace App.WinForms
         // ============================================================
         private void ShowView(string key, string headerText)
         {
-            if ((key == "subscription" || key == "users" || key == "branches") && SessionManager.CurrentUser?.Role != Roles.SuperAdmin)
+            if ((key == "subscription" || key == "branches") && SessionManager.CurrentUser?.Role != Roles.SuperAdmin)
             {
                 MessageBox.Show("Access Denied: Only Super Administrators have permission to access this module.", "Restricted Access", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
+            if (key == "users" && SessionManager.CurrentUser?.Role != Roles.SuperAdmin && SessionManager.CurrentUser?.Role != Roles.Admin)
+            {
+                MessageBox.Show("Access Denied: You do not have permission to access user management.", "Restricted Access", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             if (!SessionManager.IsMaintenanceMode && SessionManager.CurrentUser?.Role == Roles.SuperAdmin &&
-                (key == "clients" || key == "scheduling" || key == "workorders" || key == "leads" || key == "retention" || key == "sales" || key == "financial" || key == "dashboard"))
+                (key == "clients" || key == "scheduling" || key == "workorders" || key == "leads" || key == "retention" || key == "sales" || key == "financial"))
             {
                 MessageBox.Show("Platform Notice: Super Administrators manage tenant subscriptions and system administration only. Operational modules (customers, schedules, work orders) are handled by tenant administrators.\n\nTo inspect or troubleshoot this company's operations, use 'Maintenance Access' from User Management.", "Access Restricted", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
@@ -1161,7 +1214,7 @@ namespace App.WinForms
                 "leads"       => new Views.LeadsView(),        // LAYER 1: lead management & conversion
                 "clients"     => new Views.CustomersView(),    // LAYER 2: master customer profiles
                 "scheduling"  => new Views.ScheduleView(),     // LAYER 3: dispatch command center & schedule board
-                "workorders"  => new Views.WorkOrdersView(),   // LAYER 3: work orders master ledger
+                "workorders"  => new Views.ScheduleView(),     // LAYER 3: unified into ScheduleView
                 "branches"    => new Views.BranchManagementView(), // TENANT C: regional branch operations
                 "sales"       => new Views.RetentionView(),    // LAYER 4: retention & customer health
                 "retention"   => new Views.RetentionView(),    // LAYER 4: retention alias
@@ -1169,6 +1222,7 @@ namespace App.WinForms
                 "users"       => new Views.UserManagementView(),      // LAYER 0: super admin user directory
                 "subscription"=> new Views.SubscriptionManagementView(), // MASTER TIER: tenant subscription control
                 "reports"     => new Views.ReportsAuditView(),       // LAYER 6: BI reporting & audit trail
+                "terms"       => new Views.TermsManagementView(),    // MODULE 8: terms, SLAs, DPAs & agreements
                 _             => new Views.PlaceholderView(headerText)
             };
 
@@ -1214,7 +1268,7 @@ namespace App.WinForms
             var btn = _sidebarButtons.FirstOrDefault(b => b.Tag?.ToString() == "users");
             if (btn != null) SetActiveButton(btn);
 
-            ShowView("users", "User Management & Client Companies");
+            ShowView("users", "Tenant Management & Client Companies");
 
             MessageBox.Show(
                 $"Exited Maintenance Mode for '{compName}'.\n\nReturned to SaaS Vendor Platform view.",

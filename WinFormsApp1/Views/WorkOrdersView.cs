@@ -672,8 +672,17 @@ namespace App.WinForms.Views
 
         private WorkOrderDto? GetSelectedWorkOrder()
         {
-            if (_grid.CurrentRow != null && _grid.CurrentRow.DataBoundItem is WorkOrderDto wo)
+            if (_grid.CurrentRow?.DataBoundItem is WorkOrderDto wo)
                 return wo;
+
+            if (_grid.SelectedRows.Count > 0 && _grid.SelectedRows[0].DataBoundItem is WorkOrderDto swo)
+                return swo;
+
+            if (_grid.CurrentCell != null && _grid.CurrentCell.RowIndex >= 0 && _grid.CurrentCell.RowIndex < _grid.Rows.Count)
+            {
+                if (_grid.Rows[_grid.CurrentCell.RowIndex].DataBoundItem is WorkOrderDto cwo)
+                    return cwo;
+            }
 
             return null;
         }
@@ -716,7 +725,25 @@ namespace App.WinForms.Views
         // ============================================================
         private void OnNewOrderClick(object? sender, EventArgs e)
         {
-            using var dialog = new NewBookingRequestDialog();
+            var selected = GetSelectedWorkOrder();
+            if (selected != null && selected.CustomerId <= 0 && !string.IsNullOrWhiteSpace(selected.CustomerName))
+            {
+                try
+                {
+                    using var db = new App.Infrastructure.AppDbContext();
+                    var cust = db.Customers.FirstOrDefault(c => c.CustomerName == selected.CustomerName);
+                    if (cust != null)
+                    {
+                        selected.CustomerId = cust.CustomerId;
+                    }
+                }
+                catch { }
+            }
+
+            using var dialog = (selected != null && selected.CustomerId > 0)
+                ? new NewBookingRequestDialog(selected.CustomerId, selected.CustomerName, selected.SpecialRequests)
+                : new NewBookingRequestDialog();
+
             dialog.BookingRequestSaved += async (wo) =>
             {
                 ShowToast("Booking request submitted successfully!", true);
@@ -731,13 +758,13 @@ namespace App.WinForms.Views
         public override void ApplyViewPermissions(string userRole)
         {
             // Use Case 5: Work Order Management
-            // Manager: FULL (Owns work orders, dispatch, and new orders)
-            // Super Admin: VIEW (Read-only work orders audit)
-            // Admin: VIEW (Read-only work orders audit)
-            // Sales Staff: — (Hidden from navigation)
+            // Manager: FULL (Owns work orders, dispatch, assignment, and new orders)
+            // Sales Staff: PARTIAL (Create new booking requests, view order details, print orders, QA feedback)
+            // Super Admin & Admin: VIEW (Read-only work orders audit)
             bool isManager = (userRole == Roles.Manager);
+            bool isSalesStaff = (userRole == Roles.SalesStaff);
 
-            _btnNewOrder.Visible = isManager;
+            _btnNewOrder.Visible = isManager || isSalesStaff;
 
             if (isManager)
             {

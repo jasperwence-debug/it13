@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using App.Domain.Common;
 using App.WinForms;
 using App.WinForms.Core;
 
@@ -50,14 +51,19 @@ namespace App.WinForms.Views
         private Panel _pnlStep1 = null!;
         private Panel _pnlStep2 = null!;
 
-        // Step 1: Contact Information
-        private Label _lblFullNameTitle = null!;
-        private TextBox _txtFullName = null!;
+        // Step 1: Contact Information (Normalized Name Fields)
+        private TextBox _txtFirstName = null!;
+        private TextBox _txtMiddleName = null!;
+        private TextBox _txtLastName = null!;
+        private TextBox _txtSuffix = null!;
         private TextBox _txtContactInfo = null!;   // Phone
         private TextBox _txtEmail = null!;
         private ComboBox _cmbLeadSource = null!;
 
-        private Label _lblErrorFullName = null!;
+        private Label _lblErrorFirstName = null!;
+        private Label _lblErrorMiddleName = null!;
+        private Label _lblErrorLastName = null!;
+        private Label _lblErrorSuffix = null!;
         private Label _lblErrorContactInfo = null!;
         private Label _lblErrorEmail = null!;
         private Label _lblErrorLeadSource = null!;
@@ -363,23 +369,23 @@ namespace App.WinForms.Views
             };
             tlp.Controls.Add(lblSecContact, 0, row++);
 
-            // Phone Number
+            // Phone Number (11 digits only)
             _txtContactInfo = new TextBox
             {
                 Font = new Font("Segoe UI", 9.5F),
-                MaxLength = 20,
-                PlaceholderText = "e.g. 0917-123-4567 or +63 917 123 4567"
+                MaxLength = 11,
+                PlaceholderText = "11-digit mobile (e.g. 09171234567)"
             };
             _txtContactInfo.TextChanged += (s, e) => { ClearError(_txtContactInfo, _lblErrorContactInfo); _isModified = true; };
             _txtContactInfo.KeyPress += (s, e) =>
             {
-                // Disallow letters - allow control keys (backspace, delete) and valid phone characters
-                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && e.KeyChar != '+' && e.KeyChar != '-' && e.KeyChar != ' ' && e.KeyChar != '(' && e.KeyChar != ')')
+                // Only allow control keys (backspace, delete) and numbers 0-9
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
                 {
                     e.Handled = true;
                 }
             };
-            var pnlContact = CreateFieldGroup("Phone Number", true, _txtContactInfo, out _lblErrorContactInfo, 30, Color.White);
+            var pnlContact = CreateFieldGroup("Phone Number (11 Digits)", true, _txtContactInfo, out _lblErrorContactInfo, 30, Color.White);
             tlp.Controls.Add(pnlContact, 0, row++);
 
             // Email Address
@@ -406,27 +412,65 @@ namespace App.WinForms.Views
             };
             tlp.Controls.Add(lblSecDetails, 0, row++);
 
-            // Full Name
-            _lblFullNameTitle = new Label
+            // Normalized Name Fields (2x2 grid)
+            var tlpNames = new TableLayoutPanel
             {
-                Text = "Lead Name *",
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85),
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 2,
+                RowCount = 2,
                 BackColor = Color.White,
-                Location = new Point(0, 0),
-                Size = new Size(740, 20),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+                Margin = new Padding(0, 0, 0, 4)
             };
+            tlpNames.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tlpNames.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
-            _txtFullName = new TextBox
+            // First Name (Required)
+            _txtFirstName = new TextBox
             {
                 Font = new Font("Segoe UI", 9.5F),
-                MaxLength = 100,
-                PlaceholderText = "e.g. Jane Doe"
+                MaxLength = 50,
+                PlaceholderText = "e.g. Maria"
             };
-            _txtFullName.TextChanged += (s, e) => { ClearError(_txtFullName, _lblErrorFullName); _isModified = true; };
-            var pnlFullName = CreateFieldGroup("Lead Name", true, _txtFullName, out _lblErrorFullName, 30, Color.White, _lblFullNameTitle);
-            tlp.Controls.Add(pnlFullName, 0, row++);
+            _txtFirstName.TextChanged += (s, e) => { ClearError(_txtFirstName, _lblErrorFirstName); _isModified = true; };
+            var pnlFirstName = CreateFieldGroup("First Name", true, _txtFirstName, out _lblErrorFirstName, 30, Color.White);
+
+            // Middle Name (Optional)
+            _txtMiddleName = new TextBox
+            {
+                Font = new Font("Segoe UI", 9.5F),
+                MaxLength = 50,
+                PlaceholderText = "e.g. Santos (Optional)"
+            };
+            _txtMiddleName.TextChanged += (s, e) => { ClearError(_txtMiddleName, _lblErrorMiddleName); _isModified = true; };
+            var pnlMiddleName = CreateFieldGroup("Middle Name (Optional)", false, _txtMiddleName, out _lblErrorMiddleName, 30, Color.White);
+
+            // Last Name (Required)
+            _txtLastName = new TextBox
+            {
+                Font = new Font("Segoe UI", 9.5F),
+                MaxLength = 50,
+                PlaceholderText = "e.g. Dela Cruz"
+            };
+            _txtLastName.TextChanged += (s, e) => { ClearError(_txtLastName, _lblErrorLastName); _isModified = true; };
+            var pnlLastName = CreateFieldGroup("Last Name", true, _txtLastName, out _lblErrorLastName, 30, Color.White);
+
+            // Suffix (Optional)
+            _txtSuffix = new TextBox
+            {
+                Font = new Font("Segoe UI", 9.5F),
+                MaxLength = 50,
+                PlaceholderText = "e.g. Jr., III (Optional)"
+            };
+            _txtSuffix.TextChanged += (s, e) => { ClearError(_txtSuffix, _lblErrorSuffix); _isModified = true; };
+            var pnlSuffix = CreateFieldGroup("Suffix (Optional)", false, _txtSuffix, out _lblErrorSuffix, 30, Color.White);
+
+            tlpNames.Controls.Add(pnlFirstName, 0, 0);
+            tlpNames.Controls.Add(pnlMiddleName, 1, 0);
+            tlpNames.Controls.Add(pnlLastName, 0, 1);
+            tlpNames.Controls.Add(pnlSuffix, 1, 1);
+            tlp.Controls.Add(tlpNames, 0, row++);
 
             // Lead Source
             _cmbLeadSource = new ComboBox
@@ -765,10 +809,33 @@ namespace App.WinForms.Views
 
             if (_currentStep == 1)
             {
-                // Full Name validation
-                if (!ValidationHelper.IsValidName(_txtFullName.Text, 100, out var nameErr))
+                // First Name validation
+                if (!ValidationHelper.IsValidNamePart(_txtFirstName.Text, "First Name", true, 50, out var fnErr))
                 {
-                    SetError(_txtFullName, _lblErrorFullName, nameErr);
+                    SetError(_txtFirstName, _lblErrorFirstName, fnErr);
+                    isValid = false;
+                }
+
+                // Middle Name validation (optional)
+                if (!string.IsNullOrWhiteSpace(_txtMiddleName.Text) &&
+                    !ValidationHelper.IsValidNamePart(_txtMiddleName.Text, "Middle Name", false, 50, out var mnErr))
+                {
+                    SetError(_txtMiddleName, _lblErrorMiddleName, mnErr);
+                    isValid = false;
+                }
+
+                // Last Name validation
+                if (!ValidationHelper.IsValidNamePart(_txtLastName.Text, "Last Name", true, 50, out var lnErr))
+                {
+                    SetError(_txtLastName, _lblErrorLastName, lnErr);
+                    isValid = false;
+                }
+
+                // Suffix validation (optional)
+                if (!string.IsNullOrWhiteSpace(_txtSuffix.Text) &&
+                    !ValidationHelper.IsValidNamePart(_txtSuffix.Text, "Suffix", false, 50, out var sxErr))
+                {
+                    SetError(_txtSuffix, _lblErrorSuffix, sxErr);
                     isValid = false;
                 }
 
@@ -849,7 +916,10 @@ namespace App.WinForms.Views
 
         private void ClearValidationErrors()
         {
-            if (_txtFullName != null) ClearError(_txtFullName, _lblErrorFullName);
+            if (_txtFirstName != null) ClearError(_txtFirstName, _lblErrorFirstName);
+            if (_txtMiddleName != null) ClearError(_txtMiddleName, _lblErrorMiddleName);
+            if (_txtLastName != null) ClearError(_txtLastName, _lblErrorLastName);
+            if (_txtSuffix != null) ClearError(_txtSuffix, _lblErrorSuffix);
             if (_txtContactInfo != null) ClearError(_txtContactInfo, _lblErrorContactInfo);
             if (_txtEmail != null) ClearError(_txtEmail, _lblErrorEmail);
             if (_cmbLeadSource != null) ClearError(_cmbLeadSource, _lblErrorLeadSource);
@@ -878,17 +948,28 @@ namespace App.WinForms.Views
                     quotedPrice = parsedPrice;
                 }
 
+                string fn = NameNormalizer.Normalize(_txtFirstName.Text);
+                string? mn = string.IsNullOrWhiteSpace(_txtMiddleName.Text) ? null : NameNormalizer.Normalize(_txtMiddleName.Text);
+                string ln = NameNormalizer.Normalize(_txtLastName.Text);
+                string? sx = string.IsNullOrWhiteSpace(_txtSuffix.Text) ? null : NameNormalizer.NormalizeSuffix(_txtSuffix.Text);
+
                 var dto = new LeadCreateDto
                 {
-                    LeadName       = _txtFullName.Text.Trim(),
-                    Phone          = _txtContactInfo.Text.Trim(),
-                    Email          = _txtEmail.Text.Trim(),
-                    LeadSource     = _cmbLeadSource.SelectedItem?.ToString() ?? string.Empty,
-                    ServiceAddress = string.IsNullOrWhiteSpace(_txtServiceAddress?.Text) ? null : _txtServiceAddress.Text.Trim(),
-                    QuotedPrice    = quotedPrice,
-                    InquiryDetails = string.IsNullOrWhiteSpace(_txtInquiryDetails?.Text)
-                                       ? null
-                                       : _txtInquiryDetails.Text.Trim()
+                    FirstName          = fn,
+                    MiddleName         = mn,
+                    LastName           = ln,
+                    Suffix             = sx,
+                    LeadName           = NameNormalizer.FormatFullName(fn, mn, ln, sx),
+                    Phone              = _txtContactInfo.Text.Trim(),
+                    Email              = _txtEmail.Text.Trim(),
+                    LeadSource         = _cmbLeadSource.SelectedItem?.ToString() ?? string.Empty,
+                    ServiceAddress     = string.IsNullOrWhiteSpace(_txtServiceAddress?.Text) ? null : _txtServiceAddress.Text.Trim(),
+                    QuotedPrice        = quotedPrice,
+                    InquiryDetails     = string.IsNullOrWhiteSpace(_txtInquiryDetails?.Text)
+                                           ? null
+                                           : _txtInquiryDetails.Text.Trim(),
+                    AssignedUserId     = SessionManager.IsSalesStaff ? SessionManager.CurrentUser?.Id : null,
+                    AssignedSalesStaff = SessionManager.IsSalesStaff ? SessionManager.CurrentUser?.Username : null
                 };
 
                 var (success, message, _) = await _apiClient.CreateLeadAsync(dto);
@@ -928,7 +1009,10 @@ namespace App.WinForms.Views
         // ============================================================
         public void ClearForm()
         {
-            _txtFullName?.Clear();
+            _txtFirstName?.Clear();
+            _txtMiddleName?.Clear();
+            _txtLastName?.Clear();
+            _txtSuffix?.Clear();
             _txtContactInfo?.Clear();
             _txtEmail?.Clear();
             if (_cmbLeadSource?.Items.Count > 0) _cmbLeadSource.SelectedIndex = 0;
@@ -945,7 +1029,8 @@ namespace App.WinForms.Views
         // ============================================================
         public void ApplyViewPermissions(string userRole)
         {
-            bool canSave = (userRole == Roles.SalesStaff);
+            // All operational and administrative roles can capture/save incoming customer leads
+            bool canSave = (userRole == Roles.SalesStaff || userRole == Roles.Admin || userRole == Roles.Manager || userRole == Roles.SuperAdmin);
             if (_btnSave != null)
             {
                 _btnSave.Enabled = canSave;

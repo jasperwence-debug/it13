@@ -1,7 +1,10 @@
 using App.API;
 using App.API.Data;
 using App.Domain.Entities;
+using App.Domain.Models.Email;
 using App.Infrastructure;
+using App.Infrastructure.Services.Email;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Configure SMTP transport service for Sales & Retention
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
+builder.Services.AddSingleton<IEmailService, SmtpEmailService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
@@ -58,7 +65,11 @@ app.MapGet("/api/data-collection", async (AppDbContext db) =>
             customerId = sr.CustomerId,
 
             // Lead
-            leadName = sr.Lead != null ? sr.Lead.LeadName : "",
+            leadName = sr.Lead != null ? sr.Lead.FullName : "",
+            firstName = sr.Customer != null ? sr.Customer.FirstName : (sr.Lead != null ? sr.Lead.FirstName : ""),
+            middleName = sr.Customer != null ? sr.Customer.MiddleName : (sr.Lead != null ? sr.Lead.MiddleName : null),
+            lastName = sr.Customer != null ? sr.Customer.LastName : (sr.Lead != null ? sr.Lead.LastName : ""),
+            suffix = sr.Customer != null ? sr.Customer.Suffix : (sr.Lead != null ? sr.Lead.Suffix : null),
             contactInfo = sr.Lead != null ? sr.Lead.ContactInfo : "",
             leadSource = sr.Lead != null ? sr.Lead.LeadSource : "",
             serviceOfInterest = sr.Lead != null ? sr.Lead.ServiceOfInterest : "",
@@ -66,7 +77,7 @@ app.MapGet("/api/data-collection", async (AppDbContext db) =>
 
             // Customer
             customerType = sr.Customer != null ? sr.Customer.CustomerType : "",
-            customerName = sr.Customer != null ? sr.Customer.CustomerName : "",
+            customerName = sr.Customer != null ? sr.Customer.FullName : "",
             contactDetails = sr.Customer != null ? sr.Customer.ContactDetails : "",
             serviceLocation = sr.Customer != null ? sr.Customer.ServiceLocation : "",
 
@@ -103,14 +114,18 @@ app.MapGet("/api/data-collection/{id:int}", async (int id, AppDbContext db) =>
         leadId = sr.LeadId,
         customerId = sr.CustomerId,
 
-        leadName = sr.Lead?.LeadName ?? "",
+        leadName = sr.Lead?.FullName ?? "",
+        firstName = sr.Customer?.FirstName ?? sr.Lead?.FirstName ?? "",
+        middleName = sr.Customer?.MiddleName ?? sr.Lead?.MiddleName,
+        lastName = sr.Customer?.LastName ?? sr.Lead?.LastName ?? "",
+        suffix = sr.Customer?.Suffix ?? sr.Lead?.Suffix,
         contactInfo = sr.Lead?.ContactInfo ?? "",
         leadSource = sr.Lead?.LeadSource ?? "",
         serviceOfInterest = sr.Lead?.ServiceOfInterest ?? "",
         inquiryDetails = sr.Lead?.InquiryDetails,
 
         customerType = sr.Customer?.CustomerType ?? "",
-        customerName = sr.Customer?.CustomerName ?? "",
+        customerName = sr.Customer?.FullName ?? "",
         contactDetails = sr.Customer?.ContactDetails ?? "",
         serviceLocation = sr.Customer?.ServiceLocation ?? "",
 
@@ -153,7 +168,18 @@ app.MapPut("/api/data-collection/{id:int}", async (int id, DataCollectionDto dto
         // Update Lead
         if (sr.Lead != null)
         {
-            sr.Lead.LeadName = dto.LeadName;
+            if (!string.IsNullOrWhiteSpace(dto.FirstName) || !string.IsNullOrWhiteSpace(dto.LastName))
+            {
+                sr.Lead.FirstName = dto.FirstName;
+                sr.Lead.MiddleName = dto.MiddleName;
+                sr.Lead.LastName = dto.LastName;
+                sr.Lead.Suffix = dto.Suffix;
+                sr.Lead.LeadName = sr.Lead.FullName;
+            }
+            else if (!string.IsNullOrWhiteSpace(dto.LeadName))
+            {
+                sr.Lead.LeadName = dto.LeadName;
+            }
             sr.Lead.ContactInfo = dto.ContactInfo;
             sr.Lead.LeadSource = dto.LeadSource;
             sr.Lead.ServiceOfInterest = dto.ServiceOfInterest;
@@ -164,7 +190,18 @@ app.MapPut("/api/data-collection/{id:int}", async (int id, DataCollectionDto dto
         if (sr.Customer != null)
         {
             sr.Customer.CustomerType = dto.CustomerType;
-            sr.Customer.CustomerName = dto.CustomerName;
+            if (!string.IsNullOrWhiteSpace(dto.FirstName) || !string.IsNullOrWhiteSpace(dto.LastName))
+            {
+                sr.Customer.FirstName = dto.FirstName;
+                sr.Customer.MiddleName = dto.MiddleName;
+                sr.Customer.LastName = dto.LastName;
+                sr.Customer.Suffix = dto.Suffix;
+                sr.Customer.CustomerName = sr.Customer.FullName;
+            }
+            else if (!string.IsNullOrWhiteSpace(dto.CustomerName))
+            {
+                sr.Customer.CustomerName = dto.CustomerName;
+            }
             sr.Customer.ContactDetails = dto.ContactDetails;
             sr.Customer.ServiceLocation = dto.ServiceLocation;
         }
@@ -227,20 +264,41 @@ app.MapDelete("/api/data-collection/{id:int}", async (int id, AppDbContext db) =
 // GET /api/analytics/dashboard
 // Business Intelligence & Retention Analytics
 // ============================================================
-app.MapGet("/api/analytics/dashboard", async (AppDbContext db) =>
+app.MapGet("/api/analytics/dashboard", async (AppDbContext db, [FromQuery] string? assignedStaff, [FromQuery] int? assignedUserId) =>
 {
     var activeRequestsQuery = db.ServiceRequests.Where(sr => sr.IsActive);
+    var activeCustomersQuery = db.Customers.Where(c => c.IsActive);
+    var activeLeadsQuery = db.Leads.Where(l => l.IsActive);
 
-    var totalCustomers = await db.Customers.CountAsync(c => c.IsActive);
+    if (!string.IsNullOrWhiteSpace(assignedStaff) || assignedUserId.HasValue)
+    {
+        var staffTrimmed = assignedStaff?.Trim() ?? string.Empty;
+        var uid = assignedUserId ?? 0;
+
+        activeRequestsQuery = activeRequestsQuery.Where(sr =>
+            (staffTrimmed != "" && sr.AssignedSalesStaff == staffTrimmed) ||
+            (sr.Customer != null && ((staffTrimmed != "" && sr.Customer.AssignedSalesStaff == staffTrimmed) || (uid != 0 && sr.Customer.AssignedUserId == uid))));
+
+        activeCustomersQuery = activeCustomersQuery.Where(c =>
+            (staffTrimmed != "" && c.AssignedSalesStaff == staffTrimmed) ||
+            (uid != 0 && c.AssignedUserId == uid));
+
+        activeLeadsQuery = activeLeadsQuery.Where(l =>
+            (staffTrimmed != "" && l.AssignedSalesStaff == staffTrimmed) ||
+            (uid != 0 && l.AssignedUserId == uid));
+    }
+
+    var totalCustomers = await activeCustomersQuery.CountAsync();
     var totalBookings = await activeRequestsQuery.CountAsync();
     var completedBookings = await activeRequestsQuery.CountAsync(sr => sr.Status == "Completed");
     var cancelledBookings = await activeRequestsQuery.CountAsync(sr => sr.Status == "Cancelled");
     var scheduledBookings = await activeRequestsQuery.CountAsync(sr => sr.Status == "Scheduled");
     var requestedBookings = await activeRequestsQuery.CountAsync(sr => sr.Status == "Requested");
 
-    var totalLeads = await db.Leads.CountAsync(l => l.IsActive);
+    var totalLeads = await activeLeadsQuery.CountAsync();
+    var convertedLeads = await activeLeadsQuery.CountAsync(l => l.Status == "Converted");
     var leadConversionRate = totalLeads > 0
-        ? Math.Round((double)totalCustomers / totalLeads * 100.0, 1)
+        ? Math.Round((double)convertedLeads / totalLeads * 100.0, 1)
         : (totalBookings > 0 ? Math.Round((double)(completedBookings + scheduledBookings) / totalBookings * 100.0, 1) : 0.0);
 
     var totalRevenue = await activeRequestsQuery
@@ -363,14 +421,25 @@ app.MapGet("/api/analytics/dashboard", async (AppDbContext db) =>
 // GET /api/analytics/at-risk-customers
 // Returns list of customers needing re-engagement (60+ days since last completed service)
 // ============================================================
-app.MapGet("/api/analytics/at-risk-customers", async (AppDbContext db) =>
+app.MapGet("/api/analytics/at-risk-customers", async (AppDbContext db, [FromQuery] string? assignedStaff, [FromQuery] int? assignedUserId) =>
 {
     var cutoff60Days = DateTime.UtcNow.AddDays(-60);
     var now = DateTime.UtcNow;
 
-    var customers = await db.Customers
+    var customersQuery = db.Customers
         .AsNoTracking()
-        .Where(c => c.IsActive)
+        .Where(c => c.IsActive);
+
+    if (!string.IsNullOrWhiteSpace(assignedStaff) || assignedUserId.HasValue)
+    {
+        var staffTrimmed = assignedStaff?.Trim() ?? string.Empty;
+        var uid = assignedUserId ?? 0;
+        customersQuery = customersQuery.Where(c =>
+            (staffTrimmed != "" && c.AssignedSalesStaff == staffTrimmed) ||
+            (uid != 0 && c.AssignedUserId == uid));
+    }
+
+    var customers = await customersQuery
         .Select(c => new
         {
             c.CustomerId,

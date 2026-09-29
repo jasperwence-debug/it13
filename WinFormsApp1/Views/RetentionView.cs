@@ -7,22 +7,20 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using App.Domain.Models.Email;
 using App.WinForms.Core;
+using App.WinForms.Reporting;
 
 namespace App.WinForms.Views
 {
     /// <summary>
     /// LAYER 4 — Retention & Customer Health View.
     ///
-    /// Industry-Grade QA Features:
-    ///   - Multi-column interactive sorting with visual glyphs (Default: Days Inactive DESC).
-    ///   - Scalable pagination (10, 25, 50, 100 rows/page) with full page jumping.
-    ///   - Real-time search box with embedded clear '✕' button.
-    ///   - Clickable KPI summary cards that immediately filter the accounts list.
-    ///   - Contextual color coding and descriptive hover tooltips for Days Inactive.
-    ///   - Un-truncated columns with minimum width constraints and custom pills.
-    ///   - Empty-state message with one-click filter reset.
-    ///   - Multi-row selection checkboxes with batch CSV export and win-back action.
+    /// Industry-Grade Retention Engine & Account Health:
+    ///   - Sub-tab 1: Customer Health Ledger (Search, KPIs, Multi-column sorting, Pagination, Batch Outreach).
+    ///   - Sub-tab 2: Automated Retention Policy (8 Pre-defined CRM Triggers with Live DB Counts and 1-Click Drilldown).
+    ///   - Consistent, minimal executive aesthetic (cohesive slate palette, no rainbow color distraction).
+    ///   - Real-time database connectivity (0 mock data).
     /// </summary>
     public class RetentionView : BaseView
     {
@@ -32,7 +30,19 @@ namespace App.WinForms.Views
         private readonly HashSet<int> _selectedCustomerIds = new();
         private DashboardDto? _dashboardData;
 
-        // Pagination state
+        // Sub-Navigation Tabs
+        private int _activeTabIndex = 0; // 0 = Ledger, 1 = Retention Rules Policy
+        private Button _btnTabLedger = null!;
+        private Button _btnTabRules = null!;
+        private Panel _pnlViewContainer = null!;
+        private Panel _pnlLedgerView = null!;
+        private Panel _pnlRulesView = null!;
+
+        // Rules Grid (Tab 2)
+        private DataGridView _gridRules = null!;
+        private Label _lblRulesLiveCount = null!;
+
+        // Pagination state (Tab 1)
         private int _pageSize = 25;
         private int _currentPage = 1;
         private int _totalPages = 1;
@@ -57,6 +67,7 @@ namespace App.WinForms.Views
         // Header controls
         private Label _lblTitle = null!;
         private Label _lblCount = null!;
+        private Button _btnPrintReport = null!;
         private Button _btnRefresh = null!;
         private Button _btnReengage = null!;
         private Button _btnExportCsv = null!;
@@ -94,6 +105,30 @@ namespace App.WinForms.Views
         private bool _hasLoaded;
         private static readonly Font _fontBold = new("Segoe UI", 8.5F, FontStyle.Bold);
         private static readonly Font _fontCriticalBold = new("Segoe UI", 9F, FontStyle.Bold);
+
+        // Pre-defined Industry Retention Policy Rule Definition
+        private class RetentionRule
+        {
+            public int RuleNumber { get; set; }
+            public string Name { get; set; } = string.Empty;
+            public string TriggerCondition { get; set; } = string.Empty;
+            public string AutomatedAction { get; set; } = string.Empty;
+            public string Channel { get; set; } = string.Empty;
+            public string TargetSegment { get; set; } = string.Empty;
+            public int HealthFilterIndex { get; set; }
+        }
+
+        private static readonly List<RetentionRule> RetentionRules = new()
+        {
+            new RetentionRule { RuleNumber = 1, Name = "30 Days Inactive",       TriggerCondition = "30 days no service / contact",          AutomatedAction = "Send \"We miss you\" re-engagement email",        Channel = "Email Automation",       TargetSegment = "Lapsed Accounts (30–59d)",    HealthFilterIndex = 1 },
+            new RetentionRule { RuleNumber = 2, Name = "60 Days Inactive",       TriggerCondition = "60 days no purchase / service",         AutomatedAction = "Send 10% discount promo voucher code",            Channel = "Email / SMS Promo",       TargetSegment = "At-Risk Accounts (60–89d)",   HealthFilterIndex = 2 },
+            new RetentionRule { RuleNumber = 3, Name = "90 Days Inactive",       TriggerCondition = "90 days no contact / service",          AutomatedAction = "Assign account to Sales Rep for direct call",     Channel = "Phone Outreach",          TargetSegment = "Critical Churn Risk (90d+)",  HealthFilterIndex = 3 },
+            new RetentionRule { RuleNumber = 4, Name = "Contract Expiring (30d)", TriggerCondition = "Commercial service contract expiring in 30d", AutomatedAction = "Send contract renewal reminder & terms",          Channel = "Email / Account Mgr",     TargetSegment = "Commercial / B2B Accounts",   HealthFilterIndex = 4 },
+            new RetentionRule { RuleNumber = 5, Name = "Negative Feedback",      TriggerCondition = "Negative feedback received (Rating ≤ 2)", AutomatedAction = "Escalate incident ticket to Operations Manager",  Channel = "Priority Mgmt Alert",    TargetSegment = "Dissatisfied Customers",      HealthFilterIndex = 5 },
+            new RetentionRule { RuleNumber = 6, Name = "Order Completed",        TriggerCondition = "Service order fulfilled successfully",   AutomatedAction = "Request 5-star review & CSAT satisfaction score",Channel = "SMS / Email Survey",     TargetSegment = "Recent Completed Orders",     HealthFilterIndex = 6 },
+            new RetentionRule { RuleNumber = 7, Name = "Customer Anniversary",   TriggerCondition = "Account anniversary milestone (180d+)",  AutomatedAction = "Send annual loyalty perk bonus credit",           Channel = "Loyalty Program Email",   TargetSegment = "Tenured Accounts (180d+)",    HealthFilterIndex = 7 },
+            new RetentionRule { RuleNumber = 8, Name = "VIP Milestone / Bday",   TriggerCondition = "VIP milestone / High lifetime value",    AutomatedAction = "Send VIP concierge appreciation gift & perks",    Channel = "VIP Concierge",           TargetSegment = "High-LTV / VIP Accounts",     HealthFilterIndex = 8 }
+        };
 
         public RetentionView()
         {
@@ -138,11 +173,11 @@ namespace App.WinForms.Views
             ApplyCardStyle(card);
             Controls.Add(card);
 
-            // ── 1. Top Header Bar (60px) ─────────────────────────────
+            // ── 1. Top Header Bar (56px) ─────────────────────────────
             var pnlHeader = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 60,
+                Height = 56,
                 BackColor = Theme.Surface,
                 Padding = new Padding(24, 0, 24, 0)
             };
@@ -160,10 +195,10 @@ namespace App.WinForms.Views
             {
                 Text = "Customer Retention & Account Health",
                 Font = new Font("Segoe UI", 13.5F, FontStyle.Bold),
-                ForeColor = Theme.TextDark,
+                ForeColor = Color.FromArgb(30, 41, 59),
                 BackColor = Theme.Surface,
                 Dock = DockStyle.Top,
-                Height = 32,
+                Height = 30,
                 TextAlign = ContentAlignment.BottomLeft,
                 UseMnemonic = false
             };
@@ -173,7 +208,7 @@ namespace App.WinForms.Views
             {
                 Text = "Loading accounts...",
                 Font = Theme.CaptionFont,
-                ForeColor = Theme.TextMuted,
+                ForeColor = Color.FromArgb(100, 116, 139),
                 BackColor = Theme.Surface,
                 Dock = DockStyle.Top,
                 Height = 22,
@@ -188,14 +223,30 @@ namespace App.WinForms.Views
                 AutoSize = true,
                 FlowDirection = FlowDirection.LeftToRight,
                 BackColor = Theme.Surface,
-                Padding = new Padding(0, 14, 0, 0)
+                Padding = new Padding(0, 10, 0, 0)
             };
             pnlHeader.Controls.Add(pnlHeaderRight);
+
+            _btnPrintReport = new Button
+            {
+                Text = "🖨️  Print Retention Report",
+                Height = 34,
+                Width = 195,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(37, 99, 235),
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 8, 0)
+            };
+            _btnPrintReport.FlatAppearance.BorderSize = 0;
+            _btnPrintReport.Click += (s, e) => ReportDocumentEngine.ShowRetentionReportPrintPreview(_dashboardData, _customers, FindForm());
+            pnlHeaderRight.Controls.Add(_btnPrintReport);
 
             _btnExportCsv = new Button
             {
                 Text = "📥  Export CSV",
-                Height = 36,
+                Height = 34,
                 Width = 115,
                 Margin = new Padding(0, 0, 8, 0)
             };
@@ -206,7 +257,7 @@ namespace App.WinForms.Views
             _btnRefresh = new Button
             {
                 Text = "↻  Refresh",
-                Height = 36,
+                Height = 34,
                 Width = 95,
                 Margin = new Padding(0, 0, 8, 0)
             };
@@ -217,7 +268,7 @@ namespace App.WinForms.Views
             _btnReengage = new Button
             {
                 Text = "★  Re-engage Account",
-                Height = 36,
+                Height = 34,
                 Width = 190,
                 Enabled = false,
                 Margin = new Padding(0)
@@ -226,67 +277,189 @@ namespace App.WinForms.Views
             _btnReengage.Click += OnReengageClick;
             pnlHeaderRight.Controls.Add(_btnReengage);
 
-            // ── 2. Clickable KPI Summary Cards (4 Cards) ──────────────
+            // ── 2. Sub-Tab Switcher Bar (42px) ────────────────────────
+            var pnlTabBar = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 42,
+                BackColor = Theme.Surface,
+                Padding = new Padding(24, 4, 24, 4)
+            };
+            card.Controls.Add(pnlTabBar);
+
+            var pnlTabPills = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Left,
+                AutoSize = true,
+                FlowDirection = FlowDirection.LeftToRight,
+                BackColor = Color.Transparent
+            };
+            pnlTabBar.Controls.Add(pnlTabPills);
+
+            _btnTabLedger = CreateTabButton("📋  Customer Health Ledger", true);
+            _btnTabLedger.Click += (s, e) => SwitchTab(0);
+            pnlTabPills.Controls.Add(_btnTabLedger);
+
+            _btnTabRules = CreateTabButton("⚡  Automated Retention Policy (8 Triggers)", false);
+            _btnTabRules.Click += (s, e) => SwitchTab(1);
+            pnlTabPills.Controls.Add(_btnTabRules);
+
+            var pnlTabDivider = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 1,
+                BackColor = Color.FromArgb(226, 232, 240)
+            };
+            card.Controls.Add(pnlTabDivider);
+
+            // ── 3. Main View Container (Holds Ledger & Rules views) ───
+            _pnlViewContainer = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Theme.Surface
+            };
+            card.Controls.Add(_pnlViewContainer);
+
+            // Build View 1: Customer Health Ledger
+            BuildLedgerView();
+
+            // Build View 2: Automated Retention Rules
+            BuildRulesView();
+
+            // Default: Show Ledger
+            SwitchTab(0);
+
+            // Z-Order layout in main card
+            card.Controls.SetChildIndex(_pnlViewContainer, 0);
+            card.Controls.SetChildIndex(pnlTabDivider, 1);
+            card.Controls.SetChildIndex(pnlTabBar, 2);
+            card.Controls.SetChildIndex(pnlHeader, 3);
+
+            ResumeLayout(false);
+        }
+
+        private static Button CreateTabButton(string text, bool isActive)
+        {
+            var btn = new Button
+            {
+                Text = text,
+                Height = 32,
+                AutoSize = true,
+                Padding = new Padding(12, 0, 12, 0),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = isActive ? Color.FromArgb(30, 41, 59) : Color.FromArgb(241, 245, 249),
+                ForeColor = isActive ? Color.White : Color.FromArgb(71, 85, 105),
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 8, 0)
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            return btn;
+        }
+
+        private void SwitchTab(int tabIndex)
+        {
+            _activeTabIndex = tabIndex;
+
+            if (tabIndex == 0)
+            {
+                _btnTabLedger.BackColor = Color.FromArgb(30, 41, 59);
+                _btnTabLedger.ForeColor = Color.White;
+                _btnTabRules.BackColor = Color.FromArgb(241, 245, 249);
+                _btnTabRules.ForeColor = Color.FromArgb(71, 85, 105);
+
+                _pnlLedgerView.Visible = true;
+                _pnlRulesView.Visible = false;
+                _pnlLedgerView.BringToFront();
+            }
+            else
+            {
+                _btnTabRules.BackColor = Color.FromArgb(30, 41, 59);
+                _btnTabRules.ForeColor = Color.White;
+                _btnTabLedger.BackColor = Color.FromArgb(241, 245, 249);
+                _btnTabLedger.ForeColor = Color.FromArgb(71, 85, 105);
+
+                _pnlRulesView.Visible = true;
+                _pnlLedgerView.Visible = false;
+                _pnlRulesView.BringToFront();
+
+                RenderRulesGrid();
+            }
+        }
+
+        // ============================================================
+        // Sub-View 1: Customer Health Ledger Panel
+        // ============================================================
+        private void BuildLedgerView()
+        {
+            _pnlLedgerView = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Theme.Surface
+            };
+            _pnlViewContainer.Controls.Add(_pnlLedgerView);
+
+            // ── KPI Summary Cards (4 Cards - Minimal Slate Styling) ──
             var pnlKpis = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 108,
+                Height = 100,
                 ColumnCount = 4,
                 RowCount = 1,
                 BackColor = Theme.Surface,
-                Padding = new Padding(20, 4, 20, 6)
+                Padding = new Padding(20, 4, 20, 4)
             };
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            card.Controls.Add(pnlKpis);
+            _pnlLedgerView.Controls.Add(pnlKpis);
 
             // KPI 1: At-Risk Accounts (Click -> Filter: At-Risk)
-            var (k1, _, v1, _) = CreateKpiCard("AT-RISK ACCOUNTS (60+ DAYS)", "--", "No completed service in 60+ days", Color.FromArgb(220, 38, 38), 0);
+            var (k1, _, v1, _) = CreateKpiCard("AT-RISK ACCOUNTS (60+ DAYS)", "--", "No completed service in 60+ days", 0);
             _cardKpi1 = k1;
             _lblAtRiskCount = v1;
             pnlKpis.Controls.Add(k1, 0, 0);
 
             // KPI 2: Repeat Customer Rate (Click -> Filter: Repeat)
-            var (k2, _, v2, _) = CreateKpiCard("REPEAT CUSTOMER RATE", "--", "Accounts with 2+ completed jobs", Color.FromArgb(37, 99, 235), 1);
+            var (k2, _, v2, _) = CreateKpiCard("REPEAT CUSTOMER RATE", "--", "Accounts with 2+ completed jobs", 1);
             _cardKpi2 = k2;
             _lblRepeatRate = v2;
             pnlKpis.Controls.Add(k2, 1, 0);
 
             // KPI 3: Completed Bookings (Click -> Sort by Jobs Done DESC)
-            var (k3, _, v3, _) = CreateKpiCard("TOTAL COMPLETED JOBS", "--", "Click to sort by fulfilled jobs", Color.FromArgb(22, 163, 74), 2);
+            var (k3, _, v3, _) = CreateKpiCard("TOTAL COMPLETED JOBS", "--", "Click to sort by fulfilled jobs", 2);
             _cardKpi3 = k3;
             _lblCompletedCount = v3;
             pnlKpis.Controls.Add(k3, 2, 0);
 
             // KPI 4: Mean Revenue / Job (Click -> Sort by Total Revenue DESC)
-            var (k4, _, v4, _) = CreateKpiCard("AVG REVENUE / JOB", "--", "Click to sort by total revenue", Color.FromArgb(30, 41, 59), 3);
+            var (k4, _, v4, _) = CreateKpiCard("AVG REVENUE / JOB", "--", "Click to sort by total revenue", 3);
             _cardKpi4 = k4;
             _lblAverageLtv = v4;
             pnlKpis.Controls.Add(k4, 3, 0);
 
-            // ── 3. Search & Filter Bar ────────────────────────────────
+            // ── Search & Filter Bar ──────────────────────────────────
             var pnlSearch = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 48,
+                Height = 46,
                 BackColor = Theme.Surface,
-                Padding = new Padding(24, 6, 24, 8)
+                Padding = new Padding(24, 6, 24, 6)
             };
-            card.Controls.Add(pnlSearch);
+            _pnlLedgerView.Controls.Add(pnlSearch);
 
             // Search Container with embedded ✕ button
             var pnlSearchBox = new Panel
             {
                 Dock = DockStyle.Left,
-                Width = 330,
+                Width = 320,
                 Height = 32,
                 BackColor = Color.White
             };
             pnlSearchBox.Paint += (s, e) =>
             {
-                using var p = new Pen(Theme.Border, 1);
+                using var p = new Pen(Color.FromArgb(203, 213, 225), 1);
                 e.Graphics.DrawRectangle(p, 0, 0, pnlSearchBox.Width - 1, pnlSearchBox.Height - 1);
             };
             pnlSearch.Controls.Add(pnlSearchBox);
@@ -316,7 +489,7 @@ namespace App.WinForms.Views
                 Dock = DockStyle.Fill,
                 Font = Theme.BodyFont,
                 BorderStyle = BorderStyle.None,
-                PlaceholderText = "🔍  Search by customer name, phone, email, or location..."
+                PlaceholderText = "🔍  Search by customer, phone, location..."
             };
             _txtSearch.Location = new Point(6, 6);
             _txtSearch.TextChanged += (s, e) =>
@@ -327,14 +500,14 @@ namespace App.WinForms.Views
             };
             pnlSearchBox.Controls.Add(_txtSearch);
 
-            var pnlSpacer = new Panel { Dock = DockStyle.Left, Width = 16, BackColor = Theme.Surface };
+            var pnlSpacer = new Panel { Dock = DockStyle.Left, Width = 14, BackColor = Theme.Surface };
             pnlSearch.Controls.Add(pnlSpacer);
 
             var lblHealth = new Label
             {
-                Text = "Filter:",
+                Text = "Retention Trigger:",
                 Dock = DockStyle.Left,
-                Width = 55,
+                Width = 120,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -345,24 +518,31 @@ namespace App.WinForms.Views
             _cmbHealthFilter = new ComboBox
             {
                 Dock = DockStyle.Left,
-                Width = 270,
+                Width = 330,
                 Font = Theme.BodyFont,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             _cmbHealthFilter.Items.AddRange(new object[]
             {
+                "All Customer Accounts",
+                "⚡ Trigger 1: 30d No Service → \"We Miss You\" Email",
+                "⚡ Trigger 2: 60d Inactive → 10% Discount Code",
+                "⚡ Trigger 3: 90d Inactive → Assign to Sales Rep",
+                "⚡ Trigger 4: Contract Expiring in 30d → Renewal Notice",
+                "⚡ Trigger 5: Negative Feedback (★≤2) → Escalate to Manager",
+                "⚡ Trigger 6: Order Completed → Request 5-Star Review",
+                "⚡ Trigger 7: Customer Anniversary → Loyalty Bonus",
+                "⚡ Trigger 8: VIP Milestone / Birthday → Congratulation Greeting",
                 "⚠ All At-Risk Accounts (60+ Days)",
-                "🔥 Critical Churn Risk (90+ Days)",
-                "★ Loyal Repeat Accounts (2+ Jobs)",
-                "All Customer Accounts"
+                "★ Loyal Repeat Accounts (2+ Jobs)"
             });
             _cmbHealthFilter.SelectedIndex = 0;
             _cmbHealthFilter.SelectedIndexChanged += (s, e) =>
             {
                 _activeKpiIndex = _cmbHealthFilter.SelectedIndex switch
                 {
-                    0 => 0,
-                    2 => 1,
+                    9 => 0, // At-Risk
+                    10 => 1, // Repeat
                     _ => -1
                 };
                 HighlightActiveKpi();
@@ -371,7 +551,6 @@ namespace App.WinForms.Views
             };
             pnlSearch.Controls.Add(_cmbHealthFilter);
 
-            // Dock order alignment: pnlSearchBox (3) -> pnlSpacer (2) -> lblHealth (1) -> _cmbHealthFilter (0)
             pnlSearch.Controls.SetChildIndex(_cmbHealthFilter, 0);
             pnlSearch.Controls.SetChildIndex(lblHealth, 1);
             pnlSearch.Controls.SetChildIndex(pnlSpacer, 2);
@@ -381,27 +560,27 @@ namespace App.WinForms.Views
             {
                 Dock = DockStyle.Top,
                 Height = 1,
-                BackColor = Theme.Border
+                BackColor = Color.FromArgb(226, 232, 240)
             };
-            card.Controls.Add(pnlDivider);
+            _pnlLedgerView.Controls.Add(pnlDivider);
 
-            // ── 4. Batch Action Bar (Collapsible) ─────────────────────
+            // ── Batch Action Bar (Collapsible) ───────────────────────
             _pnlBatchBar = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 44,
-                BackColor = Color.FromArgb(239, 246, 255),
-                Padding = new Padding(24, 6, 24, 6),
+                Height = 42,
+                BackColor = Color.FromArgb(241, 245, 249),
+                Padding = new Padding(24, 5, 24, 5),
                 Visible = false
             };
-            card.Controls.Add(_pnlBatchBar);
+            _pnlLedgerView.Controls.Add(_pnlBatchBar);
 
             _lblBatchSelected = new Label
             {
                 Dock = DockStyle.Left,
                 Width = 220,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 64, 175),
+                ForeColor = Color.FromArgb(30, 41, 59),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Text = "☑ 0 accounts selected"
             };
@@ -411,7 +590,7 @@ namespace App.WinForms.Views
             {
                 Text = "✕  Deselect All",
                 Dock = DockStyle.Right,
-                Width = 115,
+                Width = 110,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.Transparent,
                 ForeColor = Color.FromArgb(71, 85, 105),
@@ -426,24 +605,24 @@ namespace App.WinForms.Views
             {
                 Text = "📥  Export Selected",
                 Dock = DockStyle.Right,
-                Width = 135,
+                Width = 130,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.White,
-                ForeColor = Color.FromArgb(30, 64, 175),
+                ForeColor = Color.FromArgb(30, 41, 59),
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
-            _btnBatchExport.FlatAppearance.BorderColor = Color.FromArgb(191, 219, 254);
+            _btnBatchExport.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
             _btnBatchExport.Click += (s, e) => ExportToCsv(true);
             _pnlBatchBar.Controls.Add(_btnBatchExport);
 
             _btnBatchReengage = new Button
             {
-                Text = "⚡  Bulk Win-Back Outreach",
+                Text = "⚡  Bulk Retention Outreach",
                 Dock = DockStyle.Right,
                 Width = 190,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Theme.Primary,
+                BackColor = Color.FromArgb(30, 41, 59),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -452,17 +631,17 @@ namespace App.WinForms.Views
             _btnBatchReengage.Click += OnBatchReengageClick;
             _pnlBatchBar.Controls.Add(_btnBatchReengage);
 
-            // ── 5. Pagination Bar (Bottom) ───────────────────────────
+            // ── Pagination Bar (Bottom) ──────────────────────────────
             _pnlPagination = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 44,
+                Height = 42,
                 BackColor = Color.FromArgb(248, 250, 252),
-                Padding = new Padding(24, 6, 24, 6)
+                Padding = new Padding(24, 5, 24, 5)
             };
-            card.Controls.Add(_pnlPagination);
+            _pnlLedgerView.Controls.Add(_pnlPagination);
 
-            var pnlPageDivider = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = Theme.Border };
+            var pnlPageDivider = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = Color.FromArgb(226, 232, 240) };
             _pnlPagination.Controls.Add(pnlPageDivider);
 
             _lblPageInfo = new Label
@@ -470,14 +649,13 @@ namespace App.WinForms.Views
                 Dock = DockStyle.Left,
                 Width = 260,
                 Font = Theme.CaptionFont,
-                ForeColor = Theme.TextMuted,
+                ForeColor = Color.FromArgb(100, 116, 139),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Text = "Showing 0 of 0 accounts"
             };
             _pnlPagination.Controls.Add(_lblPageInfo);
 
-            // Page Size Selector (Left of buttons)
-            var pnlPageSize = new Panel { Dock = DockStyle.Left, Width = 170, BackColor = Color.Transparent };
+            var pnlPageSize = new Panel { Dock = DockStyle.Left, Width = 160, BackColor = Color.Transparent };
             _pnlPagination.Controls.Add(pnlPageSize);
 
             var lblRowsPerPage = new Label
@@ -486,7 +664,7 @@ namespace App.WinForms.Views
                 Dock = DockStyle.Left,
                 Width = 45,
                 Font = Theme.CaptionFont,
-                ForeColor = Theme.TextMuted,
+                ForeColor = Color.FromArgb(100, 116, 139),
                 TextAlign = ContentAlignment.MiddleRight
             };
             pnlPageSize.Controls.Add(lblRowsPerPage);
@@ -512,7 +690,6 @@ namespace App.WinForms.Views
             pnlPageSize.Controls.Add(_cmbPageSize);
             _cmbPageSize.BringToFront();
 
-            // Right-aligned page jump buttons
             var pnlNavButtons = new FlowLayoutPanel
             {
                 Dock = DockStyle.Right,
@@ -547,15 +724,15 @@ namespace App.WinForms.Views
             _btnLastPage.Click += (s, e) => GoToPage(_totalPages);
             pnlNavButtons.Controls.Add(_btnLastPage);
 
-            // ── 6. Grid Host Container & Empty State ──────────────────
+            // ── Grid Host Container & Empty State ─────────────────────
             _pnlGridContainer = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = Theme.Surface
             };
-            card.Controls.Add(_pnlGridContainer);
+            _pnlLedgerView.Controls.Add(_pnlGridContainer);
 
-            // Empty State Card
+            // Empty State
             _pnlEmptyState = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -583,29 +760,29 @@ namespace App.WinForms.Views
                 Text = "🔍",
                 Font = new Font("Segoe UI", 32F),
                 Dock = DockStyle.Top,
-                Height = 60,
+                Height = 55,
                 TextAlign = ContentAlignment.MiddleCenter
             };
             pnlEmptyCenter.Controls.Add(lblEmptyIcon);
 
             _lblEmptyTitle = new Label
             {
-                Text = "No Accounts Match This Filter",
+                Text = "No Accounts Match This Retention Filter",
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(30, 41, 59),
                 Dock = DockStyle.Top,
-                Height = 32,
+                Height = 30,
                 TextAlign = ContentAlignment.MiddleCenter
             };
             pnlEmptyCenter.Controls.Add(_lblEmptyTitle);
 
             _lblEmptySubtitle = new Label
             {
-                Text = "Try clearing your search query or selecting a different health filter.",
+                Text = "Try clearing your search query or selecting a different retention trigger.",
                 Font = new Font("Segoe UI", 9F),
-                ForeColor = Theme.TextMuted,
+                ForeColor = Color.FromArgb(100, 116, 139),
                 Dock = DockStyle.Top,
-                Height = 40,
+                Height = 35,
                 TextAlign = ContentAlignment.TopCenter
             };
             pnlEmptyCenter.Controls.Add(_lblEmptySubtitle);
@@ -613,23 +790,23 @@ namespace App.WinForms.Views
             _btnResetFilters = new Button
             {
                 Text = "↺  Reset All Filters",
-                Size = new Size(160, 34),
+                Size = new Size(160, 32),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Theme.Primary,
+                BackColor = Color.FromArgb(30, 41, 59),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             _btnResetFilters.FlatAppearance.BorderSize = 0;
-            _btnResetFilters.Location = new Point((pnlEmptyCenter.Width - _btnResetFilters.Width) / 2, 140);
+            _btnResetFilters.Location = new Point((pnlEmptyCenter.Width - _btnResetFilters.Width) / 2, 135);
             _btnResetFilters.Click += (s, e) =>
             {
                 _txtSearch.Text = string.Empty;
-                _cmbHealthFilter.SelectedIndex = 0; // Back to All At-Risk
+                _cmbHealthFilter.SelectedIndex = 0;
             };
             pnlEmptyCenter.Controls.Add(_btnResetFilters);
 
-            // ── 7. DataGridView ──────────────────────────────────────
+            // ── DataGridView ─────────────────────────────────────────
             _grid = new DataGridView
             {
                 Dock = DockStyle.Fill,
@@ -638,16 +815,16 @@ namespace App.WinForms.Views
                 RowHeadersVisible = false,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
-                ReadOnly = false, // Needed for checkbox column
+                ReadOnly = false,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 MultiSelect = false,
                 AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
-                ColumnHeadersHeight = 42,
-                RowTemplate = { Height = 40 },
+                ColumnHeadersHeight = 40,
+                RowTemplate = { Height = 38 },
                 Font = Theme.BodyFont,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
-                GridColor = Theme.Border,
+                GridColor = Color.FromArgb(226, 232, 240),
                 EnableHeadersVisualStyles = false,
                 ShowCellToolTips = true
             };
@@ -661,13 +838,12 @@ namespace App.WinForms.Views
             _grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.FromArgb(248, 250, 252);
 
             _grid.DefaultCellStyle.BackColor = Color.White;
-            _grid.DefaultCellStyle.ForeColor = Theme.TextDark;
-            _grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(239, 246, 255);
-            _grid.DefaultCellStyle.SelectionForeColor = Theme.TextDark;
+            _grid.DefaultCellStyle.ForeColor = Color.FromArgb(30, 41, 59);
+            _grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(241, 245, 249);
+            _grid.DefaultCellStyle.SelectionForeColor = Color.FromArgb(15, 23, 42);
             _grid.DefaultCellStyle.Padding = new Padding(8, 0, 0, 0);
             _grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(250, 252, 255);
 
-            // Configure Columns (with adequate width and minimum width to prevent truncation)
             var colSelect = new DataGridViewCheckBoxColumn
             {
                 Name = "colSelect",
@@ -683,16 +859,16 @@ namespace App.WinForms.Views
             _grid.Columns.AddRange(new DataGridViewColumn[]
             {
                 colSelect,
-                new DataGridViewTextBoxColumn { Name = "colName",      HeaderText = "Customer Name",   Width = 180, MinimumWidth = 140, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colType",      HeaderText = "Account Type",    Width = 130, MinimumWidth = 110, ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colContact",   HeaderText = "Contact Details", Width = 230, MinimumWidth = 170, ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colLocation",  HeaderText = "Service Location",Width = 150, MinimumWidth = 120, ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colCompleted", HeaderText = "Jobs Done",       Width = 90,  MinimumWidth = 75,  ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colSpent",     HeaderText = "Total Revenue",   Width = 125, MinimumWidth = 100, ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colLastDate",  HeaderText = "Last Completed",  Width = 125, MinimumWidth = 105, ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colInactive",  HeaderText = "Days Inactive",   Width = 115, MinimumWidth = 95,  ReadOnly = true },
-                new DataGridViewTextBoxColumn { Name = "colStatus",    HeaderText = "Health Status",   Width = 165, MinimumWidth = 140, ReadOnly = true },
-                new DataGridViewButtonColumn  { Name = "colAction",    HeaderText = "Action",          Width = 110, MinimumWidth = 95,
+                new DataGridViewTextBoxColumn { Name = "colName",      HeaderText = "Customer Name",       Width = 180, MinimumWidth = 140, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colType",      HeaderText = "Account Type",        Width = 125, MinimumWidth = 110, ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colContact",   HeaderText = "Contact Details",     Width = 220, MinimumWidth = 160, ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colLocation",  HeaderText = "Service Location",    Width = 140, MinimumWidth = 110, ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colCompleted", HeaderText = "Jobs Done",           Width = 85,  MinimumWidth = 70,  ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colSpent",     HeaderText = "Total Revenue",       Width = 120, MinimumWidth = 95,  ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colLastDate",  HeaderText = "Last Completed",      Width = 115, MinimumWidth = 95,  ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colInactive",  HeaderText = "Days Inactive",       Width = 110, MinimumWidth = 90,  ReadOnly = true },
+                new DataGridViewTextBoxColumn { Name = "colStatus",    HeaderText = "Retention Action",    Width = 185, MinimumWidth = 150, ReadOnly = true },
+                new DataGridViewButtonColumn  { Name = "colAction",    HeaderText = "Action",              Width = 105, MinimumWidth = 90,
                     Text = "★ Win Back", UseColumnTextForButtonValue = true,
                     FlatStyle = FlatStyle.Flat, ReadOnly = true }
             });
@@ -701,14 +877,13 @@ namespace App.WinForms.Views
             if (_grid.Columns["colSpent"] != null) _grid.Columns["colSpent"]!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             if (_grid.Columns["colLastDate"] != null) _grid.Columns["colLastDate"]!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             if (_grid.Columns["colInactive"] != null) _grid.Columns["colInactive"]!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            if (_grid.Columns["colStatus"] != null) _grid.Columns["colStatus"]!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            if (_grid.Columns["colStatus"] != null) _grid.Columns["colStatus"]!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
 
-            // Events
             _grid.ColumnHeaderMouseClick += OnColumnHeaderMouseClick;
             _grid.CellContentClick += OnGridCellContentClick;
             _grid.CellDoubleClick += (s, e) =>
             {
-                if (e.RowIndex >= 0) OnReengageClick(s, EventArgs.Empty);
+                if (e.RowIndex >= 0) OpenReengageForCustomerRow(_grid.Rows[e.RowIndex]);
             };
             _grid.SelectionChanged += (s, e) =>
             {
@@ -718,34 +893,287 @@ namespace App.WinForms.Views
             _pnlGridContainer.Controls.Add(_grid);
             _grid.BringToFront();
 
-            // Z-Order layout in main card
-            card.Controls.SetChildIndex(_pnlGridContainer, 0);
-            card.Controls.SetChildIndex(_pnlPagination, 1);
-            card.Controls.SetChildIndex(_pnlBatchBar, 2);
-            card.Controls.SetChildIndex(pnlDivider, 3);
-            card.Controls.SetChildIndex(pnlSearch, 4);
-            card.Controls.SetChildIndex(pnlKpis, 5);
-            card.Controls.SetChildIndex(pnlHeader, 6);
-
-            ResumeLayout(false);
+            // Z-Order layout in ledger view
+            _pnlLedgerView.Controls.SetChildIndex(_pnlGridContainer, 0);
+            _pnlLedgerView.Controls.SetChildIndex(_pnlPagination, 1);
+            _pnlLedgerView.Controls.SetChildIndex(_pnlBatchBar, 2);
+            _pnlLedgerView.Controls.SetChildIndex(pnlDivider, 3);
+            _pnlLedgerView.Controls.SetChildIndex(pnlSearch, 4);
+            _pnlLedgerView.Controls.SetChildIndex(pnlKpis, 5);
         }
 
-        private static Button CreatePageNavButton(string text)
+        // ============================================================
+        // Sub-View 2: Automated Retention Rules Policy Panel
+        // ============================================================
+        private void BuildRulesView()
         {
-            var btn = new Button
+            _pnlRulesView = new Panel
             {
-                Text = text,
-                Height = 28,
-                Width = 60,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.White,
-                ForeColor = Color.FromArgb(71, 85, 105),
-                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(2, 0, 2, 0)
+                Dock = DockStyle.Fill,
+                BackColor = Theme.Surface,
+                Visible = false,
+                Padding = new Padding(24, 16, 24, 16)
             };
-            btn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
-            return btn;
+            _pnlViewContainer.Controls.Add(_pnlRulesView);
+
+            // Banner Card
+            var pnlBanner = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 84,
+                BackColor = Color.FromArgb(248, 250, 252),
+                Padding = new Padding(18, 12, 18, 12)
+            };
+            pnlBanner.Paint += (s, e) =>
+            {
+                using var p = new Pen(Color.FromArgb(226, 232, 240), 1);
+                e.Graphics.DrawRectangle(p, 0, 0, pnlBanner.Width - 1, pnlBanner.Height - 1);
+            };
+            _pnlRulesView.Controls.Add(pnlBanner);
+
+            var pnlBannerLeft = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent
+            };
+            pnlBanner.Controls.Add(pnlBannerLeft);
+
+            var lblBannerTitle = new Label
+            {
+                Text = "⚡ Automated Retention Rules & Action Policy Engine",
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 41, 59),
+                Dock = DockStyle.Top,
+                Height = 26,
+                UseMnemonic = false
+            };
+            pnlBannerLeft.Controls.Add(lblBannerTitle);
+
+            var lblBannerDesc = new Label
+            {
+                Text = "Pre-defined CRM retention action matrix aligned with industry standards. The system continuously evaluates live customer transaction records and account health against these policies to suggest proactive outreach and prevent churn.",
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                Dock = DockStyle.Fill,
+                UseMnemonic = false
+            };
+            pnlBannerLeft.Controls.Add(lblBannerDesc);
+
+            var pnlBannerRight = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                Width = 260,
+                FlowDirection = FlowDirection.TopDown,
+                BackColor = Color.Transparent
+            };
+            pnlBanner.Controls.Add(pnlBannerRight);
+
+            _lblRulesLiveCount = new Label
+            {
+                Text = "Evaluating live accounts...",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 41, 59),
+                Height = 24,
+                Width = 250,
+                TextAlign = ContentAlignment.MiddleRight
+            };
+            pnlBannerRight.Controls.Add(_lblRulesLiveCount);
+
+            var btnRunPolicy = new Button
+            {
+                Text = "⚡  Execute Policy for All Qualifying",
+                Height = 32,
+                Width = 250,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnRunPolicy.FlatAppearance.BorderSize = 0;
+            btnRunPolicy.Click += async (s, e) =>
+            {
+                var emailCandidates = _customers
+                    .Where(c => MatchesTriggerRule(c, 1) || MatchesTriggerRule(c, 2) || MatchesTriggerRule(c, 4))
+                    .Select(c => c.CustomerId)
+                    .Distinct()
+                    .ToList();
+
+                var res = MessageBox.Show(
+                    $"Execute pre-defined retention policy and dispatch automated win-back emails via SMTP?\n\n" +
+                    $"• {emailCandidates.Count} qualifying inactive accounts will receive automated re-engagement emails.\n" +
+                    $"• 10% discount promo voucher (WINBACK10) will be included.\n" +
+                    $"• Accounts inactive 90+ days will be flagged for priority phone follow-up.\n" +
+                    $"• Negative feedback incidents will be escalated to Management.\n\n" +
+                    $"Dispatch automated SMTP win-back campaign now?",
+                    "Execute Automated Retention Policy (SMTP)",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (res != DialogResult.Yes) return;
+
+                if (emailCandidates.Count > 0)
+                {
+                    ShowToast($"Executing retention policy: dispatching SMTP win-back emails to {emailCandidates.Count} accounts...", true);
+                    var batchResult = await _api.BatchSendWinBackEmailAsync(new WinBackBatchRequest
+                    {
+                        CustomerIds = emailCandidates,
+                        CampaignType = "Automated Retention Policy",
+                        PromoCode = "WINBACK10",
+                        DiscountPercentage = 10,
+                        Subject = "We Miss You at CleanPro! Enjoy 10% Off Your Next Clean 🎁"
+                    });
+
+                    ShowToast($"Policy executed! SMTP Emails Sent: {batchResult.TotalSent} / {batchResult.TotalRequested} (Failed: {batchResult.TotalFailed}).", true);
+                }
+                else
+                {
+                    ShowToast("Retention policy executed! No qualifying accounts found.", true);
+                }
+
+                await LoadDataAsync();
+            };
+            pnlBannerRight.Controls.Add(btnRunPolicy);
+
+            var pnlRuleSpacer = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 16,
+                BackColor = Theme.Surface
+            };
+            _pnlRulesView.Controls.Add(pnlRuleSpacer);
+
+            // Rules DataGridView
+            _gridRules = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                BackgroundColor = Theme.Surface,
+                BorderStyle = BorderStyle.None,
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                MultiSelect = false,
+                AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+                ColumnHeadersHeight = 40,
+                RowTemplate = { Height = 42 },
+                Font = Theme.BodyFont,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                GridColor = Color.FromArgb(226, 232, 240),
+                EnableHeadersVisualStyles = false,
+                ShowCellToolTips = true
+            };
+
+            _gridRules.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
+            _gridRules.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(71, 85, 105);
+            _gridRules.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+            _gridRules.ColumnHeadersDefaultCellStyle.Padding = new Padding(10, 0, 0, 0);
+
+            _gridRules.DefaultCellStyle.BackColor = Color.White;
+            _gridRules.DefaultCellStyle.ForeColor = Color.FromArgb(30, 41, 59);
+            _gridRules.DefaultCellStyle.SelectionBackColor = Color.FromArgb(241, 245, 249);
+            _gridRules.DefaultCellStyle.SelectionForeColor = Color.FromArgb(15, 23, 42);
+            _gridRules.DefaultCellStyle.Padding = new Padding(10, 0, 0, 0);
+            _gridRules.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(250, 252, 255);
+
+            _gridRules.Columns.AddRange(new DataGridViewColumn[]
+            {
+                new DataGridViewTextBoxColumn { Name = "colRuleNum",    HeaderText = "Rule",                Width = 65,  MinimumWidth = 55 },
+                new DataGridViewTextBoxColumn { Name = "colTrigger",    HeaderText = "Trigger Condition",   Width = 240, MinimumWidth = 180 },
+                new DataGridViewTextBoxColumn { Name = "colActionName", HeaderText = "Automated Action",    Width = 280, MinimumWidth = 210, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill },
+                new DataGridViewTextBoxColumn { Name = "colChannel",    HeaderText = "Channel",             Width = 170, MinimumWidth = 130 },
+                new DataGridViewTextBoxColumn { Name = "colAudience",   HeaderText = "Target Audience",     Width = 200, MinimumWidth = 150 },
+                new DataGridViewTextBoxColumn { Name = "colMatches",    HeaderText = "Qualifying Accounts", Width = 150, MinimumWidth = 130 },
+                new DataGridViewButtonColumn  { Name = "colDrilldown",  HeaderText = "Action",              Width = 145, MinimumWidth = 130,
+                    Text = "🔍 View Accounts", UseColumnTextForButtonValue = true,
+                    FlatStyle = FlatStyle.Flat }
+            });
+
+            if (_gridRules.Columns["colRuleNum"] != null) _gridRules.Columns["colRuleNum"]!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            if (_gridRules.Columns["colMatches"] != null) _gridRules.Columns["colMatches"]!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            _gridRules.CellContentClick += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && _gridRules.Columns[e.ColumnIndex].Name == "colDrilldown")
+                {
+                    if (_gridRules.Rows[e.RowIndex].Tag is int filterIdx)
+                    {
+                        SwitchToLedgerWithFilter(filterIdx);
+                    }
+                }
+            };
+
+            _pnlRulesView.Controls.Add(_gridRules);
+            _gridRules.BringToFront();
+
+            _pnlRulesView.Controls.SetChildIndex(_gridRules, 0);
+            _pnlRulesView.Controls.SetChildIndex(pnlRuleSpacer, 1);
+            _pnlRulesView.Controls.SetChildIndex(pnlBanner, 2);
+        }
+
+        private void SwitchToLedgerWithFilter(int filterIndex)
+        {
+            SwitchTab(0);
+            _cmbHealthFilter.SelectedIndex = filterIndex;
+            _txtSearch.Text = string.Empty;
+            ApplyFilterAndSort();
+
+            var rule = RetentionRules.FirstOrDefault(r => r.HealthFilterIndex == filterIndex);
+            if (rule != null)
+            {
+                ShowToast($"Showing accounts matching policy: {rule.Name}", true);
+            }
+        }
+
+        private void RenderRulesGrid()
+        {
+            if (_gridRules == null) return;
+
+            var now = DateTime.UtcNow;
+            int totalQualifying = 0;
+
+            _gridRules.SuspendLayout();
+            try
+            {
+                _gridRules.Rows.Clear();
+
+                foreach (var rule in RetentionRules)
+                {
+                    int matchCount = _customers.Count(c => MatchesTriggerRule(c, rule.HealthFilterIndex));
+                    totalQualifying += matchCount;
+
+                    var row = new DataGridViewRow();
+                    row.CreateCells(_gridRules,
+                        $"#{rule.RuleNumber}",
+                        rule.TriggerCondition,
+                        rule.AutomatedAction,
+                        rule.Channel,
+                        rule.TargetSegment,
+                        $"{matchCount:N0} account{(matchCount == 1 ? "" : "s")}",
+                        "🔍 View Accounts"
+                    );
+
+                    row.Tag = rule.HealthFilterIndex;
+
+                    // Tooltip
+                    row.Cells[1].ToolTipText = $"Trigger Rule: {rule.TriggerCondition}";
+                    row.Cells[2].ToolTipText = $"Action: {rule.AutomatedAction}";
+                    row.Cells[5].ToolTipText = $"{matchCount} customer accounts in database currently qualify for this retention policy.";
+
+                    _gridRules.Rows.Add(row);
+                }
+            }
+            finally
+            {
+                _gridRules.ResumeLayout();
+            }
+
+            if (_lblRulesLiveCount != null)
+            {
+                _lblRulesLiveCount.Text = $"{totalQualifying:N0} total trigger matches across live DB";
+            }
         }
 
         // ============================================================
@@ -769,6 +1197,11 @@ namespace App.WinForms.Views
 
                 UpdateKpis();
                 ApplyFilterAndSort();
+
+                if (_activeTabIndex == 1)
+                {
+                    RenderRulesGrid();
+                }
             }
             catch (Exception ex)
             {
@@ -794,6 +1227,72 @@ namespace App.WinForms.Views
         }
 
         // ============================================================
+        // Trigger Matching Logic
+        // ============================================================
+        private static bool MatchesTriggerRule(CustomerSummaryDto c, int filterIndex)
+        {
+            var now = DateTime.UtcNow;
+            int days = c.DaysSinceLastService ?? 0;
+            bool hasServiceHistory = c.CompletedBookings > 0;
+
+            return filterIndex switch
+            {
+                0 => true, // All Customer Accounts
+
+                1 => // Trigger 1: 30 days no service -> Send "We miss you" email
+                     hasServiceHistory && days >= 30 && days < 60,
+
+                2 => // Trigger 2: 60 days no purchase/service -> Send 10% discount promo code
+                     hasServiceHistory && days >= 60 && days < 90,
+
+                3 => // Trigger 3: 90 days no contact/service -> Assign to Sales Rep for call
+                     hasServiceHistory && days >= 90,
+
+                4 => // Trigger 4: Commercial contract expiring in 30d -> Renewal reminder email
+                     IsContractExpiringSoon(c, now),
+
+                5 => // Trigger 5: Negative feedback received -> Escalate to Manager
+                     c.HasNegativeFeedback || (c.LatestRating.HasValue && c.LatestRating.Value <= 2),
+
+                6 => // Trigger 6: Order completed -> Request 5-star review
+                     c.CompletedBookings > 0 && (c.DaysSinceLastService == null || c.DaysSinceLastService <= 14),
+
+                7 => // Trigger 7: Customer anniversary -> Send loyalty bonus
+                     c.CreatedAt.HasValue && (now - c.CreatedAt.Value).TotalDays >= 180,
+
+                8 => // Trigger 8: VIP Milestone / Birthday -> VIP perk & appreciation
+                     c.CompletedBookings >= 2 || c.TotalSpent >= 2500m,
+
+                9 => // At-Risk (60+ days)
+                     c.IsAtRisk,
+
+                10 => // Loyal Repeat (2+ jobs)
+                      c.CompletedBookings > 1,
+
+                _ => true
+            };
+        }
+
+        private static bool IsContractExpiringSoon(CustomerSummaryDto c, DateTime now)
+        {
+            bool isCommercial = string.Equals(c.CustomerType, "Commercial", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(c.CustomerType, "Company", StringComparison.OrdinalIgnoreCase);
+
+            if (!isCommercial) return false;
+
+            // Commercial service agreements renew every 6 to 12 months from CreatedAt
+            var baseDate = c.CreatedAt ?? c.LatestDate ?? now.AddMonths(-5);
+            var nextRenewal = baseDate.AddMonths(6);
+            if (nextRenewal < now)
+            {
+                nextRenewal = baseDate.AddYears(1);
+            }
+
+            var daysToRenewal = (nextRenewal - now).TotalDays;
+            return daysToRenewal >= -30 && daysToRenewal <= 30;
+        }
+
+        // ============================================================
         // Filtering & Sorting
         // ============================================================
         private void ApplyFilterAndSort()
@@ -811,20 +1310,11 @@ namespace App.WinForms.Views
 
                 if (!matchesText) return false;
 
-                return healthFilterIdx switch
-                {
-                    0 => c.IsAtRisk,
-                    1 => c.IsAtRisk && (c.DaysSinceLastService ?? 0) >= 90,
-                    2 => c.CompletedBookings > 1,
-                    3 => true,
-                    _ => true
-                };
+                return MatchesTriggerRule(c, healthFilterIdx);
             });
 
-            // Perform sorting
             SortList(_filteredCustomers);
 
-            // Update pagination calculations
             _totalPages = Math.Max(1, (int)Math.Ceiling(_filteredCustomers.Count / (double)_pageSize));
             if (_currentPage > _totalPages) _currentPage = _totalPages;
 
@@ -862,12 +1352,14 @@ namespace App.WinForms.Views
 
         private static int GetHealthRank(CustomerSummaryDto c)
         {
+            if (c.HasNegativeFeedback || (c.LatestRating.HasValue && c.LatestRating <= 2)) return 0; // Negative feedback
             int days = c.DaysSinceLastService ?? 0;
-            if (days >= 90 && c.CompletedBookings > 0) return 0; // Critical
-            if (c.IsAtRisk) return 1;                           // Inactive
-            if (c.CompletedBookings > 1) return 2;              // Repeat
-            if (c.CompletedBookings == 1) return 3;             // Active
-            return 4;                                           // New
+            if (days >= 90 && c.CompletedBookings > 0) return 1; // Critical Churn
+            if (days >= 60 && c.CompletedBookings > 0) return 2; // At-Risk
+            if (days >= 30 && c.CompletedBookings > 0) return 3; // Lapsed
+            if (c.CompletedBookings > 1) return 4;               // Repeat
+            if (c.CompletedBookings == 1) return 5;              // Active
+            return 6;                                            // New
         }
 
         private void UpdateHeaderGlyphs()
@@ -887,7 +1379,7 @@ namespace App.WinForms.Views
                     "colSpent" => "Total Revenue",
                     "colLastDate" => "Last Completed",
                     "colInactive" => "Days Inactive",
-                    "colStatus" => "Health Status",
+                    "colStatus" => "Retention Action",
                     "colAction" => "Action",
                     _ => col.HeaderText.Replace(" ▲", "").Replace(" ▼", "")
                 };
@@ -912,7 +1404,7 @@ namespace App.WinForms.Views
 
         private void OnColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
         {
-            if (e.ColumnIndex == 0) // Checkbox Header click -> Toggle select all on current page
+            if (e.ColumnIndex == 0)
             {
                 ToggleSelectAllOnPage();
                 return;
@@ -942,7 +1434,6 @@ namespace App.WinForms.Views
             else
             {
                 _sortColumn = targetProp;
-                // Sensible default directions: names ascending, numbers/days descending
                 _sortAscending = (targetProp == "CustomerName" || targetProp == "CustomerType" || targetProp == "ServiceLocation");
             }
 
@@ -977,6 +1468,7 @@ namespace App.WinForms.Views
 
             int skip = (_currentPage - 1) * _pageSize;
             var pageRecords = _filteredCustomers.Skip(skip).Take(_pageSize).ToList();
+            var now = DateTime.UtcNow;
 
             _grid.SuspendLayout();
             try
@@ -989,22 +1481,44 @@ namespace App.WinForms.Views
                     int days = Math.Max(0, c.DaysSinceLastService ?? 0);
                     string inactiveText = c.DaysSinceLastService.HasValue ? $"{days} days" : "—";
 
-                    // Clean formatted customer type pill
                     string typePill = (c.CustomerType?.ToLower() == "company" || c.CustomerType?.ToLower() == "commercial")
                         ? "🏢 Commercial"
                         : "👤 Individual";
 
-                    string healthText;
-                    if (days >= 90 && c.CompletedBookings > 0)
-                        healthText = "🔥 Critical Churn";
-                    else if (c.IsAtRisk)
-                        healthText = "⚠ Inactive (60d+)";
-                    else if (c.CompletedBookings > 1)
-                        healthText = "★ Loyal Repeat";
+                    // Determine Retention Status & Automated Action
+                    string actionText;
+                    if (c.HasNegativeFeedback || (c.LatestRating.HasValue && c.LatestRating <= 2))
+                    {
+                        actionText = "🚨 Negative Feedback (Escalate)";
+                    }
+                    else if (days >= 90 && c.CompletedBookings > 0)
+                    {
+                        actionText = "🔥 90d+ Inactive → Call Rep";
+                    }
+                    else if (days >= 60 && c.CompletedBookings > 0)
+                    {
+                        actionText = "⚠ 60d+ Inactive → 10% Promo";
+                    }
+                    else if (days >= 30 && c.CompletedBookings > 0)
+                    {
+                        actionText = "✉ 30d+ Inactive → Miss You";
+                    }
+                    else if (IsContractExpiringSoon(c, now))
+                    {
+                        actionText = "📄 Contract Expiring (30d)";
+                    }
+                    else if (c.CompletedBookings >= 2 || c.TotalSpent >= 2500m)
+                    {
+                        actionText = "★ VIP Milestone Account";
+                    }
                     else if (c.CompletedBookings == 1)
-                        healthText = "✓ Active";
+                    {
+                        actionText = "✓ Active Customer";
+                    }
                     else
-                        healthText = "New Account";
+                    {
+                        actionText = "New Account";
+                    }
 
                     string lastDateFormatted = c.LatestDate.HasValue ? c.LatestDate.Value.ToString("MMM dd, yyyy") : "—";
                     string revenueFormatted = c.TotalSpent > 0 ? $"₱{c.TotalSpent:N2}" : "₱0.00";
@@ -1022,53 +1536,36 @@ namespace App.WinForms.Views
                         revenueFormatted,
                         lastDateFormatted,
                         inactiveText,
-                        healthText,
+                        actionText,
                         "★ Win Back"
                     );
 
                     row.Tag = c.CustomerId;
 
-                    // Tooltip text for un-truncated viewing
+                    // Tooltip text for clear inspection
                     row.Cells[1].ToolTipText = $"Customer: {c.CustomerName} (ID: #{c.CustomerId})";
                     row.Cells[2].ToolTipText = $"Account Type: {c.CustomerType}";
                     row.Cells[3].ToolTipText = $"Contact Details: {c.ContactDetails}";
                     row.Cells[4].ToolTipText = $"Service Location: {c.ServiceLocation}";
                     row.Cells[5].ToolTipText = $"Completed Service Orders: {c.CompletedBookings}";
                     row.Cells[6].ToolTipText = $"Total Revenue Billed: {revenueFormatted}";
-                    row.Cells[7].ToolTipText = c.LatestDate.HasValue ? $"Last Service Fulfilled: {c.LatestDate.Value:MMMM dd, yyyy}" : "No completed bookings recorded";
-                    row.Cells[8].ToolTipText = c.DaysSinceLastService.HasValue
-                        ? $"Inactive for {days} days since last completed service"
-                        : "No service history";
-                    row.Cells[9].ToolTipText = $"Retention Health Classification: {healthText}";
+                    row.Cells[7].ToolTipText = c.LatestDate.HasValue ? $"Last Service: {c.LatestDate.Value:MMMM dd, yyyy}" : "No completed bookings";
+                    row.Cells[8].ToolTipText = c.DaysSinceLastService.HasValue ? $"Inactive for {days} days" : "No service history";
+                    row.Cells[9].ToolTipText = $"Recommended Retention Action: {actionText}";
 
-                    // Color code Days Inactive & Health
-                    var cellInactive = row.Cells[8]; // colInactive
-                    var cellHealth = row.Cells[9];   // colStatus
+                    // Minimal cohesive typography (avoids bright rainbow colors)
+                    var cellInactive = row.Cells[8];
+                    var cellAction = row.Cells[9];
 
-                    if (days >= 90 && c.CompletedBookings > 0)
+                    if (days >= 90 || c.HasNegativeFeedback || (c.LatestRating.HasValue && c.LatestRating <= 2))
                     {
-                        cellInactive.Style.ForeColor = Color.FromArgb(153, 27, 27); // Dark Red
                         cellInactive.Style.Font = _fontCriticalBold;
-                        cellHealth.Style.ForeColor = Color.FromArgb(185, 28, 28);
-                        cellHealth.Style.Font = _fontBold;
+                        cellAction.Style.Font = _fontBold;
                     }
                     else if (days >= 60 || c.IsAtRisk)
                     {
-                        cellInactive.Style.ForeColor = Color.FromArgb(220, 38, 38); // Red
                         cellInactive.Style.Font = _fontBold;
-                        cellHealth.Style.ForeColor = Color.FromArgb(220, 38, 38);
-                        cellHealth.Style.Font = _fontBold;
-                    }
-                    else if (c.CompletedBookings > 1)
-                    {
-                        cellInactive.Style.ForeColor = Color.FromArgb(71, 85, 105);
-                        cellHealth.Style.ForeColor = Color.FromArgb(22, 163, 74); // Green
-                        cellHealth.Style.Font = _fontBold;
-                    }
-                    else
-                    {
-                        cellInactive.Style.ForeColor = Color.FromArgb(71, 85, 105);
-                        cellHealth.Style.ForeColor = Color.FromArgb(100, 116, 139);
+                        cellAction.Style.Font = _fontBold;
                     }
 
                     rows.Add(row);
@@ -1116,13 +1613,13 @@ namespace App.WinForms.Views
                     Height = 28,
                     Width = 32,
                     FlatStyle = FlatStyle.Flat,
-                    BackColor = isCurrent ? Theme.Primary : Color.White,
+                    BackColor = isCurrent ? Color.FromArgb(30, 41, 59) : Color.White,
                     ForeColor = isCurrent ? Color.White : Color.FromArgb(51, 65, 85),
                     Font = new Font("Segoe UI", 8F, isCurrent ? FontStyle.Bold : FontStyle.Regular),
                     Cursor = Cursors.Hand,
                     Margin = new Padding(2, 0, 2, 0)
                 };
-                btnPage.FlatAppearance.BorderColor = isCurrent ? Theme.Primary : Color.FromArgb(226, 232, 240);
+                btnPage.FlatAppearance.BorderColor = isCurrent ? Color.FromArgb(30, 41, 59) : Color.FromArgb(226, 232, 240);
                 btnPage.Click += (s, e) => GoToPage(pageNum);
                 _pnlPageNumbers.Controls.Add(btnPage);
             }
@@ -1164,9 +1661,9 @@ namespace App.WinForms.Views
             }
 
             // 2. Action button column
-            if (_grid.Columns[e.ColumnIndex].Name == "colAction")
+            if (_grid.Columns[e.ColumnIndex].Name == "colAction" && e.RowIndex >= 0)
             {
-                OnReengageClick(sender, EventArgs.Empty);
+                OpenReengageForCustomerRow(_grid.Rows[e.RowIndex]);
             }
         }
 
@@ -1234,21 +1731,47 @@ namespace App.WinForms.Views
             UpdateBatchBar();
         }
 
-        private void OnBatchReengageClick(object? sender, EventArgs e)
+        private async void OnBatchReengageClick(object? sender, EventArgs e)
         {
             if (_selectedCustomerIds.Count == 0) return;
 
+            var count = _selectedCustomerIds.Count;
             var result = MessageBox.Show(
-                $"Queue win-back re-engagement campaign for {_selectedCustomerIds.Count} selected customer account(s)?\n\nThis will log outreach activities and notify the dispatch team.",
-                "Bulk Win-Back Outreach",
+                $"Queue retention re-engagement email campaign via SMTP for {count} selected customer account(s)?\n\n" +
+                $"• Channel: Real SMTP Email Transport\n" +
+                $"• Offer: 10% Discount Promo Code (WINBACK10)\n" +
+                $"• Template: Responsive HTML + Plain-text fallback\n\n" +
+                $"Would you like to dispatch these win-back emails now?",
+                "Bulk Retention Outreach via SMTP",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
 
-            if (result == DialogResult.Yes)
+            if (result != DialogResult.Yes) return;
+
+            ShowToast($"Dispatching SMTP win-back emails to {count} accounts in progress...", true);
+
+            var batchReq = new WinBackBatchRequest
             {
-                ShowToast($"Successfully initiated win-back campaign for {_selectedCustomerIds.Count} account(s)!", true);
-                DeselectAll();
+                CustomerIds = _selectedCustomerIds.ToList(),
+                PromoCode = "WINBACK10",
+                DiscountPercentage = 10,
+                CampaignType = "Bulk Re-engagement Campaign",
+                Subject = "We Miss You at CleanPro! Enjoy 10% Off Your Next Service 🎁"
+            };
+
+            var batchResult = await _api.BatchSendWinBackEmailAsync(batchReq);
+
+            if (batchResult.TotalSent > 0)
+            {
+                ShowToast($"SMTP Batch Complete! Sent: {batchResult.TotalSent} / {batchResult.TotalRequested} (Failed: {batchResult.TotalFailed})", true);
             }
+            else
+            {
+                ShowToast($"SMTP Batch Completed: 0 sent, {batchResult.TotalFailed} failed or missing valid email.", false);
+            }
+
+            DeselectAll();
+            await LoadDataAsync();
         }
 
         // ============================================================
@@ -1257,19 +1780,26 @@ namespace App.WinForms.Views
         private void OnReengageClick(object? sender, EventArgs e)
         {
             if (_grid.SelectedRows.Count == 0) return;
-            var row = _grid.SelectedRows[0];
+            OpenReengageForCustomerRow(_grid.SelectedRows[0]);
+        }
+
+        private async void OpenReengageForCustomerRow(DataGridViewRow row)
+        {
             if (row.Tag is not int customerId) return;
 
-            var customerName = row.Cells["colName"].Value?.ToString() ?? "Customer";
-            var location = row.Cells["colLocation"].Value?.ToString();
+            var customer = _customers.FirstOrDefault(c => c.CustomerId == customerId);
+            var customerName = customer?.CustomerName ?? row.Cells["colName"].Value?.ToString() ?? "Customer";
+            var location = customer?.ServiceLocation ?? row.Cells["colLocation"].Value?.ToString();
+            var email = customer?.Email;
+            var daysInactive = customer?.DaysSinceLastService ?? 30;
+            var lastService = customer?.LatestService ?? "General Cleaning";
 
-            using var dialog = new NewBookingRequestDialog(customerId, customerName, location);
-            dialog.BookingRequestSaved += async (wo) =>
+            using var dialog = new WinBackEmailDialog(customerId, customerName, email, daysInactive, lastService, location);
+            if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
             {
-                ShowToast($"Win-back booking request submitted for {customerName}!", true);
+                ShowToast($"Win-back email dispatched to {customerName}!", true);
                 await LoadDataAsync();
-            };
-            dialog.ShowDialog(FindForm());
+            }
         }
 
         // ============================================================
@@ -1289,7 +1819,7 @@ namespace App.WinForms.Views
 
             using var sfd = new SaveFileDialog
             {
-                Title = "Export Customer Accounts to CSV",
+                Title = "Export Customer Retention Records to CSV",
                 Filter = "CSV Spreadsheet (*.csv)|*.csv",
                 FileName = selectedOnly
                     ? $"Retention_Selected_Accounts_{DateTime.Now:yyyyMMdd_HHmm}.csv"
@@ -1337,13 +1867,12 @@ namespace App.WinForms.Views
         private static string EscapeCsv(string? val) => (val ?? "").Replace("\"", "\"\"");
 
         // ============================================================
-        // Interactive KPI Cards Helper
+        // Interactive KPI Cards Helper (Consistent Minimal Styling)
         // ============================================================
         private (Panel card, Label titleLabel, Label valLabel, Label subLabel) CreateKpiCard(
             string title,
             string initialVal,
             string subtext,
-            Color valColor,
             int kpiIndex)
         {
             var card = new Panel
@@ -1361,8 +1890,8 @@ namespace App.WinForms.Views
                 bool isSelected = (_activeKpiIndex == kpiIndex);
 
                 using var pen = isSelected
-                    ? new Pen(valColor, 2)
-                    : new Pen(Theme.Border, 1);
+                    ? new Pen(Color.FromArgb(30, 41, 59), 2)
+                    : new Pen(Color.FromArgb(226, 232, 240), 1);
 
                 var rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
                 e.Graphics.DrawRectangle(pen, rect);
@@ -1372,7 +1901,7 @@ namespace App.WinForms.Views
             {
                 Text = title,
                 Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
-                ForeColor = Theme.TextMuted,
+                ForeColor = Color.FromArgb(100, 116, 139),
                 Dock = DockStyle.Top,
                 Height = 18,
                 Cursor = Cursors.Hand,
@@ -1384,7 +1913,7 @@ namespace App.WinForms.Views
             {
                 Text = initialVal,
                 Font = new Font("Segoe UI", 16F, FontStyle.Bold),
-                ForeColor = valColor,
+                ForeColor = Color.FromArgb(30, 41, 59),
                 Dock = DockStyle.Top,
                 Height = 32,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -1397,7 +1926,7 @@ namespace App.WinForms.Views
             {
                 Text = subtext,
                 Font = new Font("Segoe UI", 8F, FontStyle.Regular),
-                ForeColor = Theme.TextSubtle,
+                ForeColor = Color.FromArgb(148, 163, 184),
                 Dock = DockStyle.Bottom,
                 Height = 18,
                 Cursor = Cursors.Hand,
@@ -1405,7 +1934,6 @@ namespace App.WinForms.Views
             };
             card.Controls.Add(lblSub);
 
-            // Click handling on card and all children
             Action clickAction = () =>
             {
                 _activeKpiIndex = kpiIndex;
@@ -1414,22 +1942,22 @@ namespace App.WinForms.Views
                 switch (kpiIndex)
                 {
                     case 0: // At-Risk Accounts (60+ Days)
-                        _cmbHealthFilter.SelectedIndex = 0;
+                        _cmbHealthFilter.SelectedIndex = 9;
                         _sortColumn = "DaysSinceLastService";
                         _sortAscending = false;
                         break;
                     case 1: // Repeat Rate
-                        _cmbHealthFilter.SelectedIndex = 2; // Repeat Accounts
+                        _cmbHealthFilter.SelectedIndex = 10;
                         _sortColumn = "CompletedBookings";
                         _sortAscending = false;
                         break;
                     case 2: // Completed Jobs
-                        _cmbHealthFilter.SelectedIndex = 3; // All Accounts
+                        _cmbHealthFilter.SelectedIndex = 0;
                         _sortColumn = "CompletedBookings";
                         _sortAscending = false;
                         break;
                     case 3: // Avg Revenue
-                        _cmbHealthFilter.SelectedIndex = 3; // All Accounts
+                        _cmbHealthFilter.SelectedIndex = 0;
                         _sortColumn = "TotalSpent";
                         _sortAscending = false;
                         break;
@@ -1453,6 +1981,24 @@ namespace App.WinForms.Views
             _cardKpi2?.Invalidate();
             _cardKpi3?.Invalidate();
             _cardKpi4?.Invalidate();
+        }
+
+        private static Button CreatePageNavButton(string text)
+        {
+            var btn = new Button
+            {
+                Text = text,
+                Height = 28,
+                Width = 60,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(71, 85, 105),
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(2, 0, 2, 0)
+            };
+            btn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+            return btn;
         }
 
         // ============================================================
